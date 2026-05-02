@@ -2504,9 +2504,9 @@ function dbxCheckReturn() {
     console.log('[DBX] token found:', dbxToken ? dbxToken.substring(0,10) + '...' : 'null');
     history.replaceState(null, '', window.location.pathname);
     dbxStatus('Connected to Dropbox — resuming…', 'ok');
-    const pending = sessionStorage.getItem('dbx_pending');
+    const pending = localStorage.getItem('dbx_pending');
     console.log('[DBX] pending action:', pending);
-    sessionStorage.removeItem('dbx_pending');
+    localStorage.removeItem('dbx_pending');
     if (pending === 'save') dbxSave();
     else if (pending === 'load') dbxLoad();
     else dbxStatus('Connected to Dropbox — click Save or Load', 'ok');
@@ -2520,7 +2520,7 @@ function dbxAuth(action, callback) {
   if (dbxToken) { callback(dbxToken); return; }
   dbxStatus('Redirecting to Dropbox login…', 'working');
   // Remember what we were trying to do so we can resume after redirect
-  sessionStorage.setItem('dbx_pending', action);
+  localStorage.setItem('dbx_pending', action);
   const authUrl = 'https://www.dropbox.com/oauth2/authorize' +
     '?client_id=' + DBX_APP_KEY +
     '&response_type=token' +
