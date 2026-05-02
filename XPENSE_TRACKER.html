@@ -2496,17 +2496,22 @@ const DBX_REDIRECT = 'https://estebandido-cyber.github.io/FIRE/XPENSE_TRACKER.ht
 // On page load: check if we're returning from Dropbox auth (token in URL hash)
 function dbxCheckReturn() {
   const hash = window.location.hash;
+  console.log('[DBX] hash on load:', hash);
+  console.log('[DBX] full href:', window.location.href);
   if (hash && hash.includes('access_token')) {
     const params = new URLSearchParams(hash.substring(1));
     dbxToken = params.get('access_token');
-    // Clean the token from the URL bar
+    console.log('[DBX] token found:', dbxToken ? dbxToken.substring(0,10) + '...' : 'null');
     history.replaceState(null, '', window.location.pathname);
-    dbxStatus('Connected to Dropbox', 'ok');
-    // Check if we were mid-save or mid-load
+    dbxStatus('Connected to Dropbox — resuming…', 'ok');
     const pending = sessionStorage.getItem('dbx_pending');
+    console.log('[DBX] pending action:', pending);
     sessionStorage.removeItem('dbx_pending');
     if (pending === 'save') dbxSave();
-    if (pending === 'load') dbxLoad();
+    else if (pending === 'load') dbxLoad();
+    else dbxStatus('Connected to Dropbox — click Save or Load', 'ok');
+  } else {
+    console.log('[DBX] no token in hash — normal page load');
   }
 }
 
@@ -2534,6 +2539,7 @@ function dbxSave() {
       data, settings, cashflow: cfData
     };
     const body = JSON.stringify(payload, null, 2);
+    console.log('[DBX] uploading with token:', token ? token.substring(0,10) + '...' : 'null');
     fetch('https://content.dropboxapi.com/2/files/upload', {
       method: 'POST',
       headers: {
@@ -2548,9 +2554,10 @@ function dbxSave() {
       },
       body: body
     })
-    .then(r => r.json())
+    .then(r => { console.log('[DBX] upload response status:', r.status); return r.json(); })
     .then(res => {
-      if (res.error) throw new Error(res.error);
+      console.log('[DBX] upload response body:', JSON.stringify(res));
+      if (res.error) throw new Error(JSON.stringify(res.error));
       dbxStatus('✓ Saved to Dropbox — ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}), 'ok');
       dbxSetBusy(false);
     })
@@ -2620,25 +2627,3 @@ function dbxLoad() {
       dbxStatus('✓ Loaded from Dropbox — ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}), 'ok');
       dbxSetBusy(false);
     })
-    .catch(err => {
-      console.error('Dropbox load error:', err);
-      if (String(err.message).includes('409') || String(err.message).includes('not_found')) {
-        dbxStatus('No file found in Dropbox — save first', 'err');
-      } else if (String(err.message).includes('401')) {
-        dbxToken = null;
-        dbxStatus('Session expired — click Load again', 'err');
-      } else {
-        dbxStatus('Load failed — try again', 'err');
-      }
-      dbxSetBusy(false);
-    });
-  });
-}
-
-setupDragDrop();
-cfLoad();
-init();
-dbxCheckReturn();
-</script>
-</body>
-</html>
