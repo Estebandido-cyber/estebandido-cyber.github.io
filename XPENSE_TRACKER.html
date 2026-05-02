@@ -2491,53 +2491,43 @@ function dbxSetBusy(busy) {
   if (l) l.disabled = busy;
 }
 
-// ── Auth: PKCE flow via popup ──
-function dbxAuth(callback) {
+const DBX_REDIRECT = 'https://estebandido-cyber.github.io/FIRE/XPENSE_TRACKER.html';
+
+// On page load: check if we're returning from Dropbox auth (token in URL hash)
+function dbxCheckReturn() {
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    const params = new URLSearchParams(hash.substring(1));
+    dbxToken = params.get('access_token');
+    // Clean the token from the URL bar
+    history.replaceState(null, '', window.location.pathname);
+    dbxStatus('Connected to Dropbox', 'ok');
+    // Check if we were mid-save or mid-load
+    const pending = sessionStorage.getItem('dbx_pending');
+    sessionStorage.removeItem('dbx_pending');
+    if (pending === 'save') dbxSave();
+    if (pending === 'load') dbxLoad();
+  }
+}
+
+// ── Auth: full page redirect (most reliable, no popup needed) ──
+function dbxAuth(action, callback) {
   if (dbxToken) { callback(dbxToken); return; }
-  dbxStatus('Connecting to Dropbox…', 'working');
-  dbxSetBusy(true);
-
-  const dbx = new Dropbox.Dropbox({ clientId: DBX_APP_KEY });
-
-  // Use token (implicit) flow — simplest for local HTML files
-  const redirectUri = 'https://estebandido-cyber.github.io/FIRE/XPENSE_TRACKER.html';
+  dbxStatus('Redirecting to Dropbox login…', 'working');
+  // Remember what we were trying to do so we can resume after redirect
+  sessionStorage.setItem('dbx_pending', action);
   const authUrl = 'https://www.dropbox.com/oauth2/authorize' +
     '?client_id=' + DBX_APP_KEY +
     '&response_type=token' +
-    '&redirect_uri=' + encodeURIComponent(redirectUri);
-
-  // Open auth popup
-  const popup = window.open(authUrl, 'dropbox-auth', 'width=600,height=600,scrollbars=yes');
-
-  // Poll for token in URL hash after redirect
-  const poll = setInterval(() => {
-    try {
-      if (!popup || popup.closed) {
-        clearInterval(poll);
-        dbxStatus('Sign-in cancelled', 'err');
-        dbxSetBusy(false);
-        return;
-      }
-      const hash = popup.location.hash;
-      if (hash && hash.includes('access_token')) {
-        clearInterval(poll);
-        popup.close();
-        const params = new URLSearchParams(hash.substring(1));
-        dbxToken = params.get('access_token');
-        dbxStatus('Connected to Dropbox', 'ok');
-        callback(dbxToken);
-      }
-    } catch(e) {
-      // Cross-origin — popup is on dropbox.com, ignore until redirect back
-    }
-  }, 500);
+    '&redirect_uri=' + encodeURIComponent(DBX_REDIRECT);
+  window.location.href = authUrl;
 }
 
 // ── Save to Dropbox ──
 function dbxSave() {
   dbxSetBusy(true);
   dbxStatus('Saving to Dropbox…', 'working');
-  dbxAuth(token => {
+  dbxAuth('save', token => {
     const payload = {
       version: 1,
       exportedAt: new Date().toISOString(),
@@ -2582,7 +2572,7 @@ function dbxSave() {
 function dbxLoad() {
   dbxSetBusy(true);
   dbxStatus('Loading from Dropbox…', 'working');
-  dbxAuth(token => {
+  dbxAuth('load', token => {
     fetch('https://content.dropboxapi.com/2/files/download', {
       method: 'POST',
       headers: {
@@ -2648,6 +2638,7 @@ function dbxLoad() {
 setupDragDrop();
 cfLoad();
 init();
+dbxCheckReturn();
 </script>
 </body>
 </html>
