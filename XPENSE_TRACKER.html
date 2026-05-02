@@ -2601,29 +2601,11 @@ function gdriveLoad() {
       .then(payload => {
         if (!payload.data) throw new Error('Invalid format');
 
-        // Merge expenses
-        Object.keys(payload.data).forEach(k => {
-          const hasRealLocal = data[k] && data[k].some(e => e.cat || e.amt);
-          if (!hasRealLocal) {
-            data[k] = payload.data[k];
-          } else {
-            payload.data[k].forEach(e => {
-              if (e.cat || e.amt) data[k].push(e);
-            });
-          }
-        });
-
-        // Restore settings
+        // Full overwrite — Drive is the source of truth
+        data = payload.data;
         if (payload.settings) settings = payload.settings;
-
-        // Merge cashflow
         if (payload.cashflow) {
-          Object.keys(payload.cashflow).forEach(mk => {
-            const c = payload.cashflow[mk];
-            if (!cfData[mk] || (!cfData[mk].salary && !cfData[mk].partner && !cfData[mk].extra)) {
-              cfData[mk] = c;
-            }
-          });
+          cfData = payload.cashflow;
           localStorage.setItem(CF_KEY, JSON.stringify(cfData));
         }
 
