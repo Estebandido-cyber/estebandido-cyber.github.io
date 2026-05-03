@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>Week Plan</title>
+<title>Week Planner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -30,16 +30,29 @@ body{font-family:var(--font);display:flex;flex-direction:column;height:100vh;ove
 /* ── sticky header ── */
 #stickyhead{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:0.5px solid var(--bd);flex-shrink:0;}
 #headrow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 20px;height:52px;border-bottom:0.5px solid var(--bd);}
-#wordmark{font-size:14px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--tx);display:flex;align-items:center;gap:9px;justify-self:start;}
-#wordmark-dot{width:9px;height:9px;border-radius:50%;background:var(--tx);opacity:.25;}
+#wordmark{font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;gap:5px;justify-self:start;}
+#wm-week{color:#e8e4ff;font-weight:700;}
+#wm-planner{color:#7F77DD;font-weight:700;}
+
 #weektabs{display:flex;align-items:center;gap:4px;justify-self:center;}
 .wtab{font-family:var(--font);font-size:12px;font-weight:500;padding:6px 14px;border-radius:var(--r);border:0.5px solid transparent;background:transparent;color:var(--tx3);cursor:pointer;transition:all .15s;}
 .wtab:hover{background:var(--bg3);color:var(--tx2);}
 .wtab.active{background:var(--tx);color:var(--bg);border-color:var(--tx);}
 #head-right{display:flex;align-items:center;gap:6px;justify-self:end;}
-.hbtn{font-family:var(--font);font-size:12px;font-weight:500;padding:6px 12px;border-radius:var(--r);border:0.5px solid var(--bd2);background:transparent;color:var(--tx2);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;}
-.hbtn:hover{background:var(--bg3);color:var(--tx);}
+.hbtn{font-family:var(--font);font-size:12px;font-weight:500;padding:6px 12px;border-radius:var(--r);border:1.5px solid;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;}
 .hbtn svg{width:13px;height:13px;flex-shrink:0;}
+#exportbtn{background:rgba(26,122,74,0.12);border-color:#1a7a4a;color:#1a7a4a;}
+#exportbtn:hover{background:rgba(26,122,74,0.22);color:#15623c;}
+#importbtn{background:rgba(61,92,168,0.12);border-color:#3D5CA8;color:#3D5CA8;}
+#importbtn:hover{background:rgba(61,92,168,0.22);color:#2e4680;}
+@media(prefers-color-scheme:dark){
+  #exportbtn{background:rgba(26,122,74,0.18);border-color:#2aaa65;color:#2aaa65;}
+  #exportbtn:hover{background:rgba(26,122,74,0.3);color:#35cc7a;}
+  #importbtn{background:rgba(100,130,220,0.18);border-color:#7F99DD;color:#7F99DD;}
+  #importbtn:hover{background:rgba(100,130,220,0.3);color:#99aaee;}
+  #wm-week{color:#ccc8ff;}
+  #wm-planner{color:#9D96F0;}
+}
 
 /* ── activity bar ── */
 #topbar{padding:10px 14px 9px;background:var(--bg2);flex-shrink:0;}
@@ -173,7 +186,7 @@ body.tap-mode .sl:hover,body.tap-mode .sl.tap-ready{background:var(--bg3);}
 <div id="stickyhead">
   <div id="headrow">
     <div id="head-top-row">
-      <div id="wordmark"><div id="wordmark-dot"></div>Week Plan</div>
+      <div id="wordmark"><span id="wm-week">Week</span><span id="wm-planner">Planner</span></div>
       <div id="weektabs">
         <button class="wtab" data-w="0">Week 1</button>
         <button class="wtab" data-w="1">Week 2</button>
