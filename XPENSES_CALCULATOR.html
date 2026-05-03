@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Xpenses Calculator</title>
-<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -601,10 +601,12 @@ function importJSON(event) {
 }
 
 // ════════════════════════════════════════════════════════════
-//  GOOGLE DRIVE  — fetch + Bearer token (same as Xpense tracker)
+//  GOOGLE DRIVE  — Google Identity Services (GIS) token model
 // ════════════════════════════════════════════════════════════
-let driveToken  = null;
-let driveFileId = null;
+let driveToken    = null;
+let driveFileId   = null;
+let tokenClient   = null;
+let pendingAction = null;  // callback waiting for token
 
 function driveSetStatus(msg, cls) {
   const el = document.getElementById('drive-status');
@@ -617,30 +619,38 @@ function driveSetBusy(busy) {
   document.getElementById('btn-drive-load').disabled = busy;
 }
 
+// Initialise GIS token client once
+function driveInit() {
+  if (typeof google === 'undefined' || !google.accounts) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: DRIVE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: (resp) => {
+      if (resp.error) {
+        driveSetStatus('Sign-in failed: ' + resp.error, 'err');
+        driveSetBusy(false);
+        pendingAction = null;
+        return;
+      }
+      driveToken = resp.access_token;
+      // Token expires — clear after expiry so next call re-auths
+      setTimeout(() => { driveToken = null; }, (resp.expires_in - 60) * 1000);
+      if (pendingAction) { const fn = pendingAction; pendingAction = null; fn(driveToken); }
+    },
+  });
+}
+
 function driveAuth(callback) {
   if (driveToken) { callback(driveToken); return; }
+  if (!tokenClient) {
+    driveSetStatus('Google auth not available', 'err');
+    driveSetBusy(false);
+    return;
+  }
   driveSetStatus('Connecting to Google…', 'working');
-  gapi.load('client:auth2', () => {
-    gapi.auth2.init({ client_id: DRIVE_CLIENT_ID });
-    const authInstance = gapi.auth2.getAuthInstance();
-    const signIn = () => {
-      authInstance.signIn({ scope: DRIVE_SCOPE })
-        .then(user => {
-          driveToken = user.getAuthResponse().access_token;
-          callback(driveToken);
-        })
-        .catch(() => {
-          driveSetStatus('Sign-in cancelled or failed', 'err');
-          driveSetBusy(false);
-        });
-    };
-    if (authInstance.isSignedIn.get()) {
-      driveToken = authInstance.currentUser.get().getAuthResponse().access_token;
-      callback(driveToken);
-    } else {
-      signIn();
-    }
-  });
+  pendingAction = callback;
+  // prompt: '' means skip consent if already granted, show picker if not
+  tokenClient.requestAccessToken({ prompt: '' });
 }
 
 function driveFindFile(token, callback) {
@@ -919,6 +929,21 @@ function switchTab(tab) {
 loadLocal();
 render("now");
 render("fire");
+
+// Init Google Identity Services
+window.addEventListener('load', () => {
+  // GIS loads async — poll briefly until available
+  const tryInit = (attempts) => {
+    if (typeof google !== 'undefined' && google.accounts) {
+      driveInit();
+    } else if (attempts > 0) {
+      setTimeout(() => tryInit(attempts - 1), 300);
+    } else {
+      driveSetStatus('Drive not available (offline?)', 'err');
+    }
+  };
+  tryInit(20);
+});
 </script>
 </body>
 </html>
