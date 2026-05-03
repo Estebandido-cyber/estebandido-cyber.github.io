@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expenses Dashboard</title>
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-page:    #f0ede8;
+  --bg-card:    #ffffff;
+  --bg-sub:     #f5f3ef;
+  --bg-hover:   #eceae5;
+  --text-1:     #1a1917;
+  --text-2:     #6b6962;
+  --text-3:     #9e9c96;
+  --border-1:   rgba(0,0,0,0.10);
+  --border-2:   rgba(0,0,0,0.18);
+  --r-md: 8px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --green:        #0a7a5e;
+  --green-border: #1aaa84;
+  --green-bg:     #e8f5f0;
+  --green-box:    #c2e8da;
+  --blue:         #1a5fa8;
+  --blue-border:  #3d8fe0;
+  --blue-bg:      #e8f1fb;
+  --blue-box:     #b8d4f5;
+  --red:          #a82d2d;
+  --red-border:   #e04545;
+  --purple:       #5b4eba;
+  --purple-border:#8070e0;
+  --purple-bg:    #edeafc;
+  --amber:        #8a5200;
+  --amber-border: #c47a00;
+  --success:      #0a7a5e;
+  --tab-now:  #1a5fa8;
+  --tab-fire: #b84a00;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:    #141412;
+    --bg-card:    #1e1d1b;
+    --bg-sub:     #272521;
+    --bg-hover:   #2e2c28;
+    --text-1:     #e8e5dc;
+    --text-2:     #9e9b93;
+    --text-3:     #6b6860;
+    --border-1:   rgba(255,255,255,0.09);
+    --border-2:   rgba(255,255,255,0.16);
+    --green:        #4dbb98;
+    --green-border: #1aaa84;
+    --green-bg:     #0d2a20;
+    --green-box:    #1a4a38;
+    --blue:         #6aaae8;
+    --blue-border:  #3d8fe0;
+    --blue-bg:      #0d1e38;
+    --blue-box:     #1a3a60;
+    --red:          #e88080;
+    --red-border:   #e04545;
+    --purple:       #a898f0;
+    --purple-border:#8070e0;
+    --purple-bg:    #1e1840;
+    --amber:        #e8a020;
+    --amber-border: #c47a00;
+    --success:      #4dbb98;
+    --tab-now:  #6aaae8;
+    --tab-fire: #e87040;
+  }
+}
+
+body {
+  font-family: "Georgia", "Times New Roman", serif;
+  background: var(--bg-page);
+  color: var(--text-1);
+  min-height: 100vh;
+  padding-top: 100px;
+}
+
+/* ── Sticky header ── */
+.sticky-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-1);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 1rem 0;
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 740px;
+  margin-bottom: 8px;
+}
+
+.header-title {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* Header action buttons */
+.header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.hbtn {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border-2);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.hbtn:hover { background: var(--bg-hover); color: var(--text-1); }
+.hbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.hbtn-drive {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: #fff;
+}
+.hbtn-drive:hover { background: #1558c0; border-color: #1558c0; color: #fff; }
+
+.tabs {
+  display: flex;
+  background: var(--bg-sub);
+  border-radius: 99px;
+  padding: 3px;
+  margin-bottom: 10px;
+}
+
+.tab-btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  padding: 6px 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  position: relative;
+}
+.tab-btn.active[data-tab="now"]  { background: var(--tab-now);  color: #fff; box-shadow: 0 2px 8px rgba(26,95,168,0.35); }
+.tab-btn.active[data-tab="fire"] { background: var(--tab-fire); color: #fff; box-shadow: 0 2px 8px rgba(184,74,0,0.35); }
+
+/* Drive status bar */
+.drive-status {
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  padding: 2px 0 6px;
+  min-height: 20px;
+  text-align: center;
+  transition: color 0.3s;
+}
+.drive-status.ok  { color: var(--green); }
+.drive-status.err { color: var(--red);   }
+.drive-status.working { color: var(--amber); }
+
+/* ── Autosave toast ── */
+.toast {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 999;
+  font-family: "Georgia", serif;
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--bg-card);
+  border: 1px solid var(--border-1);
+  border-radius: 99px;
+  padding: 5px 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── Main ── */
+.dash {
+  max-width: 740px;
+  margin: 1.5rem auto 3rem;
+  padding: 0 1rem;
+}
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+.pane-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-1);
+}
+.pane-title { font-size: 22px; font-weight: 400; }
+.pane-title.now-color  { color: var(--tab-now);  }
+.pane-title.fire-color { color: var(--tab-fire); }
+.pane-subtitle { font-size: 13px; color: var(--text-3); font-style: italic; }
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-xl);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.section-label {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 1.25rem 0 0.6rem;
+}
+.section-label:first-child { margin-top: 0; }
+.divider { border: none; border-top: 1px solid var(--border-1); margin: 1.25rem 0; }
+
+/* Metric cards */
+.metric-grid-5 { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; }
+@media (max-width: 580px) { .metric-grid-5 { grid-template-columns: repeat(2,1fr); } }
+
+.metric {
+  background: var(--bg-card);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+  padding: 0.7rem 0.85rem;
+}
+.metric .lbl { font-size: 10px; color: var(--text-3); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
+.metric .val { font-size: 18px; font-weight: 400; }
+.metric .sub { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+.metric.c-green  { border-color: var(--green-border);  } .metric.c-green .val  { color: var(--green);  }
+.metric.c-blue   { border-color: var(--blue-border);   } .metric.c-blue .val   { color: var(--blue);   }
+.metric.c-red    { border-color: var(--red-border);    } .metric.c-red .val    { color: var(--red);    }
+.metric.c-purple { border-color: var(--purple-border); } .metric.c-purple .val { color: var(--purple); }
+.metric.c-amber  { border-color: var(--amber-border);  } .metric.c-amber .val  { color: var(--amber);  }
+
+/* Section boxes */
+.box-shared {
+  background: var(--blue-bg); border: 1px solid var(--blue-box);
+  border-radius: var(--r-lg); padding: 1rem; margin-bottom: 0.5rem;
+}
+.box-personal {
+  background: var(--green-bg); border: 1px solid var(--green-box);
+  border-radius: var(--r-lg); padding: 1rem; margin-bottom: 0.5rem;
+}
+.box-title { font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase; margin-bottom: 0.75rem; font-style: italic; }
+.box-shared .box-title  { color: var(--blue);  }
+.box-personal .box-title { color: var(--green); }
+
+.shared-acc-card {
+  border: 1px dashed var(--purple-border); border-radius: var(--r-md);
+  padding: 0.6rem 1rem; margin-bottom: 0.5rem;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-card); flex-wrap: wrap;
+}
+.shared-acc-card .sa-label { flex:1; font-size:13px; color:var(--text-1); min-width:80px; }
+.shared-acc-card .sa-note  { font-size:11px; color:var(--text-3); font-style:italic; }
+.shared-acc-card .sa-badge {
+  font-size:10px; padding:2px 8px; border-radius:99px;
+  background:var(--purple-bg); color:var(--purple); white-space:nowrap;
+}
+
+.section-total {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 8px; margin-top: 6px;
+  border-top: 1px solid rgba(0,0,0,0.08); font-size: 13px;
+}
+.box-shared .section-total  { color: var(--blue);  border-top-color: rgba(26,95,168,0.15); }
+.box-personal .section-total { color: var(--green); border-top-color: rgba(10,122,94,0.15); }
+
+.expense-rows { display: flex; flex-direction: column; gap: 1px; }
+.erow {
+  display: grid; grid-template-columns: 1fr auto auto auto;
+  align-items: center; gap: 8px; padding: 5px 6px;
+  border-radius: 6px; transition: background 0.12s;
+}
+.erow:hover { background: rgba(0,0,0,0.04); }
+@media (prefers-color-scheme: dark) { .erow:hover { background: rgba(255,255,255,0.04); } }
+.erow .ename { font-size: 13px; color: var(--text-1); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.erow .enote { font-size: 10px; color: var(--text-3); white-space: nowrap; font-style: italic; }
+.erow .eamt  { font-size: 13px; color: var(--text-1); text-align: right; min-width: 58px; }
+
+.spin-wrap { display: flex; align-items: center; }
+.spin-wrap button {
+  width: 22px; height: 22px;
+  border: 1px solid var(--border-2); background: var(--bg-card); color: var(--text-1);
+  font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s; line-height: 1; font-family: inherit;
+}
+.spin-wrap button:first-child { border-radius: 4px 0 0 4px; }
+.spin-wrap button:last-child  { border-radius: 0 4px 4px 0; border-left: none; }
+.spin-wrap button:hover { background: var(--bg-hover); }
+.spin-val {
+  font-size: 12px; color: var(--text-1); min-width: 52px; text-align: center;
+  border: 1px solid var(--border-1); border-left: none; border-right: none;
+  height: 22px; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-card); font-family: inherit;
+}
+
+.income-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.income-row {
+  display: grid; grid-template-columns: 1fr auto auto;
+  align-items: center; gap: 8px; padding: 5px 8px;
+  background: var(--bg-sub); border-radius: 6px;
+}
+.income-row .iname { font-size: 13px; color: var(--text-1); }
+
+.p-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px; border-radius: var(--r-md); border: 1px solid var(--border-1);
+}
+.p-row .plbl { font-size: 13px; color: var(--text-2); }
+.p-row .pval { font-size: 13px; color: var(--success); }
+
+.chart-wrap { position: relative; width: 100%; height: 200px; margin-top: 0.75rem; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 4px 0; margin-top: 10px; }
+
+/* Import hidden input */
+#import-input { display: none; }
+</style>
+</head>
+<body>
+
+<!-- STICKY HEADER -->
+<div class="sticky-header">
+  <div class="header-top">
+    <span class="header-title">Expenses Dashboard</span>
+    <div class="header-actions">
+      <button class="hbtn hbtn-drive" id="btn-drive-save" onclick="driveSave()">☁ Save</button>
+      <button class="hbtn hbtn-drive" id="btn-drive-load" onclick="driveLoad()">☁ Load</button>
+      <button class="hbtn" onclick="exportJSON()">↓ Export</button>
+      <button class="hbtn" onclick="document.getElementById('import-input').click()">↑ Import</button>
+      <input type="file" id="import-input" accept=".json" onchange="importJSON(event)">
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="now" onclick="switchTab('now')">Now</button>
+    <button class="tab-btn" data-tab="fire" onclick="switchTab('fire')">FIRE</button>
+  </div>
+  <div class="drive-status" id="drive-status"></div>
+</div>
+
+<!-- AUTOSAVE TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MAIN -->
+<div class="dash">
+
+  <!-- NOW PANE -->
+  <div class="tab-pane active" id="pane-now">
+    <div class="pane-header">
+      <span class="pane-title now-color">Now</span>
+      <span class="pane-subtitle">Current monthly picture</span>
+    </div>
+    <div class="card">
+      <p class="section-label">Monthly income</p>
+      <div class="income-grid">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="income-row"><span class="iname">Income</span><div class="spin-wrap" id="now-spin-salary"></div><span class="eamt" id="now-amt-salary">—</span></div>
+          <div class="income-row"><span class="iname">RT / Barista</span><div class="spin-wrap" id="now-spin-tickets"></div><span class="eamt" id="now-amt-tickets">—</span></div>
+        </div>
+        <div class="metric c-green"><div class="lbl">Total income</div><div class="val" id="now-m-income">—</div><div class="sub">per month</div></div>
+      </div>
+      <hr class="divider">
+      <p class="section-label">Monthly summary</p>
+      <div class="metric-grid-5">
+        <div class="metric c-red"><div class="lbl">You pay (gross)</div><div class="val" id="now-m-gross">—</div><div class="sub">before reimbursement</div></div>
+        <div class="metric c-green"><div class="lbl">Partner covers</div><div class="val" id="now-m-partner">—</div><div class="sub">her shared half</div></div>
+        <div class="metric c-blue"><div class="lbl">Your net cost</div><div class="val" id="now-m-net">—</div><div class="sub">what you actually pay</div></div>
+        <div class="metric c-amber"><div class="lbl">Shared account</div><div class="val" id="now-m-shared-acc">—</div><div class="sub">each contributes</div></div>
+        <div class="metric c-purple" id="now-leftover-card"><div class="lbl">Left at end of month</div><div class="val" id="now-m-leftover">—</div><div class="sub">income minus net cost</div></div>
+      </div>
+      <hr class="divider">
+      <div class="box-shared">
+        <div class="box-title">Shared expenses — you pay, she reimburses</div>
+        <div class="expense-rows" id="now-shared-rows"></div>
+        <div class="section-total"><span>Total shared expenses</span><span id="now-total-shared">—</span></div>
+      </div>
+      <div class="shared-acc-card">
+        <span class="sa-label">Shared account</span>
+        <span class="sa-note" id="now-sa-note">each puts in €600</span>
+        <div class="spin-wrap" id="now-spin-sharedAcc"></div>
+        <span class="eamt" id="now-amt-sharedAcc">—</span>
+        <span class="sa-badge">equal split</span>
+      </div>
+      <div class="box-personal">
+        <div class="box-title">Personal expenses</div>
+        <div class="expense-rows" id="now-personal-rows"></div>
+        <div class="section-total"><span>Total personal expenses</span><span id="now-total-personal">—</span></div>
+      </div>
+      <hr class="divider">
+      <p class="section-label">Her share of shared expenses</p>
+      <div class="p-row">
+        <span class="plbl">Monthly transfer from partner</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="spin-wrap" id="now-spin-partnerFixed"></div>
+          <span class="pval" id="now-p-fixed">—</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <p class="section-label">Expense breakdown</p>
+      <div class="chart-wrap"><canvas id="now-pie-chart"></canvas></div>
+      <div class="chart-legend" id="now-chart-legend"></div>
+    </div>
+  </div>
+
+  <!-- FIRE PANE -->
+  <div class="tab-pane" id="pane-fire">
+    <div class="pane-header">
+      <span class="pane-title fire-color">FIRE</span>
+      <span class="pane-subtitle">Post-retirement monthly picture</span>
+    </div>
+    <div class="card">
+      <p class="section-label">Monthly income</p>
+      <div class="income-grid">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="income-row"><span class="iname">Income</span><div class="spin-wrap" id="fire-spin-salary"></div><span class="eamt" id="fire-amt-salary">—</span></div>
+          <div class="income-row"><span class="iname">RT / Barista</span><div class="spin-wrap" id="fire-spin-tickets"></div><span class="eamt" id="fire-amt-tickets">—</span></div>
+        </div>
+        <div class="metric c-green"><div class="lbl">Total income</div><div class="val" id="fire-m-income">—</div><div class="sub">per month</div></div>
+      </div>
+      <hr class="divider">
+      <p class="section-label">Monthly summary</p>
+      <div class="metric-grid-5">
+        <div class="metric c-red"><div class="lbl">You pay (gross)</div><div class="val" id="fire-m-gross">—</div><div class="sub">before reimbursement</div></div>
+        <div class="metric c-green"><div class="lbl">Partner covers</div><div class="val" id="fire-m-partner">—</div><div class="sub">her shared half</div></div>
+        <div class="metric c-blue"><div class="lbl">Your net cost</div><div class="val" id="fire-m-net">—</div><div class="sub">what you actually pay</div></div>
+        <div class="metric c-amber"><div class="lbl">Shared account</div><div class="val" id="fire-m-shared-acc">—</div><div class="sub">each contributes</div></div>
+        <div class="metric c-purple" id="fire-leftover-card"><div class="lbl">Left at end of month</div><div class="val" id="fire-m-leftover">—</div><div class="sub">income minus net cost</div></div>
+      </div>
+      <hr class="divider">
+      <div class="box-shared">
+        <div class="box-title">Shared expenses — you pay, she reimburses</div>
+        <div class="expense-rows" id="fire-shared-rows"></div>
+        <div class="section-total"><span>Total shared expenses</span><span id="fire-total-shared">—</span></div>
+      </div>
+      <div class="shared-acc-card">
+        <span class="sa-label">Shared account</span>
+        <span class="sa-note" id="fire-sa-note">each puts in €600</span>
+        <div class="spin-wrap" id="fire-spin-sharedAcc"></div>
+        <span class="eamt" id="fire-amt-sharedAcc">—</span>
+        <span class="sa-badge">equal split</span>
+      </div>
+      <div class="box-personal">
+        <div class="box-title">Personal expenses</div>
+        <div class="expense-rows" id="fire-personal-rows"></div>
+        <div class="section-total"><span>Total personal expenses</span><span id="fire-total-personal">—</span></div>
+      </div>
+      <hr class="divider">
+      <p class="section-label">Her share of shared expenses</p>
+      <div class="p-row">
+        <span class="plbl">Monthly transfer from partner</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="spin-wrap" id="fire-spin-partnerFixed"></div>
+          <span class="pval" id="fire-p-fixed">—</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <p class="section-label">Expense breakdown</p>
+      <div class="chart-wrap"><canvas id="fire-pie-chart"></canvas></div>
+      <div class="chart-legend" id="fire-chart-legend"></div>
+    </div>
+  </div>
+
+</div><!-- /dash -->
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════════════════
+const DRIVE_CLIENT_ID = '364460872348-cot1glkd5a1b6omj5am8ljp7g7fhf7ot.apps.googleusercontent.com';
+const DRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_FILENAME  = 'expenses_dashboard_data.json';
+const LS_KEY          = 'expenses_dashboard_v1';
+
+// ════════════════════════════════════════════════════════════
+//  DEFAULT STATE
+// ════════════════════════════════════════════════════════════
+const DEFAULTS = {
+  now: {
+    salary:2000, tickets:200,
+    rent:1450, insurance:25, internet:40, netflix:15, electricity:120,
+    sharedAcc:600,
+    phone:10, amazonPrime:69, smoothie:30, beer:50, chess:90,
+    billar:150, billarMonth:10, lunch:100, extras:100,
+    health:120, drums:10, savings:50,
+    partnerFixed:630,
+  },
+  fire: {
+    salary:0, tickets:500,
+    rent:900, insurance:20, internet:40, netflix:15, electricity:80,
+    sharedAcc:400,
+    phone:10, amazonPrime:69, smoothie:30, beer:50, chess:90,
+    billar:150, billarMonth:10, lunch:60, extras:150,
+    health:120, drums:10, savings:0,
+    partnerFixed:400,
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let states = JSON.parse(JSON.stringify(DEFAULTS));
+const charts = { now: null, fire: null };
+
+const fmt  = n => "€" + Math.round(n).toLocaleString("de-DE");
+const fmtd = n => "€" + (Math.round(n * 100) / 100).toFixed(2);
+
+// ════════════════════════════════════════════════════════════
+//  LOCAL STORAGE  (autosave)
+// ════════════════════════════════════════════════════════════
+function saveLocal(tab) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(states));
+    showToast(tab ? `${tab === 'now' ? 'Now' : 'FIRE'} · saved` : 'Saved');
+  } catch(e) {}
+}
+
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (parsed.now && parsed.fire) {
+      states.now  = { ...DEFAULTS.now,  ...parsed.now  };
+      states.fire = { ...DEFAULTS.fire, ...parsed.fire };
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+// ════════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════════
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ════════════════════════════════════════════════════════════
+//  EXPORT / IMPORT JSON
+// ════════════════════════════════════════════════════════════
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(states, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = DRIVE_FILENAME;
+  a.click();
+  showToast('Exported');
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.now || !parsed.fire) throw new Error('invalid');
+      states.now  = { ...DEFAULTS.now,  ...parsed.now  };
+      states.fire = { ...DEFAULTS.fire, ...parsed.fire };
+      saveLocal(null);
+      render('now');
+      render('fire');
+      driveSetStatus('JSON imported', 'ok');
+    } catch(_) {
+      driveSetStatus('Import failed — invalid file', 'err');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ════════════════════════════════════════════════════════════
+//  GOOGLE DRIVE
+// ════════════════════════════════════════════════════════════
+function driveSetStatus(msg, cls) {
+  const el = document.getElementById('drive-status');
+  el.textContent = msg;
+  el.className = 'drive-status' + (cls ? ' ' + cls : '');
+}
+
+function driveSetBusy(busy) {
+  document.getElementById('btn-drive-save').disabled = busy;
+  document.getElementById('btn-drive-load').disabled = busy;
+}
+
+let gapiReady = false;
+
+function gapiInit() {
+  gapi.load('client:auth2', () => {
+    gapi.client.init({
+      clientId: DRIVE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+    }).then(() => {
+      gapiReady = true;
+    }).catch(() => {
+      driveSetStatus('Drive unavailable', 'err');
+    });
+  });
+}
+
+function driveAuth() {
+  return new Promise((resolve, reject) => {
+    if (!gapiReady) { reject(new Error('gapi not ready')); return; }
+    const auth = gapi.auth2.getAuthInstance();
+    if (auth.isSignedIn.get()) { resolve(); return; }
+    auth.signIn().then(resolve).catch(reject);
+  });
+}
+
+function driveFindFile() {
+  return gapi.client.request({
+    path: 'https://www.googleapis.com/drive/v3/files',
+    method: 'GET',
+    params: {
+      q: `name='${DRIVE_FILENAME}' and trashed=false`,
+      fields: 'files(id,name)',
+      spaces: 'drive',
+    }
+  }).then(r => {
+    const files = r.result.files;
+    return files && files.length > 0 ? files[0].id : null;
+  });
+}
+
+function driveSave() {
+  driveSetBusy(true);
+  driveSetStatus('Connecting to Drive…', 'working');
+  driveAuth()
+    .then(() => driveFindFile())
+    .then(fileId => {
+      const body = JSON.stringify(states);
+      const meta = { name: DRIVE_FILENAME, mimeType: 'application/json' };
+      if (fileId) {
+        return gapi.client.request({
+          path: `https://www.googleapis.com/upload/drive/v3/files/${fileId}`,
+          method: 'PATCH',
+          params: { uploadType: 'media' },
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        });
+      } else {
+        const boundary = '-------expDash314159';
+        const multipart = [
+          `--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(meta)}`,
+          `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}`,
+          `\r\n--${boundary}--`,
+        ].join('');
+        return gapi.client.request({
+          path: 'https://www.googleapis.com/upload/drive/v3/files',
+          method: 'POST',
+          params: { uploadType: 'multipart' },
+          headers: { 'Content-Type': `multipart/related; boundary="${boundary}"` },
+          body: multipart,
+        });
+      }
+    })
+    .then(() => {
+      const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      driveSetStatus(`☁ Saved to Drive · ${t}`, 'ok');
+      driveSetBusy(false);
+    })
+    .catch(err => {
+      driveSetStatus('Save failed — try again', 'err');
+      driveSetBusy(false);
+    });
+}
+
+function driveLoad() {
+  driveSetBusy(true);
+  driveSetStatus('Loading from Drive…', 'working');
+  driveAuth()
+    .then(() => driveFindFile())
+    .then(fileId => {
+      if (!fileId) throw new Error('no file');
+      return gapi.client.request({
+        path: `https://www.googleapis.com/drive/v3/files/${fileId}`,
+        method: 'GET',
+        params: { alt: 'media' },
+      });
+    })
+    .then(r => {
+      const parsed = typeof r.result === 'string' ? JSON.parse(r.result) : r.result;
+      if (!parsed.now || !parsed.fire) throw new Error('invalid');
+      if (!confirm('Load from Drive? This will overwrite your current data in both tabs.')) {
+        driveSetStatus('', '');
+        driveSetBusy(false);
+        return;
+      }
+      states.now  = { ...DEFAULTS.now,  ...parsed.now  };
+      states.fire = { ...DEFAULTS.fire, ...parsed.fire };
+      saveLocal(null);
+      render('now');
+      render('fire');
+      const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      driveSetStatus(`☁ Loaded from Drive · ${t}`, 'ok');
+      driveSetBusy(false);
+    })
+    .catch(err => {
+      if (err.message === 'no file') {
+        driveSetStatus('No saved file found in Drive', 'err');
+      } else {
+        driveSetStatus('Load failed — try again', 'err');
+      }
+      driveSetBusy(false);
+    });
+}
+
+// ════════════════════════════════════════════════════════════
+//  ROW DEFINITIONS
+// ════════════════════════════════════════════════════════════
+const sharedDef = [
+  { key:"rent",        label:"Rent",           step:50 },
+  { key:"insurance",   label:"Home insurance", step:5  },
+  { key:"internet",    label:"Internet",       step:5  },
+  { key:"netflix",     label:"Netflix",        step:1  },
+  { key:"electricity", label:"Electricity",    step:10 },
+];
+const personalDef = [
+  { key:"lunch",       label:"Lunch",                 step:10 },
+  { key:"extras",      label:"Extras",                step:10 },
+  { key:"health",      label:"Health",                step:10 },
+  { key:"beer",        label:"Beer",                  step:5  },
+  { key:"smoothie",    label:"Post-workout smoothie", step:5  },
+  { key:"savings",     label:"Savings",               step:10 },
+  { key:"drums",       label:"Drums",                 step:5  },
+  { key:"billar",      label:"Billar membership",     step:10 },
+  { key:"billarMonth", label:"Billar monthly",        step:5  },
+  { key:"chess",       label:"Chess membership",      step:5  },
+  { key:"amazonPrime", label:"Amazon Prime",          step:5  },
+  { key:"phone",       label:"Phone",                 step:1  },
+];
+
+// ════════════════════════════════════════════════════════════
+//  SPINNER FACTORY
+// ════════════════════════════════════════════════════════════
+function makeSpin(elId, tab, key, step, min) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = `<button>−</button><div class="spin-val" id="${tab}-sv-${key}"></div><button>+</button>`;
+  el.children[0].onclick = () => {
+    states[tab][key] = Math.max(min ?? 0, states[tab][key] - step);
+    render(tab);
+    saveLocal(tab);
+  };
+  el.children[2].onclick = () => {
+    states[tab][key] = Math.max(min ?? 0, states[tab][key] + step);
+    render(tab);
+    saveLocal(tab);
+  };
+}
+
+// ════════════════════════════════════════════════════════════
+//  BUILD ROWS
+// ════════════════════════════════════════════════════════════
+function buildRows(defs, containerId, tab) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = "";
+  defs.forEach(def => {
+    const row = document.createElement("div");
+    row.className = "erow";
+    row.innerHTML = `
+      <span class="ename">${def.label}</span>
+      <span class="enote" id="${tab}-note-${def.key}"></span>
+      <div class="spin-wrap" id="${tab}-spin-${def.key}"></div>
+      <span class="eamt" id="${tab}-amt-${def.key}">—</span>
+    `;
+    container.appendChild(row);
+    makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step ?? 5, 0);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  DERIVED VALUES
+// ════════════════════════════════════════════════════════════
+function derived(s) {
+  const totalSharedExpenses = s.rent + s.insurance + s.internet + s.netflix + s.electricity;
+  const amazonMonthly = s.amazonPrime / 12;
+  const chessMonthly  = s.chess / 12;
+  const billarMonthly = s.billar / 12 + s.billarMonth;
+  const personal = s.phone + amazonMonthly + s.smoothie + s.beer +
+                   chessMonthly + billarMonthly + s.lunch + s.extras +
+                   s.health + s.drums + s.savings;
+  const gross    = totalSharedExpenses + s.sharedAcc + personal;
+  const net      = gross - s.partnerFixed;
+  const income   = s.salary + s.tickets;
+  const leftover = income - net;
+  return { totalSharedExpenses, amazonMonthly, chessMonthly, billarMonthly, personal, gross, net, income, leftover };
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════════
+function render(tab) {
+  const s = states[tab];
+  const d = derived(s);
+  const p = tab + "-";
+
+  document.getElementById(`${p}sv-salary`).textContent   = fmt(s.salary);
+  document.getElementById(`${p}amt-salary`).textContent  = fmt(s.salary);
+  document.getElementById(`${p}sv-tickets`).textContent  = fmt(s.tickets);
+  document.getElementById(`${p}amt-tickets`).textContent = fmt(s.tickets);
+  document.getElementById(`${p}m-income`).textContent    = fmt(d.income);
+
+  document.getElementById(`${p}m-gross`).textContent      = fmt(d.gross);
+  document.getElementById(`${p}m-partner`).textContent    = fmt(s.partnerFixed);
+  document.getElementById(`${p}m-net`).textContent        = fmt(d.net);
+  document.getElementById(`${p}m-shared-acc`).textContent = fmt(s.sharedAcc);
+  document.getElementById(`${p}m-leftover`).textContent   = fmt(d.leftover);
+  document.getElementById(`${p}leftover-card`).className  = d.leftover >= 0 ? "metric c-purple" : "metric c-red";
+
+  sharedDef.forEach(def => {
+    document.getElementById(`${p}amt-${def.key}`).textContent = fmt(s[def.key]);
+    document.getElementById(`${p}sv-${def.key}`).textContent  = fmt(s[def.key]);
+    const noteEl = document.getElementById(`${p}note-${def.key}`);
+    if (noteEl) noteEl.textContent = "";
+  });
+  document.getElementById(`${p}total-shared`).textContent = fmt(d.totalSharedExpenses);
+
+  document.getElementById(`${p}sv-sharedAcc`).textContent  = fmt(s.sharedAcc);
+  document.getElementById(`${p}amt-sharedAcc`).textContent = fmt(s.sharedAcc);
+  document.getElementById(`${p}sa-note`).textContent       = `each puts in €${s.sharedAcc}`;
+
+  personalDef.forEach(def => {
+    const raw = s[def.key];
+    let monthly = raw, noteText = "";
+    if (def.key === "amazonPrime") { monthly = raw/12; noteText = `€${raw}/yr → €${(raw/12).toFixed(2)}/mo`; }
+    else if (def.key === "chess")  { monthly = raw/12; noteText = `€${raw}/yr → €${(raw/12).toFixed(2)}/mo`; }
+    else if (def.key === "billar") { monthly = raw/12; noteText = `€${raw}/yr → €${(raw/12).toFixed(2)}/mo`; }
+    document.getElementById(`${p}amt-${def.key}`).textContent = monthly === Math.floor(monthly) ? fmt(monthly) : fmtd(monthly);
+    document.getElementById(`${p}sv-${def.key}`).textContent  = fmt(raw);
+    const noteEl = document.getElementById(`${p}note-${def.key}`);
+    if (noteEl) noteEl.textContent = noteText;
+  });
+  document.getElementById(`${p}total-personal`).textContent = fmt(d.personal);
+
+  document.getElementById(`${p}sv-partnerFixed`).textContent = fmt(s.partnerFixed);
+  document.getElementById(`${p}p-fixed`).textContent         = fmt(s.partnerFixed);
+
+  // Chart
+  const cats = [
+    { label:"Rent",             value: s.rent,                                                                                       color:"#3d8fe0" },
+    { label:"Shared account",   value: s.sharedAcc,                                                                                  color:"#8070e0" },
+    { label:"Electricity",      value: s.electricity,                                                                                color:"#1aaa84" },
+    { label:"Utilities & svcs", value: s.internet + s.netflix + s.insurance,                                                         color:"#4a9fd0" },
+    { label:"Food & going out", value: s.lunch + s.beer,                                                                             color:"#c47a00" },
+    { label:"Health & sport",   value: s.health + s.smoothie + s.billarMonth + s.billar/12 + s.chess/12 + s.drums,                  color:"#d05830" },
+    { label:"Subscriptions",    value: s.amazonPrime/12 + s.phone,                                                                   color:"#c04880" },
+    { label:"Savings",          value: s.savings,                                                                                    color:"#6a9a20" },
+    { label:"Extras",           value: s.extras,                                                                                     color:"#909088" },
+  ];
+
+  const isDark = window.matchMedia("(prefers-color-scheme:dark)").matches;
+  const borderCol = isDark ? "#1e1d1b" : "#ffffff";
+
+  if (!charts[tab]) {
+    charts[tab] = new Chart(document.getElementById(`${tab}-pie-chart`), {
+      type: "doughnut",
+      data: {
+        labels: cats.map(c => c.label),
+        datasets: [{ data: cats.map(c => c.value), backgroundColor: cats.map(c => c.color), borderWidth: 2, borderColor: borderCol }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: "58%",
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => {
+            const tot = ctx.dataset.data.reduce((a,b) => a+b, 0);
+            return ` €${Math.round(ctx.parsed)} — ${Math.round(ctx.parsed/tot*100)}%`;
+          }}}
+        }
+      }
+    });
+  } else {
+    charts[tab].data.datasets[0].data = cats.map(c => c.value);
+    charts[tab].update("none");
+  }
+
+  document.getElementById(`${tab}-chart-legend`).innerHTML = cats.map(c =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-2);margin-right:10px">
+      <span style="width:9px;height:9px;border-radius:2px;background:${c.color};flex-shrink:0"></span>${c.label}
+    </span>`
+  ).join("");
+}
+
+// ════════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.toggle("active", p.id === `pane-${tab}`));
+  render(tab);
+}
+
+// ════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════
+["now", "fire"].forEach(tab => {
+  makeSpin(`${tab}-spin-salary`,       tab, "salary",       100, 0);
+  makeSpin(`${tab}-spin-tickets`,      tab, "tickets",      10,  0);
+  makeSpin(`${tab}-spin-sharedAcc`,    tab, "sharedAcc",    50,  0);
+  makeSpin(`${tab}-spin-partnerFixed`, tab, "partnerFixed", 10,  0);
+  buildRows(sharedDef,   `${tab}-shared-rows`,   tab);
+  buildRows(personalDef, `${tab}-personal-rows`, tab);
+});
+
+// Load from localStorage first, then render
+loadLocal();
+render("now");
+render("fire");
+
+// Init Google API
+if (typeof gapi !== 'undefined') {
+  gapiInit();
+} else {
+  driveSetStatus('Drive not available (offline?)', 'err');
+}
+</script>
+</body>
+</html>
