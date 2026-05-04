@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FIRE Sim</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 /* ═══════════════════════════════════════════════
@@ -471,6 +472,29 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
   .scen-name { max-width: 60px; font-size: 10px; }
   .scen-meta { font-size: 8px; }
 }
+
+/* ── GOOGLE DRIVE BUTTONS ── */
+.btn-drive {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: #fff;
+}
+.btn-drive:hover { background: #1557b0; border-color: #1557b0; opacity: 1; }
+.btn-drive:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Drive status bar — sits just below sticky header inside main content */
+.drive-status-bar {
+  text-align: center;
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  padding: 4px 8px 0;
+  letter-spacing: 0.5px;
+  min-height: 18px;
+  transition: color 0.3s;
+}
+.drive-status-bar.ok      { color: var(--color-text-success); }
+.drive-status-bar.err     { color: var(--color-text-danger); }
+.drive-status-bar.working { color: var(--color-text-warning); }
 </style>
 </head>
 <body>
@@ -494,6 +518,8 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
       <div class="sstat"><span class="sstat-label">Capital lasts</span><span class="sstat-value" id="sh-age">—</span></div>
     </div>
     <div id="sticky-right">
+      <button class="hdr-btn btn-drive" id="drive-save-btn" onclick="gdriveSave()" title="Save to Google Drive">☁ Save</button>
+      <button class="hdr-btn btn-drive" id="drive-load-btn" onclick="gdriveLoad()" title="Load from Google Drive">☁ Load</button>
       <button class="hdr-btn hdr-btn-export" onclick="exportData()">⬇ Export</button>
       <button class="hdr-btn hdr-btn-import" onclick="openImportModal()">⬆ Import</button>
       <input type="file" id="import-file" accept=".json,application/json,text/plain" style="display:none" onchange="importData(event)">
@@ -568,6 +594,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
     <h2 style="font-size:20px;font-weight:500;color:var(--color-text-primary);margin:0 0 4px">Retirement Financial Planner</h2>
     <div style="font-size:12px;color:var(--color-text-secondary)">French &amp; Colombian assets · Phase-by-phase cashflow · Die-with-zero projection</div>
   </div>
+  <div class="drive-status-bar" id="drive-status-bar"></div>
 
   <div style="padding:0 16px">
   <p class="section-title">Assets</p>
@@ -1579,6 +1606,143 @@ function draw() {
   renderScenarioCards();
   updateBreakEven();
   saveState();
+}
+
+/* ═══════════════════════════════════════════════
+   GOOGLE DRIVE SYNC
+═══════════════════════════════════════════════ */
+const GD_CLIENT_ID = '453884215011-bnuqib76c5lt7vr87g6e5sd59q7r2cip.apps.googleusercontent.com';
+const GD_SCOPE     = 'https://www.googleapis.com/auth/drive.file';
+const GD_FILENAME  = 'fire-sim-data.json';
+let gdToken  = null;
+let gdFileId = null;
+
+function gdStatus(msg, type) {
+  const el = document.getElementById('drive-status-bar');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'drive-status-bar' + (type ? ' ' + type : '');
+}
+
+function gdSetBusy(busy) {
+  const s = document.getElementById('drive-save-btn');
+  const l = document.getElementById('drive-load-btn');
+  if (s) s.disabled = busy;
+  if (l) l.disabled = busy;
+}
+
+// Auth via Google Identity Services — works from any authorised HTTPS origin
+function gdAuth(callback) {
+  if (gdToken) { callback(gdToken); return; }
+  gdStatus('Connecting to Google…', 'working');
+  gdSetBusy(true);
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: GD_CLIENT_ID,
+    scope: GD_SCOPE,
+    callback: response => {
+      if (response.error) {
+        gdStatus('Sign-in failed: ' + response.error, 'err');
+        gdSetBusy(false);
+        return;
+      }
+      gdToken = response.access_token;
+      gdStatus('Connected to Google Drive', 'ok');
+      callback(gdToken);
+    }
+  });
+  client.requestAccessToken();
+}
+
+// Find existing file in Drive by name
+function gdFindFile(token, callback) {
+  if (gdFileId) { callback(gdFileId); return; }
+  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%22' + GD_FILENAME + '%22+and+trashed%3Dfalse&fields=files(id,name)', {
+    headers: { Authorization: 'Bearer ' + token }
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.files && res.files.length > 0) { gdFileId = res.files[0].id; callback(gdFileId); }
+    else callback(null);
+  })
+  .catch(err => {
+    console.error('[GD] find error:', err);
+    gdStatus('Drive search failed', 'err');
+    gdSetBusy(false);
+  });
+}
+
+// Save to Google Drive — creates or overwrites fire-sim-data.json
+function gdriveSave() {
+  gdSetBusy(true);
+  gdStatus('Saving to Google Drive…', 'working');
+  gdAuth(token => {
+    const payload = {
+      version: 1, appName: 'FIRE Sim', savedAt: new Date().toISOString(),
+      S: { ...S }, colChecks: getColChecks(), scenarios, activeScenario
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    gdFindFile(token, fileId => {
+      const url = fileId
+        ? 'https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=multipart'
+        : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+      const method = fileId ? 'PATCH' : 'POST';
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ name: GD_FILENAME, mimeType: 'application/json' })], { type: 'application/json' }));
+      form.append('file', blob);
+      fetch(url, { method, headers: { Authorization: 'Bearer ' + token }, body: form })
+      .then(r => r.json())
+      .then(res => {
+        if (res.error) throw new Error(JSON.stringify(res.error));
+        if (!fileId) gdFileId = res.id;
+        gdStatus('✓ Saved to Google Drive — ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), 'ok');
+        gdSetBusy(false);
+      })
+      .catch(err => {
+        console.error('[GD] save error:', err);
+        if (String(err).includes('401')) { gdToken = null; gdFileId = null; gdStatus('Session expired — click Save again', 'err'); }
+        else gdStatus('Save failed — try again', 'err');
+        gdSetBusy(false);
+      });
+    });
+  });
+}
+
+// Load from Google Drive — full overwrite of local state
+function gdriveLoad() {
+  gdSetBusy(true);
+  gdStatus('Loading from Google Drive…', 'working');
+  gdAuth(token => {
+    gdFindFile(token, fileId => {
+      if (!fileId) {
+        gdStatus('No file found in Drive — save first', 'err');
+        gdSetBusy(false);
+        return;
+      }
+      fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+        headers: { Authorization: 'Bearer ' + token }
+      })
+      .then(r => r.json())
+      .then(payload => {
+        if (!payload.S) throw new Error('Invalid file format');
+        p2Init.clear();
+        Object.keys(payload.S).forEach(k => { S[k] = payload.S[k]; if (!(k in LIM)) LIM[k] = [0, 1e9]; });
+        applyColChecks(payload.colChecks);
+        if (payload.scenarios)      payload.scenarios.forEach((s, i) => { scenarios[i] = s || null; });
+        if (payload.activeScenario !== undefined) activeScenario = payload.activeScenario;
+        // Persist to localStorage then re-render
+        saveState();
+        draw();
+        gdStatus('✓ Loaded from Google Drive — ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), 'ok');
+        gdSetBusy(false);
+      })
+      .catch(err => {
+        console.error('[GD] load error:', err);
+        if (String(err).includes('401')) { gdToken = null; gdStatus('Session expired — click Load again', 'err'); }
+        else gdStatus('Load failed — try again', 'err');
+        gdSetBusy(false);
+      });
+    });
+  });
 }
 
 /* ═══════════════════════════════════════════════
