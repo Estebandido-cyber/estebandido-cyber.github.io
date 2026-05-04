@@ -387,10 +387,27 @@ body {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
   margin-bottom: 0.75rem;
 }
 .box-shared .box-title   { color: var(--blue);  }
 .box-personal .box-title { color: var(--green); }
+
+.box-chevron {
+  font-size: 9px;
+  transition: transform 0.2s ease;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.box-collapsed .box-chevron { transform: rotate(-90deg); }
+
+/* When collapsed: hide rows, remove top border on total */
+.box-collapsed .expense-rows  { display: none; }
+.box-collapsed .section-total { margin-top: 0; border-top: none; padding-top: 0; }
 
 /* Shared account card */
 .shared-acc-card {
@@ -827,11 +844,6 @@ function driveLoad() {
         .then(r => r.json())
         .then(saved => {
           if (!saved.now || !saved.fire) throw new Error('invalid');
-          if (!confirm('Load from Drive? This will overwrite your current data in both tabs.')) {
-            driveSetStatus('', '');
-            driveSetBusy(false);
-            return;
-          }
           states.now  = { ...DEFAULTS.now,  ...saved.now  };
           states.fire = { ...DEFAULTS.fire, ...saved.fire };
           saveLocal(null);
@@ -909,8 +921,11 @@ function buildCard(tab) {
     </div>
 
     <hr class="divider">
-    <div class="box-shared">
-      <div class="box-title">Shared expenses — you pay, she reimburses</div>
+    <div class="box-shared" id="${tab}-box-shared">
+      <div class="box-title" onclick="toggleBox('${tab}-box-shared')">
+        <span>Shared expenses — you pay, she reimburses</span>
+        <span class="box-chevron">▼</span>
+      </div>
       <div class="expense-rows">${rowsHTML(SHARED_DEF)}</div>
       <div class="section-total"><span>Total shared expenses</span><span id="${tab}-total-shared">—</span></div>
     </div>
@@ -923,8 +938,11 @@ function buildCard(tab) {
       <span class="sa-badge">equal split</span>
     </div>
 
-    <div class="box-personal">
-      <div class="box-title">Personal expenses</div>
+    <div class="box-personal" id="${tab}-box-personal">
+      <div class="box-title" onclick="toggleBox('${tab}-box-personal')">
+        <span>Personal expenses</span>
+        <span class="box-chevron">▼</span>
+      </div>
       <div class="expense-rows">${rowsHTML(PERSONAL_DEF)}</div>
       <div class="section-total"><span>Total personal expenses</span><span id="${tab}-total-personal">—</span></div>
     </div>
@@ -1030,6 +1048,13 @@ function render(tab) {
       <span style="width:9px;height:9px;border-radius:2px;background:${c.color};flex-shrink:0"></span>${c.label}
     </span>`
   ).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  COLLAPSIBLE BOXES
+// ════════════════════════════════════════════════════════════════════
+function toggleBox(id) {
+  document.getElementById(id).classList.toggle('box-collapsed');
 }
 
 // ════════════════════════════════════════════════════════════════════
