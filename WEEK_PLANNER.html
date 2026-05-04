@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Week Planner</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,8 +25,9 @@
     --tx:#f0f0f0;--tx2:#aaa;--tx3:#666;
   }
 }
-html,body{height:100%;background:var(--bg);}
-body{font-family:var(--font);display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+html,body{min-height:100%;background:var(--bg);}
+body{font-family:var(--font);display:flex;flex-direction:column;min-height:100vh;overscroll-behavior-y:auto;}
+#app-shell{display:flex;flex-direction:column;height:100dvh;height:100vh;overflow:hidden;}
 
 /* ── sticky header ── */
 #stickyhead{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:0.5px solid var(--bd);flex-shrink:0;}
@@ -34,6 +35,8 @@ body{font-family:var(--font);display:flex;flex-direction:column;height:100vh;ove
 #wordmark{font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;gap:5px;justify-self:start;}
 #wm-week{color:#e8e4ff;font-weight:700;}
 #wm-planner{color:#7F77DD;font-weight:700;}
+#wm-icon{display:flex;align-items:center;margin-left:8px;color:#7F77DD;opacity:.85;}
+#wm-sep{display:inline-block;width:1px;height:18px;background:var(--bd2);margin-left:12px;vertical-align:middle;}
 
 #weektabs{display:flex;align-items:center;gap:4px;justify-self:center;}
 .wtab{font-family:var(--font);font-size:12px;font-weight:500;padding:6px 14px;border-radius:var(--r);border:0.5px solid transparent;background:transparent;color:var(--tx3);cursor:pointer;transition:all .15s;}
@@ -53,6 +56,7 @@ body{font-family:var(--font);display:flex;flex-direction:column;height:100vh;ove
   #importbtn:hover{background:rgba(100,130,220,0.3);color:#99aaee;}
   #wm-week{color:#ccc8ff;}
   #wm-planner{color:#9D96F0;}
+  #wm-icon{color:#9D96F0;}
 }
 
 /* ── activity bar ── */
@@ -120,7 +124,7 @@ body{font-family:var(--font);display:flex;flex-direction:column;height:100vh;ove
 #note-input::placeholder{color:var(--tx3);font-style:italic;}
 
 /* ── grid ── */
-#gridwrap{overflow:auto;flex:1;position:relative;-webkit-overflow-scrolling:touch;}
+#gridwrap{overflow:auto;flex:1;position:relative;-webkit-overflow-scrolling:touch;min-height:300px;overscroll-behavior:contain;}
 #gridwrap::-webkit-scrollbar{width:4px;height:4px;}
 #gridwrap::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px;}
 #grid-center{min-width:var(--grid-w);display:flex;justify-content:center;}
@@ -201,11 +205,19 @@ body.tap-mode .sl:hover,body.tap-mode .sl.tap-ready{background:var(--bg3);}
 </style>
 </head>
 <body>
+<div id="app-shell">
 
 <div id="stickyhead">
   <div id="headrow">
     <div id="head-top-row">
-      <div id="wordmark"><span id="wm-week">Week</span><span id="wm-planner">Planner</span></div>
+      <div id="wordmark"><span id="wm-week">Week</span><span id="wm-planner">Planner</span><span id="wm-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2.5"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+            <rect x="7" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none"/>
+            <rect x="14" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none"/>
+          </svg>
+        </span><span id="wm-sep"></span></div>
       <div id="weektabs">
         <button class="wtab" data-w="0">Week 1</button>
         <button class="wtab" data-w="1">Week 2</button>
@@ -264,6 +276,8 @@ body.tap-mode .sl:hover,body.tap-mode .sl.tap-ready{background:var(--bg3);}
     </div>
   </div>
 </div>
+
+</div><!-- /app-shell -->
 
 <div id="toast"><div id="toast-dot"></div><span id="toast-msg">Saved</span></div>
 
