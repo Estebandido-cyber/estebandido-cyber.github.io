@@ -113,6 +113,16 @@ body {
   margin: 0 auto;
 }
 
+.home-link {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+  text-decoration: none;
+}
+.home-link:hover { opacity: 1; }
+
 /* Logo — left */
 .header-logo {
   font-family: var(--font-logo);
@@ -541,6 +551,30 @@ body {
 <!-- ══ STICKY HEADER ══ -->
 <div class="sticky-header">
   <div class="header-row">
+    <!-- Home link — atom icon -->
+    <a href="index.html" class="home-link" title="Back to Life Hub">
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="13.5" stroke="url(#g1)" stroke-width="1.2" fill="none" opacity="0.7"/>
+        <ellipse cx="16" cy="16" rx="13.5" ry="5.5" stroke="url(#g2)" stroke-width="1" fill="none" opacity="0.55" transform="rotate(-35 16 16)"/>
+        <ellipse cx="16" cy="16" rx="13.5" ry="5.5" stroke="url(#g3)" stroke-width="1" fill="none" opacity="0.45" transform="rotate(35 16 16)"/>
+        <circle cx="16" cy="16" r="2.5" fill="url(#g4)"/>
+        <circle cx="16" cy="2.5" r="1.5" fill="white" opacity="0.9"/>
+        <defs>
+          <linearGradient id="g1" x1="2.5" y1="2.5" x2="29.5" y2="29.5" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7dd3fc"/>
+          </linearGradient>
+          <linearGradient id="g2" x1="2.5" y1="2.5" x2="29.5" y2="29.5" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#00e5a0"/>
+          </linearGradient>
+          <linearGradient id="g3" x1="2.5" y1="29.5" x2="29.5" y2="2.5" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#ffd166"/><stop offset="100%" stop-color="#a78bfa"/>
+          </linearGradient>
+          <radialGradient id="g4" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#a78bfa"/>
+          </radialGradient>
+        </defs>
+      </svg>
+    </a>
     <!-- Logo — left -->
     <div class="header-logo">
       <span class="logo-x">X</span><span class="logo-rest">penses</span><span class="logo-sep">·</span><span class="logo-calc">Calculator</span>
