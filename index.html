@@ -158,6 +158,7 @@
   .tile:nth-child(3) { animation-delay: 0.15s; }
   .tile:nth-child(4) { animation-delay: 0.2s; }
   .tile:nth-child(5) { animation-delay: 0.25s; }
+  .tile:nth-child(6) { animation-delay: 0.3s; }
 
   .tile::before {
     content: '';
@@ -188,7 +189,17 @@
   .tile-workout:hover { border-color: var(--accent-workout-glow); }
   .tile-workout .tile-icon { background: var(--accent-workout-dim); }
   .tile-workout .tile-name { color: var(--accent-workout); }
+  .tile-placeholder { border-color: rgba(255,255,255,0.08); cursor: default; opacity: 0.4; }
+  .tile-placeholder .tile-icon { background: rgba(255,255,255,0.05); color: var(--subtle); font-style: normal; }
+  .tile-placeholder .tile-name { color: var(--subtle); }
+  .tile-placeholder:hover { transform: none; border-color: rgba(255,255,255,0.08); }
 
+  .tile-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
   .tile-icon {
     width: 36px;
     height: 36px;
@@ -197,7 +208,6 @@
     align-items: center;
     justify-content: center;
     font-size: 17px;
-    margin-bottom: 14px;
     position: relative;
     z-index: 1;
     flex-shrink: 0;
@@ -212,7 +222,6 @@
     font-size: 13px;
     font-weight: 600;
     letter-spacing: 0.01em;
-    margin-bottom: 12px;
     position: relative;
     z-index: 1;
   }
@@ -386,44 +395,62 @@
   <div class="tiles">
 
     <a class="tile tile-tracker" href="XPENSE_TRACKER.html">
-      <div class="tile-icon">💳</div>
-      <div class="tile-name">Xpenser</div>
+      <div class="tile-header">
+        <div class="tile-icon">💳</div>
+        <div class="tile-name">Xpenser</div>
+      </div>
       <div class="tile-stats" id="stats-tracker"><div class="no-data">Loading…</div></div>
       <div class="tile-footer" id="footer-tracker"></div>
       <div class="tile-arrow">↗</div>
     </a>
 
     <a class="tile tile-calc" href="XPENSES_CALCULATOR.html">
-      <div class="tile-icon">🧮</div>
-      <div class="tile-name">Calculator</div>
+      <div class="tile-header">
+        <div class="tile-icon">🧮</div>
+        <div class="tile-name">Calculator</div>
+      </div>
       <div class="tile-stats" id="stats-calc"><div class="no-data">Loading…</div></div>
       <div class="tile-footer" id="footer-calc"></div>
       <div class="tile-arrow">↗</div>
     </a>
 
     <a class="tile tile-planner" href="WEEK_PLANNER.html">
-      <div class="tile-icon">📅</div>
-      <div class="tile-name">Week Planner</div>
+      <div class="tile-header">
+        <div class="tile-icon">📅</div>
+        <div class="tile-name">Week Planner</div>
+      </div>
       <div class="tile-stats" id="stats-planner"><div class="no-data">Loading…</div></div>
       <div class="tile-footer" id="footer-planner"></div>
       <div class="tile-arrow">↗</div>
     </a>
 
     <a class="tile tile-fire" href="FIRE_SIM.html">
-      <div class="tile-icon">🔥</div>
-      <div class="tile-name">FIRE Sim</div>
+      <div class="tile-header">
+        <div class="tile-icon">🔥</div>
+        <div class="tile-name">FIRE Sim</div>
+      </div>
       <div class="tile-stats" id="stats-fire"><div class="no-data">Loading…</div></div>
       <div class="tile-footer" id="footer-fire"></div>
       <div class="tile-arrow">↗</div>
     </a>
 
     <a class="tile tile-workout" href="workout_dashboard.html">
-      <div class="tile-icon">🏋️</div>
-      <div class="tile-name">Workout</div>
+      <div class="tile-header">
+        <div class="tile-icon">🏋️</div>
+        <div class="tile-name">Workout</div>
+      </div>
       <div class="tile-stats" id="stats-workout"><div class="no-data">Coming soon…</div></div>
       <div class="tile-footer" id="footer-workout"></div>
       <div class="tile-arrow">↗</div>
     </a>
+
+    <div class="tile tile-placeholder">
+      <div class="tile-header">
+        <div class="tile-icon">＋</div>
+        <div class="tile-name">Coming Soon</div>
+      </div>
+      <div class="tile-stats"><div class="no-data">New app</div></div>
+    </div>
 
   </div>
 
