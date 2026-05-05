@@ -32,7 +32,7 @@
   .header-name { font-family: var(--font-mono); font-size: 26px; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
   .header-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
   .header-stats { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-end; }
-  .hstat { text-align: right; }
+  .hstat { text-align: right; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 16px; }
   .hstat-val { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--text); }
   .hstat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
 
@@ -108,9 +108,9 @@
 
 <div class="header">
   <div>
-    <div class="header-title">Workout Analytics Dashboard</div>
-    <div class="header-name">8 YEARS OF REPS</div>
-    <div class="header-sub">Aug 2018 → May 2026 &nbsp;·&nbsp; Real data from Google Calendar</div>
+    <div class="header-title">Analytics Dashboard</div>
+    <div class="header-name">WORKOUT INSIGHTS</div>
+    <div class="header-sub" id="headerSub">Aug 2018 → May 2026 &nbsp;·&nbsp; 8 years of reps</div>
   </div>
   <div class="header-stats">
     <div class="hstat"><div class="hstat-val">1,052</div><div class="hstat-label">Sessions</div></div>
@@ -139,9 +139,9 @@
     <div class="card accent"><div class="card-val">1,052</div><div class="card-label">Total Sessions</div><div class="card-sub">Aug 2018 – May 2026</div></div>
     <div class="card c2"><div class="card-val">64,415</div><div class="card-label">Push-ups</div><div class="card-sub">all variants</div></div>
     <div class="card c3"><div class="card-val">44,387</div><div class="card-label">Pull-ups</div><div class="card-sub">dominadas</div></div>
-    <div class="card"><div class="card-val">24,865</div><div class="card-label">Squats</div><div class="card-sub"></div></div>
-    <div class="card"><div class="card-val">16,428</div><div class="card-label">Dips</div><div class="card-sub"></div></div>
-    <div class="card c4"><div class="card-val">98.5h</div><div class="card-label">Jump Rope</div><div class="card-sub">total logged</div></div>
+    <div class="card c5"><div class="card-val">24,865</div><div class="card-label">Squats</div><div class="card-sub"></div></div>
+    <div class="card c4"><div class="card-val">16,428</div><div class="card-label">Dips</div><div class="card-sub"></div></div>
+    <div class="card" style="border-color:#35f1a5"><div class="card-val" style="color:#35f1a5">98.5h</div><div class="card-label">Jump Rope</div><div class="card-sub">total logged</div></div>
   </div>
 
   <div class="section-label">Sessions per month — 8 years</div>
@@ -397,6 +397,16 @@ async function init() {
 
   const labels = monthly.map(m => monthLabel(m.month));
 
+  // Dynamic header subtitle — auto-updates date range and year count from real data
+  const firstDate = new Date(sessions[0].d);
+  const lastDate  = new Date(sessions[sessions.length-1].d);
+  const mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const startStr = mn[firstDate.getMonth()] + ' ' + firstDate.getFullYear();
+  const endStr   = mn[lastDate.getMonth()]  + ' ' + lastDate.getFullYear();
+  const yearsCount = lastDate.getFullYear() - firstDate.getFullYear() + 1;
+  document.getElementById('headerSub').innerHTML =
+    `${startStr} → ${endStr} &nbsp;·&nbsp; ${yearsCount} years of reps`;
+
   // OVERVIEW: sessions per month
   bar('sessionsChart', labels, monthly.map(m=>m.sessions), C.pu, {
     plugins:{ ...base.plugins, tooltip:{ ...base.plugins.tooltip,
@@ -418,13 +428,18 @@ async function init() {
     buildVol(btn.dataset.key, colors[btn.dataset.key]);
   });
 
-  // EXERCISES: PU variants
+  // EXERCISES: PU variants — keys match monthly.json (pu_fu, pu_diam, etc.)
   function buildPUVariant(key) {
     if (puVariantInst) puVariantInst.destroy();
-    const varColors = {dfu:C.pu,ddm:C.dom,dwp:C.sq,dsp:C.dip,drs:C.jr};
+    const varColors = {pu_fu:C.pu,pu_diam:C.dom,pu_wide:C.sq,pu_spartan:C.dip,pu_russian:C.jr};
     puVariantInst = bar('puVariantChart', labels, monthly.map(m=>m[key]||0), varColors[key]||C.pu);
   }
-  buildPUVariant('dfu');
+  buildPUVariant('pu_fu');
+  // Fix tab button data-keys to match monthly JSON keys
+  document.querySelectorAll('#puTabs .tab-btn').forEach(b => {
+    const map = {'dfu':'pu_fu','ddm':'pu_diam','dwp':'pu_wide','dsp':'pu_spartan','drs':'pu_russian'};
+    if (map[b.dataset.key]) b.dataset.key = map[b.dataset.key];
+  });
   document.getElementById('puTabs').addEventListener('click', e => {
     const btn = e.target.closest('.tab-btn'); if (!btn) return;
     document.querySelectorAll('#puTabs .tab-btn').forEach(b=>b.classList.remove('active'));
@@ -432,13 +447,17 @@ async function init() {
     buildPUVariant(btn.dataset.key);
   });
 
-  // EXERCISES: Dom variants
+  // EXERCISES: Dom variants — keys match monthly.json
   function buildDomVariant(key) {
     if (domVariantInst) domVariantInst.destroy();
-    const varColors = {dnd:C.dom,dcd:C.pu,dwd:C.sq,dad:C.dip,ded:C.jr,dfd:C.run,dbc:C.hr};
+    const varColors = {dom_neutr:C.dom,dom_close:C.pu,dom_wide:C.sq,dom_austr:C.dip,dom_explo:C.jr,dom_fat:C.run,bic_chinup:C.hr};
     domVariantInst = bar('domVariantChart', labels, monthly.map(m=>m[key]||0), varColors[key]||C.dom);
   }
-  buildDomVariant('dnd');
+  buildDomVariant('dom_neutr');
+  document.querySelectorAll('#domTabs .tab-btn').forEach(b => {
+    const map = {'dnd':'dom_neutr','dcd':'dom_close','dwd':'dom_wide','dad':'dom_austr','ded':'dom_explo','dfd':'dom_fat','dbc':'bic_chinup'};
+    if (map[b.dataset.key]) b.dataset.key = map[b.dataset.key];
+  });
   document.getElementById('domTabs').addEventListener('click', e => {
     const btn = e.target.closest('.tab-btn'); if (!btn) return;
     document.querySelectorAll('#domTabs .tab-btn').forEach(b=>b.classList.remove('active'));
