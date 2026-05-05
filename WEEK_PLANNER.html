@@ -32,10 +32,13 @@ body{font-family:var(--font);display:flex;flex-direction:column;min-height:100vh
 /* ── sticky header ── */
 #stickyhead{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:0.5px solid var(--bd);flex-shrink:0;}
 #headrow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 20px;height:52px;border-bottom:0.5px solid var(--bd);}
+#head-left{display:flex;align-items:center;gap:8px;justify-self:start;}
 #wordmark{font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;gap:5px;justify-self:start;}
+#home-link{display:flex;align-items:center;opacity:.85;transition:opacity .2s,transform .2s;flex-shrink:0;text-decoration:none;}
+#home-link:hover{opacity:1;transform:scale(1.1);}
 #wm-week{color:#e8e4ff;font-weight:700;}
 #wm-planner{color:#7F77DD;font-weight:700;}
-#wm-icon{display:flex;align-items:center;margin-left:8px;color:#7F77DD;opacity:.85;}
+#wm-icon{display:flex;align-items:center;margin-left:8px;flex-shrink:0;}
 #wm-sep{display:inline-block;width:1px;height:18px;background:var(--bd2);margin-left:12px;vertical-align:middle;}
 
 #weektabs{display:flex;align-items:center;gap:4px;justify-self:center;}
@@ -56,7 +59,6 @@ body{font-family:var(--font);display:flex;flex-direction:column;min-height:100vh
   #importbtn:hover{background:rgba(100,130,220,0.3);color:#99aaee;}
   #wm-week{color:#ccc8ff;}
   #wm-planner{color:#9D96F0;}
-  #wm-icon{color:#9D96F0;}
 }
 
 /* ── activity bar ── */
@@ -175,11 +177,36 @@ body.tap-mode .sl:hover,body.tap-mode .sl.tap-ready{background:var(--bg3);}
 /* ── mobile layout ── */
 @media(max-width:700px){
   #headrow{display:flex;flex-direction:column;height:auto;padding:0;}
-  #head-top-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--bd);width:100%;}
-  #weektabs{justify-self:unset;padding:8px 14px;width:100%;}
-  .wtab{flex:1;text-align:center;font-size:11px;padding:5px 6px;}
-  .hbtn-label{display:none;}
-  .hbtn{padding:6px 9px;}
+
+  /* row 1: logo only, centered */
+  #head-top-row{
+    display:flex;flex-direction:column;align-items:stretch;width:100%;
+  }
+  #head-left{
+    justify-self:unset;justify-content:center;
+    padding:10px 14px 8px;border-bottom:0.5px solid var(--bd);
+  }
+  #home-link{margin-right:6px;}
+  #wordmark{justify-content:unset;}
+  #wm-sep{display:none;}
+
+  /* row 2: all 4 action buttons in one row */
+  #head-right{
+    justify-self:unset;padding:7px 10px;
+    display:flex;gap:5px;width:100%;justify-content:center;
+    border-bottom:0.5px solid var(--bd);
+    order:1;
+  }
+  .hbtn{padding:5px 10px;font-size:11px;flex:1;justify-content:center;}
+  .hbtn-label{display:inline;}
+  .hbtn svg{display:none;}
+
+  /* row 3: week tabs full width */
+  #weektabs{
+    justify-self:unset;padding:7px 10px;width:100%;
+    order:2;
+  }
+  .wtab{flex:1;text-align:center;font-size:11px;padding:5px 4px;}
 }
 @media(min-width:701px){
   #head-top-row{display:contents;}
@@ -210,14 +237,45 @@ body.tap-mode .sl:hover,body.tap-mode .sl.tap-ready{background:var(--bg3);}
 <div id="stickyhead">
   <div id="headrow">
     <div id="head-top-row">
+    <div id="head-left">
+      <a id="home-link" href="https://estebandido-cyber.github.io/" title="Back to Life Hub">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="16" cy="16" r="13.5" stroke="url(#hl-g1)" stroke-width="1.2" fill="none" opacity="0.7"/>
+          <ellipse cx="16" cy="16" rx="13.5" ry="5.5" stroke="url(#hl-g2)" stroke-width="1" fill="none" opacity="0.55" transform="rotate(-35 16 16)"/>
+          <ellipse cx="16" cy="16" rx="13.5" ry="5.5" stroke="url(#hl-g3)" stroke-width="1" fill="none" opacity="0.45" transform="rotate(35 16 16)"/>
+          <circle cx="16" cy="16" r="2.5" fill="url(#hl-g4)"/>
+          <circle cx="16" cy="2.5" r="1.5" fill="white" opacity="0.9"/>
+          <defs>
+            <linearGradient id="hl-g1" x1="2.5" y1="2.5" x2="29.5" y2="29.5" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7dd3fc"/>
+            </linearGradient>
+            <linearGradient id="hl-g2" x1="2.5" y1="2.5" x2="29.5" y2="29.5" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#00e5a0"/>
+            </linearGradient>
+            <linearGradient id="hl-g3" x1="2.5" y1="29.5" x2="29.5" y2="2.5" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#ffd166"/><stop offset="100%" stop-color="#a78bfa"/>
+            </linearGradient>
+            <radialGradient id="hl-g4" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#a78bfa"/>
+            </radialGradient>
+          </defs>
+        </svg>
+      </a>
       <div id="wordmark"><span id="wm-week">Week</span><span id="wm-planner">Planner</span><span id="wm-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2.5"/>
-            <path d="M16 2v4M8 2v4M3 10h18"/>
-            <rect x="7" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none"/>
-            <rect x="14" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none"/>
+          <svg width="22" height="22" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <!-- body: white with rounded corners -->
+            <rect x="2" y="4" width="20" height="18" rx="3" fill="white" stroke="#ddd" stroke-width="0.5"/>
+            <!-- red top bar -->
+            <rect x="2" y="4" width="20" height="7" rx="3" fill="#e53935"/>
+            <rect x="2" y="8" width="20" height="3" fill="#e53935"/>
+            <!-- ring pegs -->
+            <rect x="7" y="2" width="2.5" height="5" rx="1.2" fill="#b71c1c"/>
+            <rect x="14.5" y="2" width="2.5" height="5" rx="1.2" fill="#b71c1c"/>
+            <!-- date number: 7 -->
+            <text x="12" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="800" fill="#1a1a1a">7</text>
           </svg>
         </span><span id="wm-sep"></span></div>
+    </div><!-- /head-left -->
       <div id="weektabs">
         <button class="wtab" data-w="0">Week 1</button>
         <button class="wtab" data-w="1">Week 2</button>
