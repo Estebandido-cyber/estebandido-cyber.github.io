@@ -641,16 +641,34 @@ function parseWorkoutText(text, date, loc) {
   if (currentBlock.length) blocks.push({lines:currentBlock, mult:1});
 
   // Count reps from a single line, returns {exercise_key: reps}
+  // Also populates unrecognized[] with any patterns it couldn't classify
+  const unrecognized = [];
   function parseLineExercises(line, blockMult=1) {
     const result = {};
-    // Compound lines like "12 Sq + 12 PU BLOCKS x10" — split on +
     const parts = line.split(/\s*\+\s*/);
+
+    // Detect a SINGLE trailing xN on the whole line (no per-segment multipliers)
+    // e.g. "5 Bic + 20 Sq x10" — the x10 applies to ALL segments
+    const lastPart = parts[parts.length - 1];
+    const trailingXm = lastPart.match(/\bx\s*(\d+)$/i);
+    const anyOtherXm = parts.slice(0, -1).some(p => /\bx\s*\d+$/i.test(p));
+    const lineWideMult = (trailingXm && !anyOtherXm) ? parseInt(trailingXm[1]) : 1;
+
     parts.forEach(part => {
       part = part.trim();
-      // Check for inline multiplier "x10" or "x 10" at end
-      const xm = part.match(/\bx\s*(\d+)$/i);
-      const inlineMult = xm ? parseInt(xm[1]) : 1;
-      const cleanPart = xm ? part.slice(0, xm.index).trim() : part;
+      // Per-segment inline multiplier — only use if line-wide mult NOT active
+      let inlineMult = 1;
+      let cleanPart = part;
+      if (lineWideMult === 1) {
+        const xm = part.match(/\bx\s*(\d+)$/i);
+        if (xm) { inlineMult = parseInt(xm[1]); cleanPart = part.slice(0, xm.index).trim(); }
+      } else {
+        // Strip the trailing xN from the last segment so it doesn't confuse numMatch
+        if (part === lastPart && trailingXm) {
+          cleanPart = part.slice(0, trailingXm.index).trim();
+        }
+        inlineMult = lineWideMult;
+      }
 
       const totalMult = blockMult * inlineMult;
 
@@ -665,7 +683,15 @@ function parseWorkoutText(text, date, loc) {
 
       // Classify exercise
       const key = classifyExercise(exName);
-      if (key) result[key] = (result[key]||0) + total;
+      if (key) {
+        result[key] = (result[key]||0) + total;
+      } else {
+        // Flag unrecognized non-trivial patterns
+        const cleaned = exName.replace(/\b(blocs?|blocks?|yoga|each|warm|up|stretch|hang|hold|step|rest|bar)\b/gi,'').trim();
+        if (cleaned.length > 1 && !/^\d+$/.test(cleaned) && !/\bjr\b/i.test(cleaned)) {
+          unrecognized.push(`"${numMatch[1]} ${numMatch[2].trim()}"`);
+        }
+      }
     });
     return result;
   }
@@ -792,7 +818,9 @@ function parseWorkoutText(text, date, loc) {
     dad: exTotals.dom_austr||0, ded: exTotals.dom_explo||0, dfd: exTotals.dom_fat||0,
     dbc: exTotals.bic_chinup||0,
   };
-  return session;
+  // Deduplicate unrecognized list
+  const unrecognizedUniq = [...new Set(unrecognized)];
+  return {session, unrecognized: unrecognizedUniq};
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -820,7 +848,7 @@ function parsePreview() {
   // Check for duplicate
   const existing = sessions.find(s => s.d === date);
 
-  const session = parseWorkoutText(text, date, loc);
+  const {session, unrecognized: unknowns} = parseWorkoutText(text, date, loc);
   pendingWorkout = {session, isEdit: !!existing, existingDate: date};
 
   // Build preview
@@ -853,10 +881,17 @@ function parsePreview() {
   if(session.dbc) variants.push(`BIC:${session.dbc}`);
   exDiv.textContent = variants.length ? '↳ ' + variants.join(' · ') : '';
 
-  if (existing) {
-    warn.style.display='block';
-    warn.textContent = `⚠️ A workout already exists for ${date}. Confirming will replace it.`;
-  } else { warn.style.display='none'; }
+  // Warnings — duplicate date and/or unrecognized exercises
+  const warnLines = [];
+  if (existing) warnLines.push(`⚠️ A workout already exists for ${date}. Confirming will replace it.`);
+  if (unknowns.length) warnLines.push(`🔍 Unrecognized (not counted): ${unknowns.join(', ')} — come back to this chat to add them.`);
+
+  if (warnLines.length) {
+    warn.style.display = 'block';
+    warn.innerHTML = warnLines.join('<br>');
+  } else {
+    warn.style.display = 'none';
+  }
 
   card.classList.add('show');
   document.getElementById('confirmBtn').disabled = false;
