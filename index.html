@@ -189,10 +189,11 @@
   .tile-workout:hover { border-color: var(--accent-workout-glow); }
   .tile-workout .tile-icon { background: var(--accent-workout-dim); }
   .tile-workout .tile-name { color: var(--accent-workout); }
-  .tile-placeholder { border-color: rgba(255,255,255,0.08); cursor: default; opacity: 0.4; }
-  .tile-placeholder .tile-icon { background: rgba(255,255,255,0.05); color: var(--subtle); font-style: normal; }
-  .tile-placeholder .tile-name { color: var(--subtle); }
-  .tile-placeholder:hover { transform: none; border-color: rgba(255,255,255,0.08); }
+  .tile-lukas { border-color: rgba(251,191,36,0.3); }
+  .tile-lukas::before { background: radial-gradient(ellipse at top left, rgba(251,191,36,0.1), transparent 70%); }
+  .tile-lukas:hover { border-color: rgba(251,191,36,0.5); }
+  .tile-lukas .tile-icon { background: rgba(251,191,36,0.1); }
+  .tile-lukas .tile-name { color: #fbbf24; }
 
   .tile-header {
     display: flex;
@@ -444,13 +445,15 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <div class="tile tile-placeholder">
+    <a class="tile tile-lukas" href="lukas_analyzer.html">
       <div class="tile-header">
-        <div class="tile-icon">＋</div>
-        <div class="tile-name">Coming Soon</div>
+        <div class="tile-icon">🔍</div>
+        <div class="tile-name">Lukas</div>
       </div>
-      <div class="tile-stats"><div class="no-data">New app</div></div>
-    </div>
+      <div class="tile-stats" id="stats-lukas"><div class="no-data">Coming soon…</div></div>
+      <div class="tile-footer" id="footer-lukas"></div>
+      <div class="tile-arrow">↗</div>
+    </a>
 
   </div>
 
@@ -571,7 +574,7 @@ function loadCalc() {
     statHTML('Left / month · FIRE', fmt(fireLeft));
 }
 
-// ── WEEK PLANNER  ─────────────────────────────────────────────────
+// ── WEEK PLANNER ─────────────────────────────────────────────────
 // Block structure: { aid, d, h, dur } — dur is hours (directly on each block)
 function loadPlanner() {
   const el = document.getElementById('stats-planner');
