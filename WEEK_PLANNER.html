@@ -36,6 +36,7 @@ body{font-family:var(--font);display:flex;flex-direction:column;min-height:100vh
 #wordmark{font-size:14px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;gap:5px;justify-self:start;}
 #home-link{display:flex;align-items:center;opacity:.85;transition:opacity .2s,transform .2s;flex-shrink:0;text-decoration:none;}
 #home-link:hover{opacity:1;transform:scale(1.1);}
+#atom-sep{display:inline-block;width:1px;height:18px;background:var(--bd2);flex-shrink:0;}
 #wm-week{color:#e8e4ff;font-weight:700;}
 #wm-planner{color:#7F77DD;font-weight:700;}
 #wm-icon{display:flex;align-items:center;margin-left:8px;flex-shrink:0;}
@@ -261,6 +262,7 @@ body.tap-mode .sl:hover,body.tap-mode .sl.tap-ready{background:var(--bg3);}
           </defs>
         </svg>
       </a>
+      <span id="atom-sep"></span>
       <div id="wordmark"><span id="wm-week">Week</span><span id="wm-planner">Planner</span><span id="wm-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <!-- body: white with rounded corners -->
