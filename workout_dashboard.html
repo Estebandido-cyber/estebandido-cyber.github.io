@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Workout Insights</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
@@ -176,11 +177,11 @@ canvas{display:block;width:100%!important}
   </div>
   <div class="toolbar-sep"></div>
   <div class="toolbar-group">
-    <button class="tbtn primary" onclick="saveToDrive()">
+    <button class="tbtn primary" data-drive onclick="saveToDrive()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
       Save to Drive
     </button>
-    <button class="tbtn" onclick="loadFromDrive()">
+    <button class="tbtn" data-drive onclick="loadFromDrive()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
       Load from Drive
     </button>
@@ -442,84 +443,110 @@ function loadFromLS() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// GOOGLE DRIVE (GAPI)
+// GOOGLE DRIVE — Google Identity Services (GIS)
+// Exact same pattern as Xpenses widget
 // ══════════════════════════════════════════════════════════════
-const CLIENT_ID = ''; // set via prompt if needed
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
-let gapiReady = false;
+const DRIVE_CLIENT_ID = '453884215011-bnuqib76c5lt7vr87g6e5sd59q7r2cip.apps.googleusercontent.com';
+const DRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.file';
 
-function loadGapi() {
-  return new Promise(resolve => {
-    if (window.gapi) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://apis.google.com/js/api.js';
-    s.onload = () => gapi.load('client:auth2', async () => {
-      const cid = getClientId();
-      if (!cid) { resolve(); return; }
-      try {
-        await gapi.client.init({ clientId: cid, scope: SCOPES, discoveryDocs:['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'] });
-        gapiReady = true;
-      } catch(e) { console.warn('GAPI init failed:', e); }
-      resolve();
+let gdToken  = null;
+let gdFileId = null;
+
+function driveSetBusy(busy) {
+  document.querySelectorAll('.tbtn[data-drive]').forEach(b => b.disabled = busy);
+}
+
+function gdAuth(callback) {
+  if (gdToken) { callback(gdToken); return; }
+  setStatus('Connecting to Google…', 'warn');
+  driveSetBusy(true);
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: DRIVE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: response => {
+      if (response.error) {
+        setStatus('Sign-in failed: ' + response.error, 'warn');
+        driveSetBusy(false);
+        return;
+      }
+      gdToken = response.access_token;
+      setStatus('Connected to Google Drive', 'ok');
+      callback(gdToken);
+    },
+  });
+  client.requestAccessToken();
+}
+
+function gdFindFile(token, callback) {
+  if (gdFileId) { callback(gdFileId); return; }
+  fetch(
+    'https://www.googleapis.com/drive/v3/files?q=name%3D%22' + DRIVE_FILENAME + '%22+and+trashed%3Dfalse&fields=files(id,name)',
+    { headers: { Authorization: 'Bearer ' + token } }
+  )
+  .then(r => r.json())
+  .then(res => {
+    gdFileId = (res.files && res.files.length > 0) ? res.files[0].id : null;
+    callback(gdFileId);
+  })
+  .catch(() => { setStatus('Drive search failed', 'warn'); driveSetBusy(false); });
+}
+
+function saveToDrive() {
+  driveSetBusy(true);
+  setStatus('Saving to Drive…', 'warn');
+  gdAuth(token => {
+    const blob = new Blob([JSON.stringify({sessions, monthly, savedAt: new Date().toISOString()}, null, 2)], {type:'application/json'});
+    gdFindFile(token, fileId => {
+      const url    = 'https://www.googleapis.com/upload/drive/v3/files' + (fileId ? '/' + fileId : '') + '?uploadType=multipart';
+      const method = fileId ? 'PATCH' : 'POST';
+      const form   = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({name: DRIVE_FILENAME, mimeType: 'application/json'})], {type:'application/json'}));
+      form.append('file', blob);
+      fetch(url, {method, headers: {Authorization: 'Bearer ' + token}, body: form})
+        .then(r => r.json())
+        .then(res => {
+          if (res.error) throw new Error(JSON.stringify(res.error));
+          if (!fileId) gdFileId = res.id;
+          saveToLS();
+          setStatus(`Saved to Drive · ${fmtTime(new Date())}`, 'ok');
+          driveSetBusy(false);
+        })
+        .catch(err => {
+          if (String(err).includes('401')) { gdToken = null; gdFileId = null; setStatus('Session expired — click Save again', 'warn'); }
+          else setStatus('Save failed — try again', 'warn');
+          driveSetBusy(false);
+        });
     });
-    document.head.appendChild(s);
   });
 }
 
-function getClientId() {
-  let cid = localStorage.getItem('workout_insights_client_id') || '';
-  if (!cid) {
-    cid = prompt('Enter your Google OAuth Client ID (one-time setup):', '');
-    if (cid) localStorage.setItem('workout_insights_client_id', cid);
-  }
-  return cid;
-}
-
-async function ensureAuth() {
-  await loadGapi();
-  if (!gapiReady) { showModal('Drive not configured','Please set your Google OAuth Client ID to use Drive features.','OK'); return false; }
-  if (!gapi.auth2.getAuthInstance().isSignedIn.get()) {
-    await gapi.auth2.getAuthInstance().signIn();
-  }
-  return gapi.auth2.getAuthInstance().isSignedIn.get();
-}
-
-async function saveToDrive() {
-  setStatus('Saving to Drive…','warn');
-  if (!await ensureAuth()) { setStatus('Drive auth failed','warn'); return; }
-  try {
-    const content = JSON.stringify({sessions, monthly, savedAt: new Date().toISOString()}, null, 2);
-    const blob = new Blob([content], {type:'application/json'});
-    // Find existing file
-    const list = await gapi.client.drive.files.list({q:`name='${DRIVE_FILENAME}' and trashed=false`, fields:'files(id,name)'});
-    const files = list.result.files;
-    if (files.length > 0) {
-      await gapi.client.request({path:`/upload/drive/v3/files/${files[0].id}`,method:'PATCH',params:{uploadType:'media'},body:await blob.text()});
-    } else {
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify({name:DRIVE_FILENAME,mimeType:'application/json'})],{type:'application/json'}));
-      form.append('file', blob);
-      await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:`Bearer ${gapi.auth.getToken().access_token}`},body:form});
-    }
-    saveToLS();
-    setStatus(`Saved to Drive · ${fmtTime(new Date())}`,'ok');
-  } catch(e) { console.error(e); setStatus('Drive save failed','warn'); }
-}
-
-async function loadFromDrive() {
-  setStatus('Loading from Drive…','warn');
-  if (!await ensureAuth()) { setStatus('Drive auth failed','warn'); return; }
-  try {
-    const list = await gapi.client.drive.files.list({q:`name='${DRIVE_FILENAME}' and trashed=false`, fields:'files(id,name)'});
-    const files = list.result.files;
-    if (!files.length) { showModal('No file found',`No file named "${DRIVE_FILENAME}" found in your Drive.`,'OK'); setStatus('Ready','ok'); return; }
-    const resp = await gapi.client.drive.files.get({fileId:files[0].id, alt:'media'});
-    const d = typeof resp.result === 'string' ? JSON.parse(resp.result) : resp.result;
-    sessions = d.sessions; monthly = d.monthly;
-    saveToLS();
-    rebuildAll();
-    setStatus(`Loaded from Drive · ${fmtTime(new Date())}`,'ok');
-  } catch(e) { console.error(e); setStatus('Drive load failed','warn'); }
+function loadFromDrive() {
+  driveSetBusy(true);
+  setStatus('Loading from Drive…', 'warn');
+  gdAuth(token => {
+    gdFindFile(token, fileId => {
+      if (!fileId) {
+        setStatus('No file found in Drive — save first', 'warn');
+        driveSetBusy(false);
+        return;
+      }
+      fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {headers: {Authorization: 'Bearer ' + token}})
+        .then(r => r.json())
+        .then(d => {
+          if (!d.sessions || !d.monthly) throw new Error('invalid');
+          sessions = d.sessions; monthly = d.monthly;
+          saveToLS();
+          rebuildAll();
+          setStatus(`Loaded from Drive · ${fmtTime(new Date())}`, 'ok');
+          driveSetBusy(false);
+        })
+        .catch(err => {
+          if (String(err).includes('401')) { gdToken = null; setStatus('Session expired — click Load again', 'warn'); }
+          else setStatus('Load failed — try again', 'warn');
+          driveSetBusy(false);
+        });
+    });
+  });
 }
 
 function exportJSON() {
