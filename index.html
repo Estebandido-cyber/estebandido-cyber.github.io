@@ -679,8 +679,44 @@ function loadWorkout() {
     statHTML('Best kcal ever', maxKcal !== null ? maxKcal + ' kcal' : '—');
 }
 
+// ── LUKAS ─────────────────────────────────────────────────────────
+function loadLukas() {
+  const raw = safeGet('lukas_flow_snapshot');
+  const data = safeParse(raw);
+  const el = document.getElementById('stats-lukas');
+  const foot = document.getElementById('footer-lukas');
+
+  if (!data || data.totalValue === undefined) {
+    el.innerHTML = noData('Open LUKAS Flow to sync');
+    return;
+  }
+
+  const { totalValue, totalGL, totalGLPct, updatedAt } = data;
+
+  const glPositive = totalGL >= 0;
+  const glSign = glPositive ? '+' : '';
+  const glColor = glPositive ? '#00e5a0' : '#ff6b6b';
+
+  const glEurHTML = `<div class="stat">
+    <div class="stat-label">Unrealized G/L</div>
+    <div class="stat-value" style="color:${glColor}">${glSign}${fmt(totalGL)} (${glSign}${totalGLPct?.toFixed(1)}%)</div>
+  </div>`;
+
+  el.innerHTML =
+    statHTML('Portfolio value', fmt(totalValue), true) +
+    '<div class="stat-divider"></div>' +
+    glEurHTML;
+
+  if (updatedAt) {
+    try {
+      const t = new Date(updatedAt);
+      foot.textContent = 'updated ' + t.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    } catch(e) {}
+  }
+}
+
 // ── init ─────────────────────────────────────────────────────────
-function loadAll() { loadTracker(); loadCalc(); loadPlanner(); loadFire(); loadWorkout(); }
+function loadAll() { loadTracker(); loadCalc(); loadPlanner(); loadFire(); loadWorkout(); loadLukas(); }
 loadAll();
 </script>
 </body>
