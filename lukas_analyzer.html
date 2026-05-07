@@ -653,6 +653,7 @@ function render() {
   const totalValue = allRows.reduce((s,r)=>s+r.value,0);
   const totalCost  = allRows.reduce((s,r)=>s+r.cost,0);
   const totalGL    = rows.reduce((s,r)=>s+r.glEur,0);
+  const totalGLPct = (totalGL/totalCost)*100;
 
   // KPIs
   document.getElementById('kpiTotal').textContent = fmt(totalValue);
@@ -660,7 +661,7 @@ function render() {
   const glEl = document.getElementById('kpiGL');
   glEl.textContent = (totalGL>=0?'+':'')+fmt(totalGL);
   glEl.className = `kpi-value ${totalGL>=0?'gain':'loss'}`;
-  document.getElementById('kpiGLSub').textContent = `${fmtPct((totalGL/totalCost)*100)} on invested capital`;
+  document.getElementById('kpiGLSub').textContent = `${fmtPct(totalGLPct)} on invested capital`;
   document.getElementById('kpiInvest').textContent = fmt(rows.filter(r=>['PEA','CTO'].includes(r.account)).reduce((s,r)=>s+r.value,0));
   document.getElementById('kpiSavings').textContent = fmt([...fondsRows,...livretRows,...cashRow].reduce((s,r)=>s+r.value,0));
 
@@ -689,6 +690,12 @@ function render() {
   renderBenchmark(rows);
   renderHeatmaps(rows);
   renderTable(allRows, totalValue);
+
+  // Snapshot for Life Hub tile
+  localStorage.setItem('lukas_flow_snapshot', JSON.stringify({
+    totalValue, totalGL, totalGLPct,
+    updatedAt: new Date().toISOString()
+  }));
 }
 
 // ─── TAX PANEL ────────────────────────────────────────────────────────────────
