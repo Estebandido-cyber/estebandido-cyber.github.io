@@ -1046,6 +1046,12 @@ function render(tab) {
   document.getElementById(`${p}m-leftover`).textContent   = fmt(d.leftover);
   document.getElementById(`${p}leftover-card`).className  = d.leftover >= 0 ? 'metric c-purple' : 'metric c-red';
 
+  // Write computed outputs so the Life Hub can read them directly
+  try {
+    const outputs = JSON.parse(localStorage.getItem('xpenses_calculator_outputs') || '{}');
+    outputs[tab] = { leftover: Math.round(d.leftover), net: Math.round(d.net), income: Math.round(d.income) };
+    localStorage.setItem('xpenses_calculator_outputs', JSON.stringify(outputs));
+  } catch (_) {}
   SHARED_DEF.forEach(def => {
     document.getElementById(`${p}sv-${def.key}`).textContent  = fmt(s[def.key]);
     document.getElementById(`${p}amt-${def.key}`).textContent = fmt(s[def.key]);
