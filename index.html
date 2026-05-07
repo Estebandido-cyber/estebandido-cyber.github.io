@@ -351,6 +351,19 @@
     .tile { min-height: auto; }
     .logo-title { font-size: 28px; }
   }
+
+  /* Tablet landscape: 3-column grid */
+  @media (min-width: 700px) and (orientation: landscape) {
+    .wrap { max-width: 900px; }
+    .tiles { grid-template-columns: 1fr 1fr 1fr; }
+  }
+
+  /* Large landscape (desktop / large tablet) */
+  @media (min-width: 1000px) {
+    .wrap { max-width: 1100px; }
+    .tiles { grid-template-columns: 1fr 1fr 1fr; }
+    .tile { min-height: 210px; }
+  }
 </style>
 </head>
 <body>
