@@ -178,16 +178,21 @@
 
   @media (max-width: 1100px) {
     .kpis { grid-template-columns: repeat(2,1fr); }
-    .charts-row { grid-template-columns: 1fr; }
     .bottom-row { grid-template-columns: 1fr; }
     .heatmap-row { grid-template-columns: 1fr; }
     .accounts-row { grid-template-columns: repeat(4,1fr); }
   }
+  /* Charts stay 3-wide down to tablet — only stack on small phones */
   @media (max-width: 600px) {
+    .charts-row { grid-template-columns: 1fr; }
     .accounts-row { grid-template-columns: repeat(2,1fr); }
     .kpis { grid-template-columns: 1fr 1fr; }
     .app { padding: 14px; }
   }
+
+  /* Horizontal scroll for positions table */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-scroll table { min-width: 900px; }
 
   /* DRIVE / EXPORT / IMPORT BUTTONS */
   .btn { padding: 6px 14px; border-radius: 6px; border: 1px solid; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s; }
@@ -248,12 +253,18 @@
       </div>
       <span id="wm-icon">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="6" width="22" height="13" rx="2" fill="#2d6b3c" stroke="#1a4a2a" stroke-width="0.5"/>
-          <rect x="3" y="8" width="18" height="9" rx="1" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.6"/>
-          <circle cx="12" cy="12.5" r="2.8" fill="#3b8c52" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/>
-          <text x="12" y="14.3" text-anchor="middle" font-family="Arial, sans-serif" font-size="4.5" font-weight="800" fill="rgba(255,255,255,0.85)">€</text>
-          <circle cx="4.5" cy="12.5" r="1.2" fill="rgba(255,255,255,0.15)"/>
-          <circle cx="19.5" cy="12.5" r="1.2" fill="rgba(255,255,255,0.15)"/>
+          <!-- candle 1 (green, left) -->
+          <line x1="5" y1="3" x2="5" y2="6" stroke="#00d4aa" stroke-width="1.2" stroke-linecap="round"/>
+          <rect x="3.5" y="6" width="3" height="6" rx="0.5" fill="#00d4aa" opacity="0.9"/>
+          <line x1="5" y1="12" x2="5" y2="15" stroke="#00d4aa" stroke-width="1.2" stroke-linecap="round"/>
+          <!-- candle 2 (red, center) -->
+          <line x1="12" y1="5" x2="12" y2="8" stroke="#ef4444" stroke-width="1.2" stroke-linecap="round"/>
+          <rect x="10.5" y="8" width="3" height="8" rx="0.5" fill="#ef4444" opacity="0.9"/>
+          <line x1="12" y1="16" x2="12" y2="19" stroke="#ef4444" stroke-width="1.2" stroke-linecap="round"/>
+          <!-- candle 3 (green, right) -->
+          <line x1="19" y1="4" x2="19" y2="7" stroke="#00d4aa" stroke-width="1.2" stroke-linecap="round"/>
+          <rect x="17.5" y="7" width="3" height="7" rx="0.5" fill="#00d4aa" opacity="0.9"/>
+          <line x1="19" y1="14" x2="19" y2="17" stroke="#00d4aa" stroke-width="1.2" stroke-linecap="round"/>
         </svg>
       </span>
       <span class="head-sep"></span>
@@ -419,20 +430,22 @@
         <button class="filter-tab" onclick="setFilter('Livret',this)">Livrets</button>
       </div>
     </div>
-    <table>
-      <thead><tr>
-        <th onclick="sortBy('ticker')">Ticker ↕</th>
-        <th>Name</th><th>Account</th><th>Type</th>
-        <th onclick="sortBy('shares')" style="text-align:right">Shares ↕</th>
-        <th onclick="sortBy('avgPrice')" style="text-align:right">Avg Price ↕</th>
-        <th onclick="sortBy('livePrice')" style="text-align:right">Live Price ↕</th>
-        <th onclick="sortBy('value')" style="text-align:right">Value ↕</th>
-        <th onclick="sortBy('glEur')" style="text-align:right">G/L € ↕</th>
-        <th onclick="sortBy('glPct')" style="text-align:right">G/L % ↕</th>
-        <th style="text-align:right">Weight</th>
-      </tr></thead>
-      <tbody id="tableBody"></tbody>
-    </table>
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th onclick="sortBy('ticker')">Ticker ↕</th>
+          <th>Name</th><th>Account</th><th>Type</th>
+          <th onclick="sortBy('shares')" style="text-align:right">Shares ↕</th>
+          <th onclick="sortBy('avgPrice')" style="text-align:right">Avg Price ↕</th>
+          <th onclick="sortBy('livePrice')" style="text-align:right">Live Price ↕</th>
+          <th onclick="sortBy('value')" style="text-align:right">Value ↕</th>
+          <th onclick="sortBy('glEur')" style="text-align:right">G/L € ↕</th>
+          <th onclick="sortBy('glPct')" style="text-align:right">G/L % ↕</th>
+          <th style="text-align:right">Weight</th>
+        </tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
   </div>
 
 </div>
