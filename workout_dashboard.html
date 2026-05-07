@@ -991,7 +991,12 @@ function confirmAdd() {
   document.getElementById('addText').innerHTML = '';
   initAddWorkout();
 
-  setStatus(`${isEdit?'Updated':'Added'} workout for ${session.d} · ${fmtTime(new Date())}`,'ok');
+  setStatus(`${isEdit?'✓ Workout updated':'✓ Workout added'} · ${session.d} · ${session.pu||0} PU · ${session.dom||0} Dom${session.kcal?' · '+session.kcal+'kcal':''}`,'ok');
+  showModal(
+    isEdit ? '✓ Workout updated' : '✓ New workout added',
+    `${session.d} · ${session.loc}\n${session.pu||0} push-ups · ${session.dom||0} pull-ups · ${session.sq||0} squats · ${session.dip||0} dips${session.kcal ? '\n'+session.kcal+' kcal · '+session.mhr+' bpm max HR' : ''}`,
+    'OK'
+  );
 }
 
 function editLast() {
@@ -1363,10 +1368,10 @@ function rebuildCharts() {
     if(charts['tempScatter'])charts['tempScatter'].destroy();
     charts['tempScatter']=new Chart(tsCtx,{type:'scatter',data:{datasets:[{data:tData,backgroundColor:'#c8f13555',borderColor:'#c8f135',pointRadius:3}]},options:{...baseOpts,scales:{x:{...baseOpts.scales.x,title:{display:true,text:'Temperature (°C)',color:'#6b6b78',font:{size:10}}},y:{...baseOpts.scales.y,title:{display:true,text:'Push-ups',color:'#6b6b78',font:{size:10}}}}}});
   }
-}
 
-  // ── Last Workout tab ───────────────────────────────────────
+  // ── Last Workout tab ─────────────────────────────────────
   buildLastWorkout();
+}
 
 function buildLastWorkout() {
   if (!sessions.length) return;
