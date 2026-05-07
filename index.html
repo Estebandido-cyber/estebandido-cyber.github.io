@@ -196,11 +196,11 @@
   .tile-workout:hover { border-color: var(--accent-workout-glow); }
   .tile-workout .tile-icon { background: var(--accent-workout-dim); }
   .tile-workout .tile-name { color: var(--accent-workout); }
-  .tile-lukas { border-color: rgba(251,191,36,0.3); }
-  .tile-lukas::before { background: radial-gradient(ellipse at top left, rgba(251,191,36,0.1), transparent 70%); }
-  .tile-lukas:hover { border-color: rgba(251,191,36,0.5); }
-  .tile-lukas .tile-icon { background: rgba(251,191,36,0.1); }
-  .tile-lukas .tile-name { color: #fbbf24; }
+  .tile-lukas { border-color: rgba(0,212,170,0.3); }
+  .tile-lukas::before { background: radial-gradient(ellipse at top left, rgba(0,212,170,0.1), transparent 70%); }
+  .tile-lukas:hover { border-color: rgba(0,212,170,0.5); }
+  .tile-lukas .tile-icon { background: rgba(0,212,170,0.1); }
+  .tile-lukas .tile-name { color: #00d4aa; }
 
   .tile-header {
     display: flex;
@@ -467,10 +467,20 @@
 
     <a class="tile tile-lukas" href="lukas_analyzer.html">
       <div class="tile-header">
-        <div class="tile-icon">🔍</div>
+        <div class="tile-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <line x1="5" y1="3" x2="5" y2="6" stroke="#00d4aa" stroke-width="1.2" stroke-linecap="round"/>
+  <rect x="3.5" y="6" width="3" height="6" rx="0.5" fill="#00d4aa" opacity="0.9"/>
+  <line x1="5" y1="12" x2="5" y2="15" stroke="#00d4aa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="12" y1="5" x2="12" y2="8" stroke="#ef4444" stroke-width="1.2" stroke-linecap="round"/>
+  <rect x="10.5" y="8" width="3" height="8" rx="0.5" fill="#ef4444" opacity="0.9"/>
+  <line x1="12" y1="16" x2="12" y2="19" stroke="#ef4444" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="19" y1="4" x2="19" y2="7" stroke="#00d4aa" stroke-width="1.2" stroke-linecap="round"/>
+  <rect x="17.5" y="7" width="3" height="7" rx="0.5" fill="#00d4aa" opacity="0.9"/>
+  <line x1="19" y1="14" x2="19" y2="17" stroke="#00d4aa" stroke-width="1.2" stroke-linecap="round"/>
+</svg></div>
         <div class="tile-name">Lukas</div>
       </div>
-      <div class="tile-stats" id="stats-lukas"><div class="no-data">Coming soon…</div></div>
+      <div class="tile-stats" id="stats-lukas"><div class="no-data">Loading…</div></div>
       <div class="tile-footer" id="footer-lukas"></div>
       <div class="tile-arrow">↗</div>
     </a>
@@ -559,165 +569,4 @@ function loadCalc() {
   if (!outputs) { el.innerHTML = noData('Open calculator to start'); return; }
 
   const nowLeft  = outputs?.now?.leftover  ?? null;
-  const fireLeft = outputs?.fire?.leftover ?? null;
-
-  el.innerHTML =
-    statHTML('Left / month · now',  nowLeft  !== null ? fmt(nowLeft)  : '—', true) +
-    '<div class="stat-divider"></div>' +
-    statHTML('Left / month · FIRE', fireLeft !== null ? fmt(fireLeft) : '—');
-}
-
-// Count Mon–Fri days in current week with < 2h planned in the week planner
-function freeDaysThisWeek() {
-  const curWeek = parseInt(safeGet('weekplan_curweek') || '0') || 0;
-  const curPlaces = safeParse(safeGet('weekplan_week' + curWeek)) || {};
-  const hoursByDay = {0:0, 1:0, 2:0, 3:0, 4:0};
-  Object.values(curPlaces).forEach(b => {
-    if (b && typeof b === 'object' && b.d >= 0 && b.d <= 4) {
-      hoursByDay[b.d] += (parseFloat(b.dur)||0);
-    }
-  });
-  return Object.values(hoursByDay).filter(h => h < 2).length;
-}
-
-// ── WEEK PLANNER ─────────────────────────────────────────────────
-// Block structure: { aid, d, h, dur } — dur is hours (directly on each block)
-function loadPlanner() {
-  const el = document.getElementById('stats-planner');
-  const curWeek = parseInt(safeGet('weekplan_curweek') || '0') || 0;
-  const curPlaces = safeParse(safeGet('weekplan_week' + curWeek)) || {};
-  const blocks = Object.values(curPlaces);
-
-  if (blocks.length === 0) {
-    let anyData = false;
-    for (let w = 0; w < 4; w++) {
-      if (Object.keys(safeParse(safeGet('weekplan_week'+w)) || {}).length > 0) { anyData = true; break; }
-    }
-    el.innerHTML = anyData
-      ? statHTML('Week '+(curWeek+1), '0h planned', true)
-      : noData('Open planner to start');
-    return;
-  }
-
-  const totalHours = blocks.reduce((s, b) => s + (b && typeof b==='object' ? (parseFloat(b.dur)||0) : 0), 0);
-  const free = freeDaysThisWeek();
-  const freeLabel = free === 1 ? '1 free day' : `${free} free days`;
-
-  el.innerHTML =
-    statHTML('Current week', 'Week ' + (curWeek + 1)) +
-    '<div class="stat-divider"></div>' +
-    statHTML('Hours planned', totalHours + 'h', true) +
-    '<div class="stat-divider"></div>' +
-    statHTML('Available this week', freeLabel);
-}
-
-// ── FIRE SIM ─────────────────────────────────────────────────────
-// French assets stored in €K (pea:100 = €100,000)
-// Colombian assets stored in millions COP (cop2:300 = 300M COP)
-// Conversion: 1 EUR = 4500 COP → €value = copMillions * 1,000,000 / 4500
-const COP_EUR = 4500;
-
-function loadFire() {
-  const state = safeParse(safeGet('fire-sim-v1'));
-  const el = document.getElementById('stats-fire');
-  const foot = document.getElementById('footer-fire');
-  if (!state) { el.innerHTML = noData('Open FIRE sim to start'); return; }
-
-  let S = state.S;
-  let scenarioName = '';
-  if (Array.isArray(state.scenarios) && typeof state.activeScenario === 'number') {
-    const snap = state.scenarios[state.activeScenario];
-    if (snap && snap.snap && snap.snap.S) S = snap.snap.S;
-    if (snap && snap.name) scenarioName = snap.name;
-  }
-  if (!S) { el.innerHTML = noData('Run a simulation first'); return; }
-
-  // French: values in €K → multiply by 1000
-  const frEur = ((S.pea||0) + (S.av||0) + (S.cto||0) + (S.liv||0) + (S.cash||0)) * 1000;
-  // Colombian: values in millions COP → convert to EUR
-  const coEur = ((S.cop1||0) + (S.cop2||0) + (S.cop3||0) + (S.cop4||0)) * 1_000_000 / COP_EUR;
-  const totEur = frEur + coEur;
-
-  el.innerHTML =
-    statHTML('Total' + (scenarioName ? ` · ${scenarioName}` : ''), fmt(totEur), true) +
-    '<div class="stat-divider"></div>' +
-    statHTML('🇫🇷 French', fmt(frEur)) +
-    '<div class="stat-divider"></div>' +
-    statHTML('🇨🇴 Colombian', fmt(coEur));
-
-  if (state.savedAt) foot.textContent = fmtAgo(state.savedAt);
-}
-
-// ── WORKOUT ──────────────────────────────────────────────────────
-function loadWorkout() {
-  const data = safeParse(safeGet('workout_insights_v2'));
-  const el = document.getElementById('stats-workout');
-  const foot = document.getElementById('footer-workout');
-  if (!data || !data.sessions) { el.innerHTML = noData('Open workout to start'); return; }
-
-  const { sessions, monthly } = data;
-
-  // 1. Workouts this month
-  const now = new Date();
-  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const monthEntry = (monthly || []).find(m => m.month === curMonth);
-  const monthCount = monthEntry?.sessions ?? 0;
-
-  // 2. Last workout
-  const last = sessions.length > 0 ? sessions[sessions.length - 1] : null;
-  const lastDate = last?.d ? new Date(last.d + 'T00:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) : '—';
-  const lastDur = last?.dur ?? null;
-
-  // 3. Max kcal ever
-  const maxKcal = sessions.length > 0 ? Math.max(...sessions.map(s => s.kcal || 0)) : null;
-
-  el.innerHTML =
-    statHTML('This month', monthCount + (monthCount === 1 ? ' session' : ' sessions'), true) +
-    '<div class="stat-divider"></div>' +
-    statHTML('Last workout', lastDate + (lastDur ? ' · ' + lastDur + 'min' : '')) +
-    '<div class="stat-divider"></div>' +
-    statHTML('Best kcal ever', maxKcal !== null ? maxKcal + ' kcal' : '—');
-}
-
-// ── LUKAS ─────────────────────────────────────────────────────────
-function loadLukas() {
-  const raw = safeGet('lukas_flow_snapshot');
-  const data = safeParse(raw);
-  const el = document.getElementById('stats-lukas');
-  const foot = document.getElementById('footer-lukas');
-
-  if (!data || data.totalValue === undefined) {
-    el.innerHTML = noData('Open LUKAS Flow to sync');
-    return;
-  }
-
-  const { totalValue, totalGL, totalGLPct, updatedAt } = data;
-
-  const glPositive = totalGL >= 0;
-  const glSign = glPositive ? '+' : '';
-  const glColor = glPositive ? '#00e5a0' : '#ff6b6b';
-
-  const glEurHTML = `<div class="stat">
-    <div class="stat-label">Unrealized G/L</div>
-    <div class="stat-value" style="color:${glColor}">${glSign}${fmt(totalGL)} (${glSign}${totalGLPct?.toFixed(1)}%)</div>
-  </div>`;
-
-  el.innerHTML =
-    statHTML('Portfolio value', fmt(totalValue), true) +
-    '<div class="stat-divider"></div>' +
-    glEurHTML;
-
-  if (updatedAt) {
-    try {
-      const t = new Date(updatedAt);
-      foot.textContent = 'updated ' + t.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
-    } catch(e) {}
-  }
-}
-
-// ── init ─────────────────────────────────────────────────────────
-function loadAll() { loadTracker(); loadCalc(); loadPlanner(); loadFire(); loadWorkout(); loadLukas(); }
-loadAll();
-</script>
-</body>
-</html>
+  const fireLe
