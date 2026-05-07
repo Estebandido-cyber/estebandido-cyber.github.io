@@ -635,8 +635,39 @@ function loadFire() {
   if (state.savedAt) foot.textContent = fmtAgo(state.savedAt);
 }
 
+// ── WORKOUT ──────────────────────────────────────────────────────
+function loadWorkout() {
+  const data = safeParse(safeGet('workout_insights_v2'));
+  const el = document.getElementById('stats-workout');
+  const foot = document.getElementById('footer-workout');
+  if (!data || !data.sessions) { el.innerHTML = noData('Open workout to start'); return; }
+
+  const { sessions, monthly } = data;
+
+  // 1. Workouts this month
+  const now = new Date();
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthEntry = (monthly || []).find(m => m.month === curMonth);
+  const monthCount = monthEntry?.sessions ?? 0;
+
+  // 2. Last workout
+  const last = sessions.length > 0 ? sessions[sessions.length - 1] : null;
+  const lastDate = last?.d ? new Date(last.d + 'T00:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) : '—';
+  const lastDur = last?.dur ?? null;
+
+  // 3. Max kcal ever
+  const maxKcal = sessions.length > 0 ? Math.max(...sessions.map(s => s.kcal || 0)) : null;
+
+  el.innerHTML =
+    statHTML('This month', monthCount + (monthCount === 1 ? ' session' : ' sessions'), true) +
+    '<div class="stat-divider"></div>' +
+    statHTML('Last workout', lastDate + (lastDur ? ' · ' + lastDur + 'min' : '')) +
+    '<div class="stat-divider"></div>' +
+    statHTML('Best kcal ever', maxKcal !== null ? maxKcal + ' kcal' : '—');
+}
+
 // ── init ─────────────────────────────────────────────────────────
-function loadAll() { loadTracker(); loadCalc(); loadPlanner(); loadFire(); }
+function loadAll() { loadTracker(); loadCalc(); loadPlanner(); loadFire(); loadWorkout(); }
 loadAll();
 </script>
 </body>
