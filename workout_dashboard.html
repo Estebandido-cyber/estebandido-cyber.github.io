@@ -287,6 +287,7 @@ canvas{display:block;width:100%!important}
       <div class="preview-grid" id="previewGrid"></div>
       <div class="preview-exercises" id="previewExercises"></div>
       <div class="preview-warn" id="previewWarn" style="display:none"></div>
+      <div id="previewDebug" style="font-size:10px;color:#6b6b78;margin-top:6px;font-family:var(--font-mono)"></div>
     </div>
     </div>
   </div>
@@ -637,17 +638,33 @@ function importJSON(evt) {
 // PARSER
 // ══════════════════════════════════════════════════════════════
 function parseWorkoutText(text, date, loc, pastedHtml='') {
-  // Extract bullet lines: prefer <li> from pasted HTML, fall back to * / • lines in plain text
+  // Extract bullet lines from pasted content.
+  // Strategy: split the raw HTML on line-break tags (<br>, </div>, </li>, </p>)
+  // to recover individual lines regardless of whether Chrome used <li>, <div>, or <br>.
   let bulletLines = [];
-  if (pastedHtml && /<li/i.test(pastedHtml)) {
-    // Rich paste — extract <li> content
-    const liMatches = pastedHtml.matchAll(/<li[^>]*>(.*?)<\/li>/gis);
-    for (const m of liMatches) {
-      const clean = m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g,' ').trim();
-      if (clean) bulletLines.push(clean);
+
+  if (pastedHtml && pastedHtml.length > 10) {
+    // Split on any line-ending tag
+    const rawLines = pastedHtml
+      .split(/<br\s*\/?>|<\/div>|<\/li>|<\/p>/i)
+      .map(l => l.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim())
+      .filter(Boolean);
+
+    // Extract bullet lines (lines starting with *, •, -)
+    bulletLines = rawLines
+      .filter(l => /^[*•\-]\s/.test(l))
+      .map(l => l.replace(/^[*•\-]\s*/,'').trim());
+
+    // If no bullet markers found (GCal sometimes strips them in rich text),
+    // try treating ALL non-header non-summary lines as exercise lines
+    // by looking for lines that start with a number followed by a word
+    if (bulletLines.length === 0) {
+      bulletLines = rawLines.filter(l => /^\d+\s+[A-Za-z]/.test(l) || /^\d+m\s+[A-Za-z]/.test(l));
     }
-  } else {
-    // Plain text paste — look for * / • / - bullet lines
+  }
+
+  // Final fallback: plain text splitting
+  if (bulletLines.length === 0) {
     bulletLines = text.split('\n')
       .map(l => l.trim())
       .filter(l => /^[*•\-]\s/.test(l))
@@ -907,6 +924,21 @@ function initAddWorkout() {
   document.getElementById('addDate').value = today;
 }
 
+function parseWorkoutTextDebug(pastedHtml, text) {
+  if (pastedHtml && pastedHtml.length > 10) {
+    const rawLines = pastedHtml
+      .split(/<br\s*\/?>|<\/div>|<\/li>|<\/p>/i)
+      .map(l => l.replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim())
+      .filter(Boolean);
+    const bullets = rawLines.filter(l => /^[*•\-]\s/.test(l));
+    if (bullets.length > 0) return {count: bullets.length, path: 'html-bullets'};
+    const numLines = rawLines.filter(l => /^\d+\s+[A-Za-z]/.test(l));
+    if (numLines.length > 0) return {count: numLines.length, path: 'html-numlines'};
+  }
+  const bullets = text.split('\n').filter(l => /^[*•\-]\s/.test(l.trim()));
+  return {count: bullets.length, path: 'plaintext-fallback'};
+}
+
 function parsePreview() {
   const el = document.getElementById('addText');
   const text = el.innerText.trim();     // plain text for header/stats parsing
@@ -951,6 +983,13 @@ function parsePreview() {
   if(session.dcd) variants.push(`Close Dom:${session.dcd}`);
   if(session.dbc) variants.push(`BIC:${session.dbc}`);
   exDiv.textContent = variants.length ? '↳ ' + variants.join(' · ') : '';
+
+  // Debug: show extracted bullet lines count
+  const debugEl = document.getElementById('previewDebug');
+  if (debugEl) {
+    const bl = parseWorkoutTextDebug(html, text);
+    debugEl.textContent = `📝 ${bl.count} bullet lines found · path: ${bl.path}`;
+  }
 
   // Warnings — duplicate date and/or unrecognized exercises
   const warnLines = [];
