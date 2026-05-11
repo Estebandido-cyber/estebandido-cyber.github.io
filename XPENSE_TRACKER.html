@@ -68,13 +68,16 @@
     gap: 16px;
     align-items: center;
     flex: 1;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-width: 0;
   }
 
   .header-stat {
     display: flex;
     flex-direction: column;
     gap: 1px;
+    flex-shrink: 0;
   }
 
   .header-stat-label {
@@ -822,61 +825,38 @@
   .cf-trend-lbl { font-size:9px; color:var(--text3); white-space:nowrap; }
   .cf-trend-amt { font-size:9px; font-family:'Syne',sans-serif; font-weight:600; }
 
-  /* ─── TABLET RESPONSIVE ─── */
-  @media (min-width: 769px) and (max-width: 1024px) {
+  /* ─── TABLET + MOBILE: buttons always on their own row ─── */
+  @media (max-width: 1024px) {
     .app-header {
-      padding: 8px 16px;
-      gap: 12px;
       flex-wrap: wrap;
-    }
-    .app-title { flex: 0 0 auto; }
-    .header-totals {
-      flex: 0 0 100%;
-      order: 2;
-      gap: 14px;
-      padding: 6px 0;
-      border-top: 1px solid var(--border);
-      overflow-x: auto;
-      justify-content: flex-start;
+      padding: 8px 16px;
+      gap: 8px;
     }
     .header-actions {
       order: 3;
-      width: 100%;
+      flex: 0 0 100%;
       margin-left: 0;
       gap: 6px;
-      padding: 4px 0;
+      padding-top: 6px;
       border-top: 1px solid var(--border);
       justify-content: flex-start;
+      flex-wrap: wrap;
     }
-    .header-stat-value { font-size: 15px; }
   }
 
-  /* ─── MOBILE RESPONSIVE ─── */
+  /* ─── MOBILE ONLY ─── */
   @media (max-width: 768px) {
     .app-header {
       padding: 8px 12px;
       gap: 8px;
-      justify-content: center;
     }
     .app-title {
       font-size: 15px;
       flex: 0 0 auto;
     }
-    .header-totals {
-      flex: 0 0 100%;
-      order: 2;
-      gap: 10px;
-      padding: 4px 0;
-      border-top: 1px solid var(--border);
-      overflow-x: auto;
-      justify-content: center;
-    }
     .header-stat-label { font-size: 8px; }
     .header-stat-value { font-size: 14px; }
     .header-actions {
-      order: 1;
-      margin-left: auto;
-      gap: 5px;
       justify-content: center;
     }
     .btn {
