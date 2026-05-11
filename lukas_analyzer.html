@@ -580,7 +580,7 @@ let benchScope = 'ALL';
 async function fetchPrice(ticker) {
   const t = ticker.endsWith('_PERO') ? ticker.replace('_PERO','') : ticker;
   try {
-    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=1d`, { headers:{'Accept':'application/json'} });
+    const res = await fetch(`https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=1d`, { headers:{'Accept':'application/json'} });
     if (!res.ok) throw new Error();
     const json = await res.json();
     const meta = json?.chart?.result?.[0]?.meta;
