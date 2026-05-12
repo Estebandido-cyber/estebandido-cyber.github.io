@@ -640,26 +640,44 @@ function importJSON(evt) {
 function parseWorkoutText(text, date, loc, pastedHtml='') {
   let bulletLines = [];
 
+  // Get all candidate lines from HTML (split on line-ending tags)
+  let rawLines = [];
   if (pastedHtml && pastedHtml.length > 10) {
-    // Split innerHTML on any line-ending tag, strip remaining HTML, then filter bullet lines only
-    const rawLines = pastedHtml
+    rawLines = pastedHtml
       .split(/<br\s*\/?>|<\/div>|<\/li>|<\/p>/i)
       .map(l => l.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim())
       .filter(Boolean);
-
-    // ONLY lines with explicit bullet markers (* • -) count as exercise lines
-    bulletLines = rawLines
-      .filter(l => /^[*•\-]\s/.test(l))
-      .map(l => l.replace(/^[*•\-]\s*/,'').trim());
+  }
+  if (rawLines.length === 0) {
+    rawLines = text.split('\n').map(l => l.trim()).filter(Boolean);
   }
 
-  // Fallback to plain text if HTML produced nothing
-  if (bulletLines.length === 0) {
-    bulletLines = text.split('\n')
-      .map(l => l.trim())
-      .filter(l => /^[*•\-]\s/.test(l))
-      .map(l => l.replace(/^[*•\-]\s*/,'').trim());
+  // Try bullet-prefixed lines first (* • -)
+  const bulletPrefixed = rawLines
+    .filter(l => /^[*•\-]\s/.test(l))
+    .map(l => l.replace(/^[*•\-]\s*/,'').trim());
+
+  if (bulletPrefixed.length > 0) {
+    bulletLines = bulletPrefixed;
+  } else {
+    // GCal stripped bullet chars — use all lines that look like exercises
+    // Stop at the stats/summary line (contains FITBIT, MiBand, or "kcal/kal")
+    // Also skip header lines (time pattern like "5h42", dates, location names)
+    const exerciseLines = [];
+    for (const l of rawLines) {
+      // Stop at stats line
+      if (/fitbit|miband|kcal|k?al\b/i.test(l)) break;
+      // Skip header line (starts with time like "5h42" or is just a date/location)
+      if (/^\d+h\d+/.test(l)) continue;
+      if (/^\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(l)) continue;
+      // Skip pure time/warm-up/stretch lines with no reps
+      if (/^[\dms]+\s+(warm|stretch|rest|min|sec)/i.test(l)) continue;
+      // Include lines that start with a number (reps) or a time (Xm JR, Xs hold)
+      if (/^\d/.test(l)) exerciseLines.push(l);
+    }
+    bulletLines = exerciseLines;
   }
+
 
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const otherLines = lines.filter(l => !/^[*•\-]\s/.test(l));
@@ -915,17 +933,25 @@ function initAddWorkout() {
 }
 
 function parseWorkoutTextDebug(pastedHtml, text) {
+  let rawLines = [];
   if (pastedHtml && pastedHtml.length > 10) {
-    const rawLines = pastedHtml
+    rawLines = pastedHtml
       .split(/<br\s*\/?>|<\/div>|<\/li>|<\/p>/i)
       .map(l => l.replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim())
       .filter(Boolean);
-    const bullets = rawLines.filter(l => /^[*•\-]\s/.test(l));
-    if (bullets.length > 0) return {count: bullets.length, path: 'html-bullets'};
-    // HTML gave no bullets — will fall through to plain text
   }
-  const bullets = text.split('\n').filter(l => /^[*•\-]\s/.test(l.trim()));
-  return {count: bullets.length, path: 'plaintext-fallback'};
+  if (rawLines.length === 0) rawLines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+
+  const bullets = rawLines.filter(l => /^[*•\-]\s/.test(l));
+  if (bullets.length > 0) return {count: bullets.length, path: 'html-bullets'};
+
+  const exerciseLines = [];
+  for (const l of rawLines) {
+    if (/fitbit|miband|kcal|k?al\b/i.test(l)) break;
+    if (/^\d+h\d+/.test(l)) continue;
+    if (/^\d/.test(l)) exerciseLines.push(l);
+  }
+  return {count: exerciseLines.length, path: 'no-bullets-fallback'};
 }
 
 function parsePreview() {
