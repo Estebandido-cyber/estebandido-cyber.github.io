@@ -518,13 +518,13 @@ const STATIC_POSITIONS = [
 
 let CASH = parseFloat(localStorage.getItem('portfolio_cash') || '10');
 const FONDS_EUROS = [
-  { name:'Fonds Euros PERE', account:'PERE', value:8650,  rate: parseFloat(localStorage.getItem('fe_rate_PERE')||'2.5') },
-  { name:'Fonds Euros PERO', account:'PERO', value:500,   rate: parseFloat(localStorage.getItem('fe_rate_PERO')||'2.5') },
-  { name:'Fonds Euros AV',   account:'AV',   value:1000,  rate: parseFloat(localStorage.getItem('fe_rate_AV')  ||'2.5') },
+  { name:'Fonds Euros PERE', account:'PERE', value: parseFloat(localStorage.getItem('fe_value_PERE')||'8650'),  rate: parseFloat(localStorage.getItem('fe_rate_PERE')||'2.5') },
+  { name:'Fonds Euros PERO', account:'PERO', value: parseFloat(localStorage.getItem('fe_value_PERO')||'500'),   rate: parseFloat(localStorage.getItem('fe_rate_PERO')||'2.5') },
+  { name:'Fonds Euros AV',   account:'AV',   value: parseFloat(localStorage.getItem('fe_value_AV')  ||'1000'), rate: parseFloat(localStorage.getItem('fe_rate_AV')  ||'2.5') },
 ];
 const LIVRETS = [
-  { name:'Livret A',    account:'Livret', value:23182, rate: parseFloat(localStorage.getItem('liv_rate_A')   ||'1.7') },
-  { name:'Livret LDDS', account:'Livret', value:12133, rate: parseFloat(localStorage.getItem('liv_rate_LDDS')||'1.7') },
+  { name:'Livret A',    account:'Livret', value: parseFloat(localStorage.getItem('liv_value_A')   ||'23182'), rate: parseFloat(localStorage.getItem('liv_rate_A')   ||'1.7') },
+  { name:'Livret LDDS', account:'Livret', value: parseFloat(localStorage.getItem('liv_value_LDDS')||'12133'), rate: parseFloat(localStorage.getItem('liv_rate_LDDS')||'1.7') },
 ];
 
 // French tax rules per account
@@ -692,14 +692,14 @@ function openUpdateModal() {
   Object.entries(byAccount).forEach(([acc, positions]) => {
     const color = {'PEE':'#f472b6','PERE':'#fb923c','PERO':'#a78bfa','AV':'#34d399','Livret':'#fbbf24','Cash':'#94a3b8'}[acc]||'#888';
     positions.forEach(p => {
-      const key = p.ticker;
+      const key = p.realTicker || p.ticker;  // consistent with getPositionValue lookup
       let currentVal;
       if (p._isCash) currentVal = CASH;
       else if (p._isFondsEuros) currentVal = p._ref.value;
       else if (p._isLivret) currentVal = p._ref.value;
       else {
         const stored = mv[key];
-        currentVal = stored ? stored.value : (REFERENCE_VALUES[p.ticker] || p.avgPrice * p.shares);
+        currentVal = stored ? stored.value : (REFERENCE_VALUES[p.realTicker||p.ticker] || p.avgPrice * p.shares);
       }
       const sl = (p._isCash || p._isFondsEuros || p._isLivret) ? { cls:'stale-fresh', label:'Auto-tracked' } : getStalenessLabel(key);
       html += `<div class="update-row" data-ticker="${key}">
@@ -771,9 +771,11 @@ function saveManualUpdates() {
     } else if (special.startsWith('fonds')) {
       const idx = parseInt(special.replace('fonds',''));
       FONDS_EUROS[idx].value = val;
+      localStorage.setItem(['fe_value_PERE','fe_value_PERO','fe_value_AV'][idx], val);
     } else if (special.startsWith('livret')) {
       const idx = parseInt(special.replace('livret',''));
       LIVRETS[idx].value = val;
+      localStorage.setItem(['liv_value_A','liv_value_LDDS'][idx], val);
     } else {
       mv[ticker] = { value: val, updatedAt: now };
     }
