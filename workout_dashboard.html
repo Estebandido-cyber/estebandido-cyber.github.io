@@ -638,32 +638,22 @@ function importJSON(evt) {
 // PARSER
 // ══════════════════════════════════════════════════════════════
 function parseWorkoutText(text, date, loc, pastedHtml='') {
-  // Extract bullet lines from pasted content.
-  // Strategy: split the raw HTML on line-break tags (<br>, </div>, </li>, </p>)
-  // to recover individual lines regardless of whether Chrome used <li>, <div>, or <br>.
   let bulletLines = [];
 
   if (pastedHtml && pastedHtml.length > 10) {
-    // Split on any line-ending tag
+    // Split innerHTML on any line-ending tag, strip remaining HTML, then filter bullet lines only
     const rawLines = pastedHtml
       .split(/<br\s*\/?>|<\/div>|<\/li>|<\/p>/i)
       .map(l => l.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim())
       .filter(Boolean);
 
-    // Extract bullet lines (lines starting with *, •, -)
+    // ONLY lines with explicit bullet markers (* • -) count as exercise lines
     bulletLines = rawLines
       .filter(l => /^[*•\-]\s/.test(l))
       .map(l => l.replace(/^[*•\-]\s*/,'').trim());
-
-    // If no bullet markers found (GCal sometimes strips them in rich text),
-    // try treating ALL non-header non-summary lines as exercise lines
-    // by looking for lines that start with a number followed by a word
-    if (bulletLines.length === 0) {
-      bulletLines = rawLines.filter(l => /^\d+\s+[A-Za-z]/.test(l) || /^\d+m\s+[A-Za-z]/.test(l));
-    }
   }
 
-  // Final fallback: plain text splitting
+  // Fallback to plain text if HTML produced nothing
   if (bulletLines.length === 0) {
     bulletLines = text.split('\n')
       .map(l => l.trim())
@@ -783,7 +773,7 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
   }
 
   function classifyExercise(ex) {
-    ex = ex.replace(/\b(blocs?|blocks?|yoga|blocs)\b/gi,'').replace(/\beach\b/gi,'').trim();
+    ex = ex.replace(/\b(blocs?|blocks?|blicks?|yoga|blocs)\b/gi,'').replace(/\beach\b/gi,'').trim();
     // JR — handled separately, return null
     if (/\bjr\b/i.test(ex)) return null;
     // Pull-ups
@@ -932,8 +922,7 @@ function parseWorkoutTextDebug(pastedHtml, text) {
       .filter(Boolean);
     const bullets = rawLines.filter(l => /^[*•\-]\s/.test(l));
     if (bullets.length > 0) return {count: bullets.length, path: 'html-bullets'};
-    const numLines = rawLines.filter(l => /^\d+\s+[A-Za-z]/.test(l));
-    if (numLines.length > 0) return {count: numLines.length, path: 'html-numlines'};
+    // HTML gave no bullets — will fall through to plain text
   }
   const bullets = text.split('\n').filter(l => /^[*•\-]\s/.test(l.trim()));
   return {count: bullets.length, path: 'plaintext-fallback'};
