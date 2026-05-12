@@ -879,6 +879,62 @@
     }
   }
 
+  /* ─── UNDO TOAST ─── */
+  .undo-toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--text2);
+    z-index: 500;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease;
+    opacity: 0;
+    white-space: nowrap;
+  }
+  .undo-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  .undo-toast-msg { color: var(--text); }
+  .undo-toast-timer {
+    width: 32px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .undo-toast-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    width: 100%;
+    transition: width linear;
+  }
+  .undo-btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-transform: uppercase;
+  }
+  .undo-btn:hover { background: rgba(240,192,96,0.12); }
+
   /* Scrollbar */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
@@ -1709,6 +1765,8 @@ document.addEventListener('click', function(e) {
   // Read idx FRESH from the DOM attribute at click time
   const idx = parseInt(btn.dataset.idx, 10);
   if (!key || isNaN(idx) || !data[key]) return;
+  // Save a copy before deleting for undo
+  const deletedEntry = Object.assign({}, data[key][idx]);
   data[key].splice(idx, 1);
   // Full re-render of this day's entries so all indices are reassigned correctly
   rerenderDayEntries(key);
@@ -1718,6 +1776,8 @@ document.addEventListener('click', function(e) {
   renderBreakdown();
   cfUpdateRemaining();
   updateHeaderTotals();
+  // Show undo toast
+  showUndoToast(key, idx, deletedEntry);
 });
 
 function rerenderDayEntries(key) {
@@ -2701,9 +2761,84 @@ function gdriveLoad() {
   });
 }
 
+// ═══════════════════════════════════════════════
+// UNDO DELETE
+// ═══════════════════════════════════════════════
+let undoStack = null; // { key, idx, entry }
+let undoTimer = null;
+let undoBarTimer = null;
+const UNDO_DURATION = 5000;
+
+function showUndoToast(key, idx, entry) {
+  // Store what was deleted
+  undoStack = { key, idx, entry };
+
+  // Show toast
+  const toast = document.getElementById('undo-toast');
+  const msg   = document.getElementById('undo-toast-msg');
+  const bar   = document.getElementById('undo-bar');
+
+  const label = entry.cat ? `"${entry.cat}" deleted` : 'Entry deleted';
+  msg.textContent = label;
+
+  // Animate in
+  toast.classList.add('show');
+
+  // Reset and animate the timer bar
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      bar.style.transition = `width ${UNDO_DURATION}ms linear`;
+      bar.style.width = '0%';
+    });
+  });
+
+  // Auto-dismiss after 5s
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => {
+    hideUndoToast();
+    undoStack = null;
+  }, UNDO_DURATION);
+}
+
+function hideUndoToast() {
+  const toast = document.getElementById('undo-toast');
+  toast.classList.remove('show');
+  clearTimeout(undoTimer);
+}
+
+function undoDelete() {
+  if (!undoStack) return;
+  const { key, idx, entry } = undoStack;
+  undoStack = null;
+  hideUndoToast();
+
+  // Re-insert the entry at its original position
+  if (!data[key]) data[key] = [];
+  data[key].splice(idx, 0, entry);
+
+  // Re-render and save
+  rerenderDayEntries(key);
+  updateDayTotal(key);
+  saveToStorage();
+  updateMonthTotal();
+  renderBreakdown();
+  cfUpdateRemaining();
+  updateHeaderTotals();
+}
+
 setupDragDrop();
 cfLoad();
 init();
 </script>
+<!-- UNDO TOAST -->
+<div class="undo-toast" id="undo-toast">
+  <span class="undo-toast-msg" id="undo-toast-msg">Entry deleted</span>
+  <div class="undo-toast-timer"><div class="undo-toast-bar" id="undo-bar"></div></div>
+  <button class="undo-btn" onclick="undoDelete()">Undo</button>
+</div>
+
+
 </body>
 </html>
