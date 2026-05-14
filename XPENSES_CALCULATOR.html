@@ -648,8 +648,8 @@ const LS_KEY          = 'xpenses_calculator_v1';
 //    yearly — true if the state value is annual (displayed as /12)
 // ════════════════════════════════════════════════════════════════════
 const SHARED_DEF = [
-  { key: 'rent',        label: 'Rent',           step: 50 },
-  { key: 'insurance',   label: 'Home insurance', step: 5  },
+  { key: 'rent',        label: 'Rent',           step: 10 },
+  { key: 'insurance',   label: 'Home insurance', step: 1  },
   { key: 'internet',    label: 'Internet',       step: 5  },
   { key: 'netflix',     label: 'Netflix',        step: 1  },
   { key: 'electricity', label: 'Electricity',    step: 10 },
@@ -1017,10 +1017,10 @@ function buildCard(tab) {
     <div class="chart-legend" id="${tab}-chart-legend"></div>
   `;
 
-  makeSpin(`${tab}-spin-salary`,       tab, 'salary',       100);
+  makeSpin(`${tab}-spin-salary`,       tab, 'salary',       50);
   makeSpin(`${tab}-spin-tickets`,      tab, 'tickets',      10);
   makeSpin(`${tab}-spin-sharedAcc`,    tab, 'sharedAcc',    50);
-  makeSpin(`${tab}-spin-partnerFixed`, tab, 'partnerFixed', 10);
+  makeSpin(`${tab}-spin-partnerFixed`, tab, 'partnerFixed', 5);
   SHARED_DEF.forEach(def   => makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step));
   PERSONAL_DEF.forEach(def => makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step));
 }
