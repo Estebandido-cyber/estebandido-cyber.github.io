@@ -710,6 +710,49 @@
   }
   .empty-state .icon { font-size: 28px; margin-bottom: 8px; opacity: 0.4; }
 
+  /* ─── SAVE INDICATOR ─── */
+  .save-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--linen);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--ink-faint);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+    z-index: 200;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+  }
+  .save-indicator.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .save-indicator.saved {
+    color: var(--done-color);
+    border-color: var(--done-color);
+  }
+  .save-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: savepulse 1s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes savepulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.25; }
+  }
+  .save-indicator.saved .save-dot { animation: none; }
+
   /* Toast */
   .toast {
     position: fixed;
@@ -871,6 +914,11 @@
 
 </div>
 
+<div class="save-indicator" id="save-indicator">
+  <div class="save-dot"></div>
+  <span id="save-text">Saving…</span>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -900,17 +948,28 @@ let state = {
 // PERSISTENCE
 // ═══════════════════════════════════════════════
 
+const STORAGE_KEY = 'doit_lcc_v1';
+let saveTimer = null;
+let saveHideTimer = null;
+
 function saveToLS() {
-  try {
-    localStorage.setItem('lcc_state', JSON.stringify(state));
-  } catch(e) {}
+  showSaving();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      showSaved();
+    } catch(e) { console.warn('Save error', e); }
+  }, 400);
 }
 
 function loadFromLS() {
   try {
-    const raw = localStorage.getItem('lcc_state');
-    if (raw) {
-      const parsed = JSON.parse(raw);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    // fallback: also try old key
+    const data = raw || localStorage.getItem('lcc_state');
+    if (data) {
+      const parsed = JSON.parse(data);
       if (parsed.postits) {
         Object.keys(parsed.postits).forEach(k => {
           if (state.postits[k]) {
@@ -924,7 +983,27 @@ function loadFromLS() {
       }
       if (parsed.notes) state.notes = parsed.notes;
     }
-  } catch(e) {}
+  } catch(e) { console.warn('Load error', e); }
+}
+
+function showSaving() {
+  const el  = document.getElementById('save-indicator');
+  const txt = document.getElementById('save-text');
+  if (!el) return;
+  el.classList.remove('saved');
+  el.classList.add('show');
+  txt.textContent = 'Saving…';
+  clearTimeout(saveHideTimer);
+}
+
+function showSaved() {
+  const el  = document.getElementById('save-indicator');
+  const txt = document.getElementById('save-text');
+  if (!el) return;
+  el.classList.add('saved');
+  txt.textContent = 'Saved ✓';
+  clearTimeout(saveHideTimer);
+  saveHideTimer = setTimeout(() => el.classList.remove('show'), 2000);
 }
 
 // ═══════════════════════════════════════════════
