@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Life Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1c1a17;
+    --bg2: #252320;
+    --linen: #2e2b27;
+    --ink: #f0ead8;
+    --ink-dim: #a09880;
+    --ink-faint: #5a5448;
+    --accent: #e8a23a;
+    --accent2: #c97b3a;
+    --done-color: #7a9e7e;
+    --red: #d95f5f;
+    --border: rgba(240,234,216,0.08);
+    --shadow: rgba(0,0,0,0.5);
+
+    /* Post-it colors */
+    --postit-yellow: #fef3a0;
+    --postit-yellow-dark: #e8dc80;
+    --postit-blue: #b8d4f0;
+    --postit-blue-dark: #90b8e0;
+    --postit-green: #c4e8b0;
+    --postit-green-dark: #a0d080;
+    --postit-pink: #f8c0d0;
+    --postit-pink-dark: #e8a0b8;
+    --postit-lavender: #d8c8f0;
+    --postit-lavender-dark: #c0a8e0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(232,162,58,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(100,80,180,0.04) 0%, transparent 60%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  .sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(12px);
+    background: rgba(28,26,23,0.92);
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+    line-height: 1;
+    font-family: 'Syne', sans-serif;
+    letter-spacing: -0.01em;
+  }
+  .logo-do {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+  }
+  .logo-it {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink-dim);
+    letter-spacing: 0.01em;
+  }
+  .logo-bang {
+    font-size: 30px;
+    font-weight: 800;
+    color: #e86060;
+    margin-left: 1px;
+  }
+  .logo-tagline {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-left: 14px;
+    align-self: center;
+  }
+
+  .app-header {
+    padding: 24px 32px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .app-title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+
+  .app-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  .main-layout {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 20px;
+    padding: 24px 32px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* ═══════════════════════════════════════
+     SECTION 1 — POST-ITS
+  ═══════════════════════════════════════ */
+
+  .postits-area {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .postit {
+    width: 260px;
+    border-radius: 2px;
+    padding: 0;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    filter: drop-shadow(2px 4px 12px rgba(0,0,0,0.45));
+  }
+
+  .postit:hover {
+    transform: translateY(-2px) rotate(0deg);
+    filter: drop-shadow(3px 8px 20px rgba(0,0,0,0.55));
+  }
+
+  .postit::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 48px;
+    height: 10px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 1px;
+    z-index: 10;
+  }
+
+  /* Tape strip */
+  .postit::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 52px;
+    height: 14px;
+    background: rgba(255,255,255,0.35);
+    border-radius: 1px;
+    z-index: 11;
+    backdrop-filter: blur(2px);
+  }
+
+  .postit-inner {
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--postit-yellow);
+    background-image:
+      repeating-linear-gradient(
+        transparent,
+        transparent 27px,
+        rgba(0,0,0,0.06) 28px
+      );
+    background-attachment: local;
+  }
+
+  .postit.blue .postit-inner { background-color: var(--postit-blue); }
+  .postit.green .postit-inner { background-color: var(--postit-green); }
+  .postit.pink .postit-inner { background-color: var(--postit-pink); }
+  .postit.lavender .postit-inner { background-color: var(--postit-lavender); }
+
+  .postit-header {
+    padding: 12px 16px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    background: rgba(0,0,0,0.04);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .postit-header-left {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 1;
+  }
+
+  .postit-collapse-arrow {
+    font-size: 9px;
+    color: rgba(0,0,0,0.35);
+    transition: transform 0.2s ease;
+    line-height: 1;
+  }
+  .postit.collapsed .postit-collapse-arrow {
+    transform: rotate(-90deg);
+  }
+
+  .postit-title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(0,0,0,0.65);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .postit-header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .postit-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: rgba(0,0,0,0.25);
+    padding: 1px 3px;
+    border-radius: 3px;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+  }
+  .postit-delete-btn:hover {
+    color: rgba(180,40,40,0.8);
+    background: rgba(180,40,40,0.1);
+  }
+
+  .postit-controls {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+
+  .color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 1.5px solid rgba(0,0,0,0.2);
+    transition: transform 0.15s;
+  }
+  .color-dot:hover { transform: scale(1.3); }
+  .color-dot.cy { background: var(--postit-yellow-dark); }
+  .color-dot.cb { background: var(--postit-blue-dark); }
+  .color-dot.cg { background: var(--postit-green-dark); }
+  .color-dot.cp { background: var(--postit-pink-dark); }
+  .color-dot.cl { background: var(--postit-lavender-dark); }
+
+  .postit-body {
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+    overflow: hidden;
+  }
+  .postit.collapsed .postit-body {
+    max-height: 0 !important;
+    opacity: 0;
+  }
+
+  .postit-items {
+    padding: 8px 0;
+    min-height: 36px;
+  }
+
+  .todo-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    min-height: 28px;
+    cursor: grab;
+    transition: background 0.1s;
+    position: relative;
+    group: true;
+  }
+
+  .todo-item:active { cursor: grabbing; }
+  .todo-item.drag-over { background: rgba(0,0,0,0.06); }
+  .todo-item.dragging { opacity: 0.4; }
+
+  .drag-handle {
+    color: rgba(0,0,0,0.2);
+    font-size: 10px;
+    cursor: grab;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+    line-height: 1;
+    user-select: none;
+  }
+  .todo-item:hover .drag-handle { opacity: 1; }
+
+  .todo-check {
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid rgba(0,0,0,0.35);
+    border-radius: 2px;
+    flex-shrink: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.4);
+    transition: all 0.15s;
+  }
+  .todo-check:hover { border-color: rgba(0,0,0,0.6); background: rgba(255,255,255,0.7); }
+  .todo-check.checked {
+    background: rgba(0,0,0,0.15);
+    border-color: rgba(0,0,0,0.3);
+  }
+  .todo-check.checked::after {
+    content: '✓';
+    font-size: 9px;
+    color: rgba(0,0,0,0.5);
+    font-weight: 700;
+  }
+
+  .todo-text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: rgba(0,0,0,0.75);
+    flex: 1;
+    outline: none;
+    background: transparent;
+    border: none;
+    line-height: 1.4;
+    cursor: text;
+    min-width: 0;
+    word-break: break-word;
+  }
+  .todo-text:focus { color: rgba(0,0,0,0.9); }
+  .todo-item.done .todo-text {
+    text-decoration: line-through;
+    color: rgba(0,0,0,0.35);
+  }
+
+  .todo-del {
+    opacity: 0;
+    background: none;
+    border: none;
+    color: rgba(0,0,0,0.35);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    line-height: 1;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  .todo-item:hover .todo-del { opacity: 1; }
+  .todo-del:hover { color: #c0392b; }
+
+  .postit-add {
+    padding: 6px 12px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .add-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(0,0,0,0.25);
+    background: rgba(0,0,0,0.06);
+    color: rgba(0,0,0,0.5);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .add-btn:hover {
+    background: rgba(0,0,0,0.15);
+    color: rgba(0,0,0,0.8);
+    transform: scale(1.1);
+  }
+
+  .postit-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: rgba(0,0,0,0.3);
+    margin-left: auto;
+  }
+
+  /* ═══════════════════════════════════════
+     SECTION 2 — EDITOR
+  ═══════════════════════════════════════ */
+
+  .editor-area {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--linen);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    min-height: 400px;
+  }
+
+  .editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 14px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px;
+    border-right: 1px solid var(--border);
+  }
+  .toolbar-group:last-child { border-right: none; margin-left: auto; }
+
+  .tb-btn {
+    background: none;
+    border: none;
+    color: var(--ink-dim);
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    transition: all 0.1s;
+    min-width: 32px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tb-btn:hover { background: rgba(240,234,216,0.08); color: var(--ink); }
+  .tb-btn.active { background: rgba(232,162,58,0.2); color: var(--accent); }
+
+  .tb-select {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink-dim);
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    border-radius: 4px;
+    padding: 3px 6px;
+    cursor: pointer;
+    outline: none;
+  }
+  .tb-select option { background: #2e2b27; }
+
+  .tb-color-input {
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 1px;
+    background: transparent;
+  }
+
+  .editor-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px 0;
+  }
+
+  #note-title {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 4px 0 8px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #note-title::placeholder { color: var(--ink-faint); }
+  #note-title:focus { border-bottom-color: var(--accent); }
+
+  #note-editor {
+    flex: 1;
+    padding: 16px 18px;
+    outline: none;
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    min-height: 200px;
+    overflow-y: auto;
+  }
+  #note-editor:empty::before {
+    content: attr(data-placeholder);
+    color: var(--ink-faint);
+    pointer-events: none;
+  }
+
+  .editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .editor-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-faint);
+  }
+
+  .editor-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink-dim);
+  }
+  .btn-ghost:hover { background: rgba(240,234,216,0.06); color: var(--ink); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #1c1a17;
+  }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+
+  .btn-sm {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  /* ═══════════════════════════════════════
+     SECTION 3 — SAVED NOTES
+  ═══════════════════════════════════════ */
+
+  .notes-area {
+    grid-column: 1;
+    grid-row: 2;
+    width: fit-content;
+    min-width: 540px;
+    max-width: 540px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .section-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .notes-list::-webkit-scrollbar { width: 3px; }
+  .notes-list::-webkit-scrollbar-track { background: transparent; }
+  .notes-list::-webkit-scrollbar-thumb { background: var(--ink-faint); border-radius: 2px; }
+
+  .note-card {
+    background: var(--linen);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .note-card:hover { border-color: rgba(240,234,216,0.16); }
+
+  .note-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .note-card-expand {
+    color: var(--ink-faint);
+    font-size: 10px;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .note-card.expanded .note-card-expand { transform: rotate(90deg); }
+
+  .note-card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .note-card-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-faint);
+    flex-shrink: 0;
+  }
+
+  .note-card-preview {
+    font-size: 12px;
+    color: var(--ink-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+  }
+
+  .note-card-body {
+    display: none;
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--border);
+  }
+  .note-card.expanded .note-card-body { display: block; }
+
+  .note-card-content {
+    font-size: 13px;
+    color: var(--ink-dim);
+    line-height: 1.6;
+    padding-top: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .note-card-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .btn-danger {
+    background: transparent;
+    border: 1px solid rgba(217,95,95,0.3);
+    color: var(--red);
+  }
+  .btn-danger:hover { background: rgba(217,95,95,0.1); }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-faint);
+    font-size: 13px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+  }
+  .empty-state .icon { font-size: 28px; margin-bottom: 8px; opacity: 0.4; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--linen);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 1000;
+    white-space: nowrap;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Divider */
+  .section-divider {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 12px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--ink-faint); border-radius: 2px; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .main-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto auto;
+      padding: 16px;
+    }
+    .postits-area {
+      grid-column: 1;
+      flex-wrap: wrap;
+    }
+    .postit { width: 220px; }
+    .editor-area {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .notes-area {
+      grid-column: 1;
+      grid-row: 3;
+      min-width: 0;
+      max-width: 100%;
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .postit { width: 100%; }
+    .postits-area { flex-direction: column; }
+    .app-header { padding: 16px 16px 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="sticky-header">
+  <div style="display:flex;align-items:center;gap:0;">
+    <div class="logo">
+      <span class="logo-do">DO</span><span class="logo-it">it</span><span class="logo-bang">!</span>
+    </div>
+    <div class="logo-tagline">Life Command Center</div>
+  </div>
+  <div class="app-date" id="live-date"></div>
+</header>
+
+<div class="main-layout">
+
+  <!-- SECTION 1: POST-ITS -->
+  <div class="postits-area" id="postits-area">
+    <!-- dynamically rendered -->
+  </div>
+
+  <!-- SECTION 2: EDITOR -->
+  <div class="editor-area">
+    <div class="editor-toolbar">
+      <div class="toolbar-group">
+        <button class="tb-btn" onclick="fmt('bold')" title="Bold"><b>B</b></button>
+        <button class="tb-btn" onclick="fmt('italic')" title="Italic"><i>I</i></button>
+        <button class="tb-btn" onclick="fmt('underline')" title="Underline"><u>U</u></button>
+        <button class="tb-btn" onclick="fmt('strikeThrough')" title="Strikethrough" style="text-decoration:line-through">S</button>
+      </div>
+      <div class="toolbar-group">
+        <select class="tb-select" onchange="setFontSize(this.value)" title="Font size">
+          <option value="12">12</option>
+          <option value="14" selected>14</option>
+          <option value="16">16</option>
+          <option value="18">18</option>
+          <option value="22">22</option>
+          <option value="28">28</option>
+        </select>
+      </div>
+      <div class="toolbar-group">
+        <button class="tb-btn" onclick="fmt('insertUnorderedList')" title="Bullet list">☰</button>
+        <button class="tb-btn" onclick="fmt('insertOrderedList')" title="Numbered list">#</button>
+      </div>
+      <div class="toolbar-group">
+        <button class="tb-btn" onclick="fmt('justifyLeft')" title="Left">⬛</button>
+        <button class="tb-btn" onclick="fmt('justifyCenter')" title="Center">▣</button>
+      </div>
+      <div class="toolbar-group">
+        <label title="Text color" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--ink-dim);font-size:11px;">
+          A <input type="color" class="tb-color-input" onchange="setColor(this.value)" value="#f0ead8">
+        </label>
+      </div>
+      <div class="toolbar-group">
+        <button class="tb-btn" onclick="clearEditor()" title="Clear editor" style="color:var(--ink-faint);">✕ Clear</button>
+      </div>
+    </div>
+
+    <div class="editor-title-row">
+      <input type="text" id="note-title" placeholder="Note title (optional)…" autocomplete="off">
+    </div>
+
+    <div id="note-editor"
+      contenteditable="true"
+      data-placeholder="Write an idea, a thought, an explanation…"
+      spellcheck="true"
+    ></div>
+
+    <div class="editor-footer">
+      <div class="editor-meta" id="editor-meta">0 words</div>
+      <div class="editor-actions">
+        <button class="btn btn-ghost" onclick="copyEditor()">Copy</button>
+        <button class="btn btn-primary" onclick="saveNote()">Save Note</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: SAVED NOTES -->
+  <div class="notes-area">
+    <div class="section-header">
+      <div class="section-label">Saved Notes</div>
+      <div class="section-actions">
+        <button class="btn btn-ghost btn-sm" onclick="exportJSON()">Export JSON</button>
+      </div>
+    </div>
+    <div class="notes-list" id="notes-list"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+
+const POSTIT_DEFS = [
+  { id: 'today',  label: 'TODAY',  colorClass: 'yellow' },
+  { id: 'week',   label: 'WEEK',   colorClass: 'blue'   },
+  { id: 'later',  label: 'LATER',  colorClass: 'green'  },
+];
+
+const MAX_ITEMS = 10;
+
+let state = {
+  postits: {
+    today:  { items: [], color: 'yellow', collapsed: false },
+    week:   { items: [], color: 'blue',   collapsed: true  },
+    later:  { items: [], color: 'green',  collapsed: true  },
+  },
+  notes: [],
+  editingNoteId: null,
+};
+
+// ═══════════════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════════════
+
+function saveToLS() {
+  try {
+    localStorage.setItem('lcc_state', JSON.stringify(state));
+  } catch(e) {}
+}
+
+function loadFromLS() {
+  try {
+    const raw = localStorage.getItem('lcc_state');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.postits) {
+        Object.keys(parsed.postits).forEach(k => {
+          if (state.postits[k]) {
+            state.postits[k].items = parsed.postits[k].items || [];
+            state.postits[k].color = parsed.postits[k].color || state.postits[k].color;
+            if (typeof parsed.postits[k].collapsed === 'boolean') {
+              state.postits[k].collapsed = parsed.postits[k].collapsed;
+            }
+          }
+        });
+      }
+      if (parsed.notes) state.notes = parsed.notes;
+    }
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function updateDate() {
+  const now = new Date();
+  document.getElementById('live-date').textContent =
+    now.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function formatTs(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short' }) +
+    ' ' + d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+}
+
+function wordCount(text) {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
+
+// ═══════════════════════════════════════════════
+// OVERFLOW LOGIC: push item to next postit
+// ═══════════════════════════════════════════════
+
+function getOverflowChain(id) {
+  const chain = ['today','week','later'];
+  const idx = chain.indexOf(id);
+  return chain[idx + 1] || null;
+}
+
+function addItemToPostit(postitId, text='', done=false) {
+  const postit = state.postits[postitId];
+  if (postit.items.length >= MAX_ITEMS) {
+    const nextId = getOverflowChain(postitId);
+    if (nextId) {
+      addItemToPostit(nextId, text, done);
+    }
+    return;
+  }
+  postit.items.push({ id: uid(), text, done });
+  saveToLS();
+  renderPostits();
+}
+
+function deleteItemFromPostit(postitId, itemId) {
+  const postit = state.postits[postitId];
+  postit.items = postit.items.filter(i => i.id !== itemId);
+  saveToLS();
+  renderPostits();
+}
+
+function toggleItemDone(postitId, itemId) {
+  const postit = state.postits[postitId];
+  const item = postit.items.find(i => i.id === itemId);
+  if (item) item.done = !item.done;
+  saveToLS();
+  renderPostits();
+}
+
+function updateItemText(postitId, itemId, text) {
+  const postit = state.postits[postitId];
+  const item = postit.items.find(i => i.id === itemId);
+  if (item) item.text = text;
+  saveToLS();
+}
+
+function setPostitColor(postitId, colorClass) {
+  state.postits[postitId].color = colorClass;
+  saveToLS();
+  renderPostits();
+}
+
+function togglePostitCollapse(postitId) {
+  state.postits[postitId].collapsed = !state.postits[postitId].collapsed;
+  saveToLS();
+  renderPostits();
+}
+
+function deletePostit(postitId) {
+  if (postitId === 'today') return;
+  if (!confirm(`Clear all items in ${postitId.toUpperCase()} and hide it?`)) return;
+  state.postits[postitId].items = [];
+  saveToLS();
+  renderPostits();
+  showToast(`${postitId.toUpperCase()} cleared`);
+}
+
+// ═══════════════════════════════════════════════
+// DRAG & DROP (post-it items)
+// ═══════════════════════════════════════════════
+
+let dragSrc = null; // {postitId, itemId}
+
+function onDragStart(e, postitId, itemId) {
+  dragSrc = { postitId, itemId };
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => e.target.closest('.todo-item').classList.add('dragging'), 0);
+}
+
+function onDragEnd(e) {
+  document.querySelectorAll('.todo-item').forEach(el => {
+    el.classList.remove('dragging', 'drag-over');
+  });
+}
+
+function onDragOver(e, postitId, itemId) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.todo-item').forEach(el => el.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+
+function onDrop(e, postitId, itemId) {
+  e.preventDefault();
+  if (!dragSrc) return;
+  if (dragSrc.postitId === postitId && dragSrc.itemId === itemId) return;
+
+  // Same postit: reorder
+  if (dragSrc.postitId === postitId) {
+    const items = state.postits[postitId].items;
+    const fromIdx = items.findIndex(i => i.id === dragSrc.itemId);
+    const toIdx   = items.findIndex(i => i.id === itemId);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const [moved] = items.splice(fromIdx, 1);
+      items.splice(toIdx, 0, moved);
+    }
+  } else {
+    // Cross-postit: move item
+    const srcItems = state.postits[dragSrc.postitId].items;
+    const dstItems = state.postits[postitId].items;
+    const fromIdx = srcItems.findIndex(i => i.id === dragSrc.itemId);
+    if (fromIdx !== -1 && dstItems.length < MAX_ITEMS) {
+      const [moved] = srcItems.splice(fromIdx, 1);
+      const toIdx = dstItems.findIndex(i => i.id === itemId);
+      dstItems.splice(toIdx >= 0 ? toIdx : dstItems.length, 0, moved);
+    }
+  }
+  dragSrc = null;
+  saveToLS();
+  renderPostits();
+}
+
+// ═══════════════════════════════════════════════
+// RENDER POST-ITS
+// ═══════════════════════════════════════════════
+
+function renderPostits() {
+  const area = document.getElementById('postits-area');
+
+  // Determine which postits to show
+  // WEEK shows if TODAY has any items OR week has items
+  // LATER shows if WEEK is shown AND (week has items OR later has items)
+  const todayItems = state.postits.today.items;
+  const weekItems  = state.postits.week.items;
+  const laterItems = state.postits.later.items;
+
+  const showWeek  = true; // always show
+  const showLater = weekItems.length > 0 || laterItems.length > 0;
+
+  const toShow = [
+    { id: 'today', def: POSTIT_DEFS[0] },
+    ...(showWeek  ? [{ id: 'week',  def: POSTIT_DEFS[1] }] : []),
+    ...(showLater ? [{ id: 'later', def: POSTIT_DEFS[2] }] : []),
+  ];
+
+  area.innerHTML = '';
+
+  toShow.forEach(({ id, def }) => {
+    area.appendChild(buildPostit(id, def));
+  });
+}
+
+function buildPostit(id, def) {
+  const postit = state.postits[id];
+  const items  = postit.items;
+  const color  = postit.color;
+  const collapsed = postit.collapsed ? 'collapsed' : '';
+  const canDelete = id !== 'today';
+
+  const el = document.createElement('div');
+  el.className = `postit ${color} ${collapsed}`;
+  el.dataset.id = id;
+
+  const colors = ['yellow','blue','green','pink','lavender'];
+
+  el.innerHTML = `
+    <div class="postit-inner">
+      <div class="postit-header" onclick="togglePostitCollapse('${id}')">
+        <div class="postit-header-left">
+          <span class="postit-collapse-arrow">▼</span>
+          <div class="postit-title">${def.label}</div>
+        </div>
+        <div class="postit-header-right">
+          <div class="postit-controls" onclick="event.stopPropagation()">
+            ${colors.map(c => `<div class="color-dot c${c[0]}" title="${c}" onclick="setPostitColor('${id}','${c}')"></div>`).join('')}
+          </div>
+          ${canDelete ? `<button class="postit-delete-btn" title="Remove this post-it" onclick="event.stopPropagation();deletePostit('${id}')">✕</button>` : ''}
+        </div>
+      </div>
+      <div class="postit-body" style="max-height:600px;opacity:1;">
+        <div class="postit-items" id="items-${id}">
+          ${items.length === 0 ? buildTodoItem(id, null) : items.map(item => buildTodoItem(id, item)).join('')}
+        </div>
+        <div class="postit-add">
+          <button class="add-btn" onclick="addItemToPostit('${id}','')">+</button>
+          <span class="postit-count">${items.length}/${MAX_ITEMS}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Attach drag/drop events after render
+  requestAnimationFrame(() => {
+    const container = el.querySelector(`#items-${id}`);
+    if (!container) return;
+    container.querySelectorAll('.todo-item').forEach(row => {
+      const iid = row.dataset.iid;
+      if (!iid) return;
+      row.setAttribute('draggable', true);
+      row.addEventListener('dragstart', e => onDragStart(e, id, iid));
+      row.addEventListener('dragend',   e => onDragEnd(e));
+      row.addEventListener('dragover',  e => onDragOver(e, id, iid));
+      row.addEventListener('drop',      e => onDrop(e, id, iid));
+    });
+  });
+
+  return el;
+}
+
+function buildTodoItem(postitId, item) {
+  if (!item) {
+    // Empty placeholder — always renders truly empty
+    return `
+      <div class="todo-item" data-iid="">
+        <div class="drag-handle">⋮⋮</div>
+        <div class="todo-check"></div>
+        <div class="todo-text" contenteditable="true" data-pid="${postitId}" data-iid=""
+          onkeydown="onTodoKeydown(event,'${postitId}','')"
+          onblur="onTodoBlur(event,'${postitId}','')"
+        ></div>
+        <button class="todo-del" onclick="deleteItemFromPostit('${postitId}','')">✕</button>
+      </div>`;
+  }
+
+  const doneClass = item.done ? 'done' : '';
+  const checkedClass = item.done ? 'checked' : '';
+  const text = item.text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  return `
+    <div class="todo-item ${doneClass}" data-iid="${item.id}">
+      <div class="drag-handle">⋮⋮</div>
+      <div class="todo-check ${checkedClass}" onclick="toggleItemDone('${postitId}','${item.id}')"></div>
+      <div class="todo-text" contenteditable="true" data-pid="${postitId}" data-iid="${item.id}"
+        onkeydown="onTodoKeydown(event,'${postitId}','${item.id}')"
+        oninput="onTodoInput(event,'${postitId}','${item.id}')"
+      >${text}</div>
+      <button class="todo-del" onclick="deleteItemFromPostit('${postitId}','${item.id}')">✕</button>
+    </div>`;
+}
+
+function onTodoKeydown(e, postitId, itemId) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const text = e.target.textContent.trim();
+    if (!itemId) {
+      // Placeholder row: commit text as new item, then re-render (which creates fresh empty placeholder)
+      if (text) {
+        addItemToPostit(postitId, text);
+      }
+      // if empty, do nothing
+    } else {
+      // Existing item: save current text then add new empty item, focus it
+      updateItemText(postitId, itemId, text);
+      addItemToPostit(postitId, '');
+      setTimeout(() => {
+        const container = document.getElementById(`items-${postitId}`);
+        if (container) {
+          const inputs = container.querySelectorAll('.todo-text');
+          if (inputs.length > 0) {
+            const last = inputs[inputs.length - 1];
+            last.textContent = ''; // guarantee empty
+            last.focus();
+          }
+        }
+      }, 50);
+    }
+  }
+}
+
+function onTodoInput(e, postitId, itemId) {
+  updateItemText(postitId, itemId, e.target.textContent.trim());
+}
+
+function onTodoBlur(e, postitId, itemId) {
+  const text = e.target.textContent.trim();
+  if (text && !itemId) {
+    addItemToPostit(postitId, text);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// EDITOR
+// ═══════════════════════════════════════════════
+
+function fmt(cmd) {
+  document.getElementById('note-editor').focus();
+  document.execCommand(cmd, false, null);
+}
+
+function setFontSize(size) {
+  document.getElementById('note-editor').focus();
+  document.execCommand('fontSize', false, 1);
+  const spans = document.getElementById('note-editor').querySelectorAll('font[size="1"]');
+  spans.forEach(s => {
+    s.removeAttribute('size');
+    s.style.fontSize = size + 'px';
+  });
+}
+
+function setColor(color) {
+  document.getElementById('note-editor').focus();
+  document.execCommand('foreColor', false, color);
+}
+
+function clearEditor() {
+  document.getElementById('note-editor').innerHTML = '';
+  document.getElementById('note-title').value = '';
+  state.editingNoteId = null;
+  updateWordCount();
+  showToast('Editor cleared');
+}
+
+function copyEditor() {
+  const text = document.getElementById('note-editor').innerText;
+  navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'));
+}
+
+function updateWordCount() {
+  const text = document.getElementById('note-editor').innerText || '';
+  const wc = wordCount(text);
+  document.getElementById('editor-meta').textContent = `${wc} word${wc !== 1 ? 's' : ''}`;
+}
+
+document.getElementById('note-editor').addEventListener('input', updateWordCount);
+
+function saveNote() {
+  const editor = document.getElementById('note-editor');
+  const titleEl = document.getElementById('note-title');
+  const html = editor.innerHTML.trim();
+  const text = editor.innerText.trim();
+  if (!text) { showToast('Nothing to save'); return; }
+
+  const firstLine = text.split('\n')[0].slice(0, 80);
+  const title = titleEl.value.trim() || firstLine || 'Untitled';
+  const ts = Date.now();
+
+  if (state.editingNoteId) {
+    const note = state.notes.find(n => n.id === state.editingNoteId);
+    if (note) {
+      note.title = title;
+      note.html  = html;
+      note.text  = text;
+      note.updatedAt = ts;
+    }
+    state.editingNoteId = null;
+  } else {
+    state.notes.unshift({ id: uid(), title, html, text, createdAt: ts, updatedAt: ts });
+  }
+
+  saveToLS();
+  renderNotes();
+  editor.innerHTML = '';
+  titleEl.value = '';
+  updateWordCount();
+  showToast('Note saved ✓');
+}
+
+// ═══════════════════════════════════════════════
+// SAVED NOTES
+// ═══════════════════════════════════════════════
+
+function renderNotes() {
+  const list = document.getElementById('notes-list');
+  if (state.notes.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="icon">📝</div>
+      <div>No saved notes yet.<br>Write something and hit Save.</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = state.notes.map(note => `
+    <div class="note-card" id="note-card-${note.id}">
+      <div class="note-card-header" onclick="toggleNoteCard('${note.id}')">
+        <span class="note-card-expand">▶</span>
+        <div style="flex:1;min-width:0;">
+          <div class="note-card-title">${escHtml(note.title)}</div>
+          <div class="note-card-preview">${escHtml(note.text.slice(0,80))}${note.text.length > 80 ? '…' : ''}</div>
+        </div>
+        <span class="note-card-time">${formatTs(note.updatedAt)}</span>
+      </div>
+      <div class="note-card-body">
+        <div class="note-card-content">${note.html}</div>
+        <div class="note-card-actions">
+          <button class="btn btn-ghost btn-sm" onclick="editNote('${note.id}')">Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="copyNote('${note.id}')">Copy</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteNote('${note.id}')">Delete</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toggleNoteCard(id) {
+  const card = document.getElementById(`note-card-${id}`);
+  card.classList.toggle('expanded');
+}
+
+function editNote(id) {
+  const note = state.notes.find(n => n.id === id);
+  if (!note) return;
+  document.getElementById('note-editor').innerHTML = note.html;
+  document.getElementById('note-title').value = note.title;
+  state.editingNoteId = id;
+  updateWordCount();
+  document.getElementById('note-editor').focus();
+  showToast('Editing note — hit Save to update');
+}
+
+function copyNote(id) {
+  const note = state.notes.find(n => n.id === id);
+  if (!note) return;
+  navigator.clipboard.writeText(note.text).then(() => showToast('Copied'));
+}
+
+function deleteNote(id) {
+  if (!confirm('Delete this note?')) return;
+  state.notes = state.notes.filter(n => n.id !== id);
+  if (state.editingNoteId === id) {
+    state.editingNoteId = null;
+    document.getElementById('note-editor').innerHTML = '';
+    document.getElementById('note-title').value = '';
+  }
+  saveToLS();
+  renderNotes();
+}
+
+// ═══════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `life-command-center-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Exported JSON ✓');
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+
+loadFromLS();
+updateDate();
+setInterval(updateDate, 60000);
+renderPostits();
+renderNotes();
+</script>
+</body>
+</html>
