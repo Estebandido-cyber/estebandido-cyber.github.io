@@ -42,6 +42,9 @@
     --accent-workout: #c8f135;
     --accent-workout-dim: rgba(200,241,53,0.12);
     --accent-workout-glow: rgba(200,241,53,0.25);
+    --accent-notes: #818cf8;
+    --accent-notes-dim: rgba(129,140,248,0.12);
+    --accent-notes-glow: rgba(129,140,248,0.25);
   }
 
   body {
@@ -169,6 +172,7 @@
   .tile:nth-child(5) { animation-delay: 0.25s; }
   .tile:nth-child(6) { animation-delay: 0.3s; }
   .tile:nth-child(7) { animation-delay: 0.35s; }
+  .tile:nth-child(8) { animation-delay: 0.4s; }
 
   .tile::before {
     content: '';
@@ -204,6 +208,11 @@
   .tile-strat:hover { border-color: rgba(251,113,133,0.5); }
   .tile-strat .tile-icon { background: rgba(251,113,133,0.1); color: #e8c97a; font-size: 20px; }
   .tile-strat .tile-name { color: #fb7185; }
+  .tile-notes { border-color: rgba(129,140,248,0.3); }
+  .tile-notes::before { background: radial-gradient(ellipse at top left, var(--accent-notes-dim), transparent 70%); }
+  .tile-notes:hover { border-color: var(--accent-notes-glow); }
+  .tile-notes .tile-icon { background: var(--accent-notes-dim); }
+  .tile-notes .tile-name { color: var(--accent-notes); }
   .tile-lukas { border-color: rgba(0,212,170,0.3); }
   .tile-lukas::before { background: radial-gradient(ellipse at top left, rgba(0,212,170,0.1), transparent 70%); }
   .tile-lukas:hover { border-color: rgba(0,212,170,0.5); }
@@ -500,6 +509,16 @@
         <div class="stat-divider"></div>
         <div class="stat"><div class="stat-label">Current Phase</div><div class="stat-value">Phase 0 · Accumulation Sprint</div></div>
       </div>
+      <div class="tile-arrow">↗</div>
+    </a>
+
+    <a class="tile tile-notes" href="notes.html">
+      <div class="tile-header">
+        <div class="tile-icon">📝</div>
+        <div class="tile-name">Notes</div>
+      </div>
+      <div class="tile-stats"><div class="no-data">Coming soon…</div></div>
+      <div class="tile-footer" id="footer-notes"></div>
       <div class="tile-arrow">↗</div>
     </a>
 
