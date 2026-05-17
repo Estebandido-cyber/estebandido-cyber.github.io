@@ -73,6 +73,13 @@
     min-width: 0;
   }
 
+  .header-stat-group {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
   .header-stat {
     display: flex;
     flex-direction: column;
@@ -825,51 +832,67 @@
   .cf-trend-lbl { font-size:9px; color:var(--text3); white-space:nowrap; }
   .cf-trend-amt { font-size:9px; font-family:'Syne',sans-serif; font-weight:600; }
 
-  /* ─── TABLET + MOBILE: totals on row 2, buttons on row 3 ─── */
+  /* ─── TABLET (769–1024px): row1=title, row2=all totals, row3=buttons ─── */
   @media (max-width: 1024px) {
     .app-header {
       flex-wrap: wrap;
       padding: 8px 16px;
-      gap: 8px;
+      gap: 0;
     }
+    .app-title { order: 1; }
     .header-totals {
       order: 2;
       flex: 0 0 100%;
-      padding-top: 6px;
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 0;
+      padding: 6px 0;
       border-top: 1px solid var(--border);
       overflow-x: auto;
-      flex-wrap: nowrap;
-      min-width: 0;
     }
+    .header-stat-group {
+      gap: 14px;
+    }
+    .hsg-sep { display: flex; margin: 0 12px; }
     .header-actions {
       order: 3;
       flex: 0 0 100%;
       margin-left: 0;
       gap: 6px;
-      padding-top: 6px;
+      padding: 6px 0;
       border-top: 1px solid var(--border);
       justify-content: flex-start;
       flex-wrap: wrap;
     }
   }
 
-  /* ─── MOBILE ONLY ─── */
+  /* ─── MOBILE (≤768px): row1=title, row2=4 main stats, row3=2 cashflow stats, row4=buttons ─── */
   @media (max-width: 768px) {
     .app-header {
       padding: 8px 12px;
-      gap: 8px;
+      gap: 0;
     }
     .app-title {
       font-size: 15px;
       flex: 0 0 auto;
     }
     .header-totals {
-      justify-content: center;
+      flex-direction: column;
+      gap: 0;
+      align-items: stretch;
     }
+    .header-stat-group {
+      flex: 0 0 100%;
+      padding: 5px 0;
+      gap: 0;
+      justify-content: space-around;
+    }
+    .hsg-sep { display: none; }
     .header-stat-label { font-size: 8px; }
-    .header-stat-value { font-size: 14px; }
+    .header-stat-value { font-size: 13px; }
     .header-actions {
       justify-content: center;
+      gap: 5px;
     }
     .btn {
       padding: 5px 8px;
@@ -882,7 +905,6 @@
     .month-label { font-size: 16px; min-width: 140px; }
     .month-total-badge { padding: 6px 10px; }
     .month-total-badge-value { font-size: 15px; }
-    /* Always show delete button on touch devices */
     .entry-del {
       opacity: 1 !important;
       color: var(--red) !important;
@@ -1235,30 +1257,34 @@
   <span style="font-size:20px;line-height:1;flex-shrink:0;">💳</span>
   <div style="width:1px;height:28px;background:var(--border2);flex-shrink:0;"></div>
   <div class="header-totals">
-    <div class="header-stat">
-      <div class="header-stat-label">This Year</div>
-      <div class="header-stat-value accent" id="hdr-year-total">0,00 €</div>
+    <div class="header-stat-group" id="hsg-main">
+      <div class="header-stat">
+        <div class="header-stat-label">This Year</div>
+        <div class="header-stat-value accent" id="hdr-year-total">0,00 €</div>
+      </div>
+      <div class="header-stat">
+        <div class="header-stat-label">This Month</div>
+        <div class="header-stat-value" id="hdr-month-total">0,00 €</div>
+      </div>
+      <div class="header-stat">
+        <div class="header-stat-label">This Week</div>
+        <div class="header-stat-value" id="hdr-week-total">0,00 €</div>
+      </div>
+      <div class="header-stat">
+        <div class="header-stat-label">Today</div>
+        <div class="header-stat-value" id="hdr-day-total">0,00 €</div>
+      </div>
     </div>
-    <div class="header-stat">
-      <div class="header-stat-label">This Month</div>
-      <div class="header-stat-value" id="hdr-month-total">0,00 €</div>
-    </div>
-    <div class="header-stat">
-      <div class="header-stat-label">This Week</div>
-      <div class="header-stat-value" id="hdr-week-total">0,00 €</div>
-    </div>
-    <div class="header-stat">
-      <div class="header-stat-label">Today</div>
-      <div class="header-stat-value" id="hdr-day-total">0,00 €</div>
-    </div>
-    <div style="width:1px;height:28px;background:var(--border2);flex-shrink:0;margin:0 4px;"></div>
-    <div class="header-stat">
-      <div class="header-stat-label">Year Income</div>
-      <div class="header-stat-value" id="hdr-yr-income" style="color:var(--green)">—</div>
-    </div>
-    <div class="header-stat">
-      <div class="header-stat-label">Year Net</div>
-      <div class="header-stat-value" id="hdr-yr-net" style="color:var(--text3)">—</div>
+    <div style="width:1px;height:28px;background:var(--border2);flex-shrink:0;" class="hsg-sep"></div>
+    <div class="header-stat-group" id="hsg-cashflow">
+      <div class="header-stat">
+        <div class="header-stat-label">Year Income</div>
+        <div class="header-stat-value" id="hdr-yr-income" style="color:var(--green)">—</div>
+      </div>
+      <div class="header-stat">
+        <div class="header-stat-label">Year Net</div>
+        <div class="header-stat-value" id="hdr-yr-net" style="color:var(--text3)">—</div>
+      </div>
     </div>
   </div>
   <div class="header-actions">
