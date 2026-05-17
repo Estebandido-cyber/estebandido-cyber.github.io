@@ -323,6 +323,16 @@
     color: var(--subtle);
     font-style: italic;
   }
+  .doit-item {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11.5px;
+    color: var(--text);
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 1px 0;
+  }
 
   .live-dot {
     display: inline-block;
@@ -444,7 +454,7 @@
         <div class="tile-icon">📝</div>
         <div class="tile-name">Do it!</div>
       </div>
-      <div class="tile-stats"><div class="no-data">Coming soon…</div></div>
+      <div class="tile-stats" id="stats-notes"><div class="no-data">Loading…</div></div>
       <div class="tile-footer" id="footer-notes"></div>
       <div class="tile-arrow">↗</div>
     </a>
@@ -762,8 +772,42 @@ function loadLukas() {
   }
 }
 
+// ── DO IT! ───────────────────────────────────────────────────────
+function loadDoIt() {
+  const raw = safeGet('doit_lcc_v1');
+  const data = safeParse(raw);
+  const el = document.getElementById('stats-notes');
+  if (!data || !data.postits) { el.innerHTML = noData('Open Do it! to start'); return; }
+
+  const todayItems = (data.postits.today?.items || []).filter(i => !i.done).slice(0, 3);
+  const weekItems  = (data.postits.week?.items  || []).filter(i => !i.done).slice(0, 2);
+
+  let html = '';
+
+  if (todayItems.length === 0 && weekItems.length === 0) {
+    el.innerHTML = noData('All done! 🎉'); return;
+  }
+
+  if (todayItems.length > 0) {
+    html += `<div class="stat-label" style="margin-bottom:4px">Today</div>`;
+    todayItems.forEach(i => {
+      html += `<div class="doit-item">◦ ${i.text}</div>`;
+    });
+  }
+
+  if (weekItems.length > 0) {
+    if (todayItems.length > 0) html += '<div class="stat-divider"></div>';
+    html += `<div class="stat-label" style="margin-bottom:4px">This week</div>`;
+    weekItems.forEach(i => {
+      html += `<div class="doit-item">◦ ${i.text}</div>`;
+    });
+  }
+
+  el.innerHTML = html;
+}
+
 // ── init ─────────────────────────────────────────────────────────
-function loadAll() { loadTracker(); loadCalc(); loadPlanner(); loadFire(); loadWorkout(); loadLukas(); }
+function loadAll() { loadDoIt(); loadTracker(); loadCalc(); loadPlanner(); loadFire(); loadWorkout(); loadLukas(); }
 loadAll();
 </script>
 </body>
