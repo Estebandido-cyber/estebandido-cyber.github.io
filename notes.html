@@ -97,9 +97,8 @@
   .hdr-sep {
     width: 1px;
     height: 28px;
-    background: var(--border);
+    background: rgba(240,234,216,0.35);
     flex-shrink: 0;
-    opacity: 0.6;
   }
 
   .hdr-title {
@@ -1143,9 +1142,9 @@ const MAX_ITEMS = 5;
 
 let state = {
   postits: {
-    today:  { items: [], color: 'yellow', collapsed: false },
-    week:   { items: [], color: 'blue',   collapsed: true  },
-    later:  { items: [], color: 'green',  collapsed: true  },
+    today:  { items: [], color: 'yellow', collapsed: false, hidden: false },
+    week:   { items: [], color: 'blue',   collapsed: true,  hidden: true  },
+    later:  { items: [], color: 'green',  collapsed: true,  hidden: true  },
   },
   notes: [],
   editingNoteId: null,
@@ -1187,10 +1186,9 @@ window.addEventListener('beforeunload', () => {
 
 function loadFromLS() {
   try {
-    // Always prefer the current key; only fall back if it's genuinely absent
     let raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) raw = localStorage.getItem('lcc_state');
-    if (!raw) return; // nothing saved yet — keep defaults
+    if (!raw) return;
     const parsed = JSON.parse(raw);
     if (parsed.postits) {
       Object.keys(parsed.postits).forEach(k => {
@@ -1200,6 +1198,14 @@ function loadFromLS() {
           if (parsed.postits[k].color) state.postits[k].color = parsed.postits[k].color;
           if (typeof parsed.postits[k].collapsed === 'boolean') {
             state.postits[k].collapsed = parsed.postits[k].collapsed;
+          }
+          if (typeof parsed.postits[k].hidden === 'boolean') {
+            state.postits[k].hidden = parsed.postits[k].hidden;
+          } else {
+            // Migrate old saves that had no hidden flag: infer from items
+            if (k !== 'today') {
+              state.postits[k].hidden = state.postits[k].items.length === 0;
+            }
           }
         }
       });
@@ -1269,78 +1275,128 @@ function getOverflowChain(id) {
   return chain[idx + 1] || null;
 }
 
+// Insert a new item at a specific index in a postit.
+// If postit is full, the item that gets bumped off the end overflows to next postit.
+// afterItemId: insert after this item's id. null = append to end.
+function insertItemIntoPostit(postitId, text, done, afterItemId, focusNew) {
+  const postit = state.postits[postitId];
+  const newItem = { id: uid(), text, done };
+
+  // Find insertion index
+  let insertIdx;
+  if (afterItemId === null) {
+    insertIdx = postit.items.length; // append
+  } else {
+    const idx = postit.items.findIndex(i => i.id === afterItemId);
+    insertIdx = idx >= 0 ? idx + 1 : postit.items.length;
+  }
+
+  // Splice new item in
+  postit.items.splice(insertIdx, 0, newItem);
+
+  // If now over limit, pop the last item and overflow it
+  let bumped = null;
+  if (postit.items.length > MAX_ITEMS) {
+    bumped = postit.items.pop(); // remove last
+  }
+
+  saveToLS();
+
+  // For overflow: handle bumped item before touching DOM
+  if (bumped) {
+    const nextId = getOverflowChain(postitId);
+    if (nextId) {
+      _addToStateOnly(nextId, bumped.text, bumped.done, 0); // prepend bumped to front of next
+    }
+    // Full re-render because next postit may need to appear/update
+    renderPostits();
+    return;
+  }
+
+  // No overflow: surgical DOM update on this postit only
+  const container = document.getElementById(`items-${postitId}`);
+  if (!container) { renderPostits(); return; }
+
+  // Remove placeholder
+  const placeholder = container.querySelector('.todo-item[data-iid=""]');
+  if (placeholder) placeholder.remove();
+
+  // Build new row and insert at correct DOM position
+  const row = createTodoItemEl(postitId, newItem);
+  const allRows = container.querySelectorAll('.todo-item[data-iid]:not([data-iid=""])');
+  // insertIdx is index in items array; insert before the DOM row at that same position
+  if (insertIdx >= allRows.length) {
+    container.appendChild(row);
+  } else {
+    container.insertBefore(row, allRows[insertIdx]);
+  }
+
+  // Update count
+  const countEl = container.closest('.postit-inner').querySelector('.postit-count');
+  if (countEl) countEl.textContent = `${postit.items.length}/${MAX_ITEMS}`;
+
+  // Manage + button and placeholder
+  const addBtn = container.closest('.postit-inner').querySelector('.add-btn');
+  if (postit.items.length >= MAX_ITEMS) {
+    if (addBtn) addBtn.style.display = 'none';
+    const ph = container.querySelector('.todo-item[data-iid=""]');
+    if (ph) ph.remove();
+  } else {
+    if (addBtn) addBtn.style.display = '';
+    // Re-add placeholder if not present
+    if (!container.querySelector('.todo-item[data-iid=""]')) {
+      container.appendChild(createPlaceholderEl(postitId));
+    }
+  }
+
+  if (focusNew) {
+    const newText = row.querySelector('.todo-text');
+    if (newText) {
+      newText.focus();
+      const range = document.createRange();
+      range.selectNodeContents(newText);
+      range.collapse(false);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+    }
+  }
+}
+
+// Convenience wrapper: append to end (used by + button and placeholder blur)
 function addItemToPostit(postitId, text='', done=false, focusNew=false) {
   const postit = state.postits[postitId];
-
   if (postit.items.length >= MAX_ITEMS) {
-    // Overflow: find next postit, add there (state only), expand it, re-render everything
+    // Full — overflow the new item directly (no insertion needed)
     const nextId = getOverflowChain(postitId);
     if (!nextId) return;
-    // Recursively add to next (may itself overflow further)
-    _addToStateOnly(nextId, text, done);
+    _addToStateOnly(nextId, text, done, null); // append to end of next
     saveToLS();
     renderPostits();
     return;
   }
-
-  const newItem = { id: uid(), text, done };
-  postit.items.push(newItem);
-  saveToLS();
-
-  // Surgical DOM update: append new row to existing items container
-  const container = document.getElementById(`items-${postitId}`);
-  if (container) {
-    // Remove placeholder row if present (data-iid="")
-    const placeholder = container.querySelector('.todo-item[data-iid=""]');
-    if (placeholder) placeholder.remove();
-
-    // Append new real item row
-    const row = createTodoItemEl(postitId, newItem);
-    container.appendChild(row);
-
-    // Update count badge
-    const countEl = container.closest('.postit-inner').querySelector('.postit-count');
-    if (countEl) countEl.textContent = `${postit.items.length}/${MAX_ITEMS}`;
-
-    // If list is now full, hide the + button and remove placeholder
-    const addBtn = container.closest('.postit-inner').querySelector('.add-btn');
-    if (postit.items.length >= MAX_ITEMS) {
-      if (addBtn) addBtn.style.display = 'none';
-      // Remove any lingering placeholder
-      const ph = container.querySelector('.todo-item[data-iid=""]');
-      if (ph) ph.remove();
-    } else {
-      if (addBtn) addBtn.style.display = '';
-    }
-
-    if (focusNew) {
-      const newText = row.querySelector('.todo-text');
-      if (newText) {
-        newText.focus();
-        const range = document.createRange();
-        range.selectNodeContents(newText);
-        range.collapse(false);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-    }
-  } else {
-    renderPostits();
-  }
+  insertItemIntoPostit(postitId, text, done, null, focusNew);
 }
 
 // Add item to state only (no DOM touch) — used for overflow chains
-function _addToStateOnly(postitId, text, done) {
+// insertAtIdx: numeric index to splice at, or null to append
+function _addToStateOnly(postitId, text, done, insertAtIdx) {
   const postit = state.postits[postitId];
-  if (postit.items.length >= MAX_ITEMS) {
-    const nextId = getOverflowChain(postitId);
-    if (nextId) _addToStateOnly(nextId, text, done);
-    return;
-  }
-  postit.items.push({ id: uid(), text, done });
-  // Auto-expand so user sees where item landed
+  // Unhide this postit since it's receiving an item
+  postit.hidden = false;
   postit.collapsed = false;
+
+  const newItem = { id: uid(), text, done };
+  const idx = (insertAtIdx === null || insertAtIdx === undefined)
+    ? postit.items.length
+    : Math.min(insertAtIdx, postit.items.length);
+  postit.items.splice(idx, 0, newItem);
+
+  // If now over limit, cascade overflow of the bumped item
+  if (postit.items.length > MAX_ITEMS) {
+    const bumped = postit.items.pop();
+    const nextId = getOverflowChain(postitId);
+    if (nextId) _addToStateOnly(nextId, bumped.text, bumped.done, 0);
+  }
 }
 
 // Create a single todo item DOM element (no innerHTML injection)
@@ -1423,8 +1479,8 @@ function onTodoKeydown(e, postitId, itemId, textEl) {
     e.preventDefault();
     // Save current text first
     updateItemText(postitId, itemId, textEl.textContent.trim());
-    // Add new empty item and focus it
-    addItemToPostit(postitId, '', false, true);
+    // Insert new empty item directly after this one
+    insertItemIntoPostit(postitId, '', false, itemId, true);
   }
 }
 
@@ -1501,9 +1557,18 @@ function deletePostit(postitId) {
   if (postitId === 'today') return;
   if (!confirm(`Clear all items in ${postitId.toUpperCase()} and hide it?`)) return;
   state.postits[postitId].items = [];
+  state.postits[postitId].hidden = true;
+  // Also hide any downstream postits that have no items
+  const chain = ['today','week','later'];
+  const idx = chain.indexOf(postitId);
+  for (let i = idx + 1; i < chain.length; i++) {
+    if (state.postits[chain[i]].items.length === 0) {
+      state.postits[chain[i]].hidden = true;
+    }
+  }
   saveToLS();
   renderPostits();
-  showToast(`${postitId.toUpperCase()} cleared`);
+  showToast(`${postitId.toUpperCase()} removed`);
 }
 
 // ═══════════════════════════════════════════════
@@ -1513,26 +1578,11 @@ function deletePostit(postitId) {
 function renderPostits() {
   const area = document.getElementById('postits-area');
 
-  // Determine which postits to show
-  // WEEK shows if TODAY has any items OR week has items
-  // LATER shows if WEEK is shown AND (week has items OR later has items)
-  const todayItems = state.postits.today.items;
-  const weekItems  = state.postits.week.items;
-  const laterItems = state.postits.later.items;
-
-  const showWeek  = true; // always show
-  const showLater = weekItems.length > 0 || laterItems.length > 0;
-
-  const toShow = [
-    { id: 'today', def: POSTIT_DEFS[0] },
-    ...(showWeek  ? [{ id: 'week',  def: POSTIT_DEFS[1] }] : []),
-    ...(showLater ? [{ id: 'later', def: POSTIT_DEFS[2] }] : []),
-  ];
+  const toShow = POSTIT_DEFS.filter(def => !state.postits[def.id].hidden);
 
   area.innerHTML = '';
-
-  toShow.forEach(({ id, def }) => {
-    area.appendChild(buildPostit(id, def));
+  toShow.forEach(def => {
+    area.appendChild(buildPostit(def.id, def));
   });
 }
 
@@ -2022,7 +2072,6 @@ function doImport(overwrite) {
   showToast('Import complete ✓');
 }
 
-// Apply a full state object safely
 function applyStateData(data) {
   if (data.postits) {
     Object.keys(data.postits).forEach(k => {
@@ -2031,6 +2080,9 @@ function applyStateData(data) {
         state.postits[k].color     = data.postits[k].color     || state.postits[k].color;
         state.postits[k].collapsed = typeof data.postits[k].collapsed === 'boolean'
           ? data.postits[k].collapsed : state.postits[k].collapsed;
+        state.postits[k].hidden    = typeof data.postits[k].hidden === 'boolean'
+          ? data.postits[k].hidden
+          : (k !== 'today' && state.postits[k].items.length === 0);
       }
     });
   }
