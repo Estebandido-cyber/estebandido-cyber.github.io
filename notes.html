@@ -1139,7 +1139,7 @@ const POSTIT_DEFS = [
   { id: 'later',  label: 'LATER',  colorClass: 'green'  },
 ];
 
-const MAX_ITEMS = 10;
+const MAX_ITEMS = 5;
 
 let state = {
   postits: {
@@ -1163,33 +1163,48 @@ function saveToLS() {
   showSaving();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      showSaved();
-    } catch(e) { console.warn('Save error', e); }
+    _writeSave();
   }, 10000);
 }
 
+function _writeSave() {
+  try {
+    // Never serialize editingNoteId — it's UI state only
+    const toSave = {
+      postits: state.postits,
+      notes: state.notes,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    showSaved();
+  } catch(e) { console.warn('Save error', e); }
+}
+
+// Flush immediately when navigating away
+window.addEventListener('beforeunload', () => {
+  clearTimeout(saveTimer);
+  _writeSave();
+});
+
 function loadFromLS() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    // fallback: also try old key
-    const data = raw || localStorage.getItem('lcc_state');
-    if (data) {
-      const parsed = JSON.parse(data);
-      if (parsed.postits) {
-        Object.keys(parsed.postits).forEach(k => {
-          if (state.postits[k]) {
-            state.postits[k].items = parsed.postits[k].items || [];
-            state.postits[k].color = parsed.postits[k].color || state.postits[k].color;
-            if (typeof parsed.postits[k].collapsed === 'boolean') {
-              state.postits[k].collapsed = parsed.postits[k].collapsed;
-            }
+    // Always prefer the current key; only fall back if it's genuinely absent
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) raw = localStorage.getItem('lcc_state');
+    if (!raw) return; // nothing saved yet — keep defaults
+    const parsed = JSON.parse(raw);
+    if (parsed.postits) {
+      Object.keys(parsed.postits).forEach(k => {
+        if (state.postits[k]) {
+          state.postits[k].items = Array.isArray(parsed.postits[k].items)
+            ? parsed.postits[k].items : [];
+          if (parsed.postits[k].color) state.postits[k].color = parsed.postits[k].color;
+          if (typeof parsed.postits[k].collapsed === 'boolean') {
+            state.postits[k].collapsed = parsed.postits[k].collapsed;
           }
-        });
-      }
-      if (parsed.notes) state.notes = parsed.notes;
+        }
+      });
     }
+    if (Array.isArray(parsed.notes)) state.notes = parsed.notes;
   } catch(e) { console.warn('Load error', e); }
 }
 
@@ -1258,18 +1273,13 @@ function addItemToPostit(postitId, text='', done=false, focusNew=false) {
   const postit = state.postits[postitId];
 
   if (postit.items.length >= MAX_ITEMS) {
-    // Overflow to next postit
+    // Overflow: find next postit, add there (state only), expand it, re-render everything
     const nextId = getOverflowChain(postitId);
-    if (nextId) {
-      // Need to show LATER if it wasn't visible — full re-render needed
-      addItemToPostit(nextId, text, done, focusNew);
-      // Expand the next postit so user sees it
-      if (state.postits[nextId].collapsed) {
-        state.postits[nextId].collapsed = false;
-      }
-      saveToLS();
-      renderPostits(); // safe here because we're not mid-typing in this postit
-    }
+    if (!nextId) return;
+    // Recursively add to next (may itself overflow further)
+    _addToStateOnly(nextId, text, done);
+    saveToLS();
+    renderPostits();
     return;
   }
 
@@ -1292,15 +1302,21 @@ function addItemToPostit(postitId, text='', done=false, focusNew=false) {
     const countEl = container.closest('.postit-inner').querySelector('.postit-count');
     if (countEl) countEl.textContent = `${postit.items.length}/${MAX_ITEMS}`;
 
-    // If list is now full, hide the + button
+    // If list is now full, hide the + button and remove placeholder
     const addBtn = container.closest('.postit-inner').querySelector('.add-btn');
-    if (addBtn) addBtn.style.display = postit.items.length >= MAX_ITEMS ? 'none' : '';
+    if (postit.items.length >= MAX_ITEMS) {
+      if (addBtn) addBtn.style.display = 'none';
+      // Remove any lingering placeholder
+      const ph = container.querySelector('.todo-item[data-iid=""]');
+      if (ph) ph.remove();
+    } else {
+      if (addBtn) addBtn.style.display = '';
+    }
 
     if (focusNew) {
       const newText = row.querySelector('.todo-text');
       if (newText) {
         newText.focus();
-        // Place cursor at end
         const range = document.createRange();
         range.selectNodeContents(newText);
         range.collapse(false);
@@ -1310,9 +1326,21 @@ function addItemToPostit(postitId, text='', done=false, focusNew=false) {
       }
     }
   } else {
-    // Fallback full re-render if container not found
     renderPostits();
   }
+}
+
+// Add item to state only (no DOM touch) — used for overflow chains
+function _addToStateOnly(postitId, text, done) {
+  const postit = state.postits[postitId];
+  if (postit.items.length >= MAX_ITEMS) {
+    const nextId = getOverflowChain(postitId);
+    if (nextId) _addToStateOnly(nextId, text, done);
+    return;
+  }
+  postit.items.push({ id: uid(), text, done });
+  // Auto-expand so user sees where item landed
+  postit.collapsed = false;
 }
 
 // Create a single todo item DOM element (no innerHTML injection)
@@ -1999,14 +2027,14 @@ function applyStateData(data) {
   if (data.postits) {
     Object.keys(data.postits).forEach(k => {
       if (state.postits[k]) {
-        state.postits[k].items     = data.postits[k].items     || [];
+        state.postits[k].items     = Array.isArray(data.postits[k].items) ? data.postits[k].items : [];
         state.postits[k].color     = data.postits[k].color     || state.postits[k].color;
         state.postits[k].collapsed = typeof data.postits[k].collapsed === 'boolean'
           ? data.postits[k].collapsed : state.postits[k].collapsed;
       }
     });
   }
-  if (data.notes) state.notes = data.notes;
+  if (Array.isArray(data.notes)) state.notes = data.notes;
   state.editingNoteId = null;
 }
 
