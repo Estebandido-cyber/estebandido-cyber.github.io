@@ -1050,6 +1050,7 @@ function render(tab) {
   try {
     const outputs = JSON.parse(localStorage.getItem('xpenses_calculator_outputs') || '{}');
     outputs[tab] = { leftover: Math.round(d.leftover), net: Math.round(d.net), income: Math.round(d.income) };
+    outputs.savedAt = new Date().toISOString();
     localStorage.setItem('xpenses_calculator_outputs', JSON.stringify(outputs));
   } catch (_) {}
   SHARED_DEF.forEach(def => {
