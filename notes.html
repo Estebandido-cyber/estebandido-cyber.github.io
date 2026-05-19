@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root {
     --bg: #1c1a17;
@@ -79,24 +81,12 @@
 
   .hdr-sep { width: 1px; height: 28px; background: rgba(240,234,216,0.35); flex-shrink: 0; }
 
-  .hdr-title {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 16px;
-    letter-spacing: -0.3px;
-    color: var(--ink);
-    flex-shrink: 0;
-  }
+  .hdr-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; letter-spacing: -0.3px; color: var(--ink); flex-shrink: 0; }
   .hdr-title span { color: var(--ink-dim); font-weight: 400; }
 
   .hdr-spacer { flex: 1; }
 
-  .app-date {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--ink-faint);
-    flex-shrink: 0;
-  }
+  .app-date { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-faint); flex-shrink: 0; }
 
   .main-layout {
     display: grid;
@@ -129,36 +119,27 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     filter: drop-shadow(2px 4px 12px rgba(0,0,0,0.45));
   }
-
   .postit:hover {
     transform: translateY(-2px) rotate(0deg);
     filter: drop-shadow(3px 8px 20px rgba(0,0,0,0.55));
   }
-
   .postit::before {
     content: '';
     position: absolute;
-    top: -4px;
-    left: 50%;
+    top: -4px; left: 50%;
     transform: translateX(-50%);
-    width: 48px;
-    height: 10px;
+    width: 48px; height: 10px;
     background: rgba(0,0,0,0.15);
-    border-radius: 1px;
-    z-index: 10;
+    border-radius: 1px; z-index: 10;
   }
-
   .postit::after {
     content: '';
     position: absolute;
-    top: -6px;
-    left: 50%;
+    top: -6px; left: 50%;
     transform: translateX(-50%);
-    width: 52px;
-    height: 14px;
+    width: 52px; height: 14px;
     background: rgba(255,255,255,0.35);
-    border-radius: 1px;
-    z-index: 11;
+    border-radius: 1px; z-index: 11;
     backdrop-filter: blur(2px);
   }
 
@@ -169,7 +150,6 @@
     background-image: repeating-linear-gradient(transparent, transparent 27px, rgba(0,0,0,0.06) 28px);
     background-attachment: local;
   }
-
   .postit.blue .postit-inner { background-color: var(--postit-blue); }
   .postit.green .postit-inner { background-color: var(--postit-green); }
   .postit.pink .postit-inner { background-color: var(--postit-pink); }
@@ -177,59 +157,20 @@
 
   .postit-header {
     padding: 12px 16px 10px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between;
     border-bottom: 1px solid rgba(0,0,0,0.08);
     background: rgba(0,0,0,0.04);
-    cursor: pointer;
-    user-select: none;
+    cursor: pointer; user-select: none;
   }
-
   .postit-header-left { display: flex; align-items: center; gap: 7px; flex: 1; }
-
-  .postit-collapse-arrow {
-    font-size: 9px;
-    color: rgba(0,0,0,0.35);
-    transition: transform 0.2s ease;
-    line-height: 1;
-  }
+  .postit-collapse-arrow { font-size: 9px; color: rgba(0,0,0,0.35); transition: transform 0.2s ease; line-height: 1; }
   .postit.collapsed .postit-collapse-arrow { transform: rotate(-90deg); }
-
-  .postit-title {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    font-weight: 700;
-    color: rgba(0,0,0,0.65);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
+  .postit-title { font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 700; color: rgba(0,0,0,0.65); letter-spacing: 0.1em; text-transform: uppercase; }
   .postit-header-right { display: flex; align-items: center; gap: 6px; }
-
-  .postit-delete-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 13px;
-    color: rgba(0,0,0,0.25);
-    padding: 1px 3px;
-    border-radius: 3px;
-    line-height: 1;
-    transition: color 0.15s, background 0.15s;
-  }
+  .postit-delete-btn { background: none; border: none; cursor: pointer; font-size: 13px; color: rgba(0,0,0,0.25); padding: 1px 3px; border-radius: 3px; line-height: 1; transition: color 0.15s, background 0.15s; }
   .postit-delete-btn:hover { color: rgba(180,40,40,0.8); background: rgba(180,40,40,0.1); }
-
   .postit-controls { display: flex; gap: 5px; align-items: center; }
-
-  .color-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 1.5px solid rgba(0,0,0,0.2);
-    transition: transform 0.15s;
-  }
+  .color-dot { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; border: 1.5px solid rgba(0,0,0,0.2); transition: transform 0.15s; }
   .color-dot:hover { transform: scale(1.3); }
   .color-dot.cy { background: var(--postit-yellow-dark); }
   .color-dot.cb { background: var(--postit-blue-dark); }
@@ -239,231 +180,66 @@
 
   .postit-body { transition: max-height 0.25s ease, opacity 0.2s ease; overflow: hidden; }
   .postit.collapsed .postit-body { max-height: 0 !important; opacity: 0; }
-
   .postit-items { padding: 8px 0; min-height: 36px; }
 
-  .drag-handle {
-    color: rgba(0,0,0,0.25);
-    font-size: 11px;
-    cursor: grab;
-    flex-shrink: 0;
-    opacity: 0;
-    transition: opacity 0.15s;
-    line-height: 1;
-    user-select: none;
-    padding: 0 1px;
-    letter-spacing: -1px;
-    display: none;
-  }
+  .drag-handle { color: rgba(0,0,0,0.25); font-size: 11px; cursor: grab; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; line-height: 1; user-select: none; padding: 0 1px; letter-spacing: -1px; }
   .todo-item:hover .drag-handle { opacity: 1; }
   .todo-item.dragging { opacity: 0.35; background: rgba(0,0,0,0.06); }
   .todo-item.drag-over-top { border-top: 2px solid rgba(0,0,0,0.3); }
   .todo-item.drag-over-bottom { border-bottom: 2px solid rgba(0,0,0,0.3); }
 
-  .todo-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 12px;
-    min-height: 28px;
-    transition: background 0.1s;
-    position: relative;
-  }
+  .todo-item { display: flex; align-items: center; gap: 8px; padding: 4px 12px; min-height: 28px; transition: background 0.1s; position: relative; }
   .todo-item.drag-over { background: rgba(0,0,0,0.06); }
+  .todo-item.dragging { opacity: 0.4; }
+  .drag-handle { display: none; }
 
-  .todo-check {
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid rgba(0,0,0,0.35);
-    border-radius: 2px;
-    flex-shrink: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255,255,255,0.4);
-    transition: all 0.15s;
-  }
+  .todo-check { width: 14px; height: 14px; border: 1.5px solid rgba(0,0,0,0.35); border-radius: 2px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.4); transition: all 0.15s; }
   .todo-check:hover { border-color: rgba(0,0,0,0.6); background: rgba(255,255,255,0.7); }
   .todo-check.checked { background: rgba(0,0,0,0.15); border-color: rgba(0,0,0,0.3); }
   .todo-check.checked::after { content: '✓'; font-size: 9px; color: rgba(0,0,0,0.5); font-weight: 700; }
 
-  .todo-text {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    color: rgba(0,0,0,0.75);
-    flex: 1;
-    outline: none;
-    background: transparent;
-    border: none;
-    line-height: 1.4;
-    cursor: text;
-    min-width: 0;
-    word-break: break-word;
-  }
+  .todo-text { font-family: 'DM Sans', sans-serif; font-size: 13px; color: rgba(0,0,0,0.75); flex: 1; outline: none; background: transparent; border: none; line-height: 1.4; cursor: text; min-width: 0; word-break: break-word; }
   .todo-text:focus { color: rgba(0,0,0,0.9); }
   .todo-item.done .todo-text { text-decoration: line-through; color: rgba(0,0,0,0.35); }
 
-  .todo-del {
-    opacity: 0;
-    background: none;
-    border: none;
-    color: rgba(0,0,0,0.35);
-    cursor: pointer;
-    font-size: 14px;
-    padding: 0 2px;
-    line-height: 1;
-    transition: opacity 0.15s, color 0.15s;
-    flex-shrink: 0;
-  }
+  .todo-del { opacity: 0; background: none; border: none; color: rgba(0,0,0,0.35); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; transition: opacity 0.15s, color 0.15s; flex-shrink: 0; }
   .todo-item:hover .todo-del { opacity: 1; }
   .todo-del:hover { color: #c0392b; }
 
   .postit-add { padding: 6px 12px 12px; display: flex; align-items: center; gap: 6px; }
-
-  .add-btn {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(0,0,0,0.25);
-    background: rgba(0,0,0,0.06);
-    color: rgba(0,0,0,0.5);
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s;
-    flex-shrink: 0;
-  }
+  .add-btn { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,0.25); background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.5); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
   .add-btn:hover { background: rgba(0,0,0,0.15); color: rgba(0,0,0,0.8); transform: scale(1.1); }
-
   .postit-count { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(0,0,0,0.3); margin-left: auto; }
 
   /* ═══════════════════════════════════════
      SECTION 2 — EDITOR
   ═══════════════════════════════════════ */
 
-  .editor-area {
-    grid-column: 1;
-    grid-row: 2;
-    display: flex;
-    flex-direction: column;
-    background: var(--linen);
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    overflow: hidden;
-    min-height: 400px;
-  }
+  .editor-area { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; gap: 0; background: var(--linen); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; min-height: 400px; }
 
-  .editor-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 10px 14px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-  }
-
-  .toolbar-group {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding: 0 6px;
-    border-right: 1px solid var(--border);
-  }
+  .editor-toolbar { display: flex; align-items: center; gap: 4px; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .toolbar-group { display: flex; align-items: center; gap: 2px; padding: 0 6px; border-right: 1px solid var(--border); }
   .toolbar-group:last-child { border-right: none; margin-left: auto; }
-
-  .tb-btn {
-    background: none;
-    border: none;
-    color: var(--ink-dim);
-    cursor: pointer;
-    padding: 6px 10px;
-    border-radius: 5px;
-    font-size: 14px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    transition: all 0.1s;
-    min-width: 32px;
-    min-height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+  .tb-btn { background: none; border: none; color: var(--ink-dim); cursor: pointer; padding: 6px 10px; border-radius: 5px; font-size: 14px; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.1s; min-width: 32px; min-height: 32px; display: flex; align-items: center; justify-content: center; }
   .tb-btn:hover { background: rgba(240,234,216,0.08); color: var(--ink); }
   .tb-btn.active { background: rgba(232,162,58,0.2); color: var(--accent); }
-
-  .tb-select {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--ink-dim);
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    border-radius: 4px;
-    padding: 3px 6px;
-    cursor: pointer;
-    outline: none;
-  }
+  .tb-select { background: transparent; border: 1px solid var(--border); color: var(--ink-dim); font-size: 11px; font-family: 'DM Mono', monospace; border-radius: 4px; padding: 3px 6px; cursor: pointer; outline: none; }
   .tb-select option { background: #2e2b27; }
-
   .tb-color-input { width: 22px; height: 22px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; padding: 1px; background: transparent; }
 
   .editor-title-row { display: flex; align-items: center; gap: 10px; padding: 14px 18px 0; }
-
-  #note-title {
-    flex: 1;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid var(--border);
-    color: var(--ink);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    padding: 4px 0 8px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
+  #note-title { flex: 1; background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--ink); font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; padding: 4px 0 8px; outline: none; transition: border-color 0.2s; }
   #note-title::placeholder { color: var(--ink-faint); }
   #note-title:focus { border-bottom-color: var(--accent); }
 
-  #note-editor {
-    flex: 1;
-    padding: 16px 18px;
-    outline: none;
-    color: var(--ink);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    line-height: 1.7;
-    min-height: 200px;
-    overflow-y: auto;
-  }
+  #note-editor { flex: 1; padding: 16px 18px; outline: none; color: var(--ink); font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.7; min-height: 200px; overflow-y: auto; }
   #note-editor:empty::before { content: attr(data-placeholder); color: var(--ink-faint); pointer-events: none; }
 
-  .editor-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 18px;
-    border-top: 1px solid var(--border);
-    background: var(--bg2);
-  }
-
+  .editor-footer { display: flex; align-items: center; justify-content: space-between; padding: 10px 18px; border-top: 1px solid var(--border); background: var(--bg2); }
   .editor-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-faint); }
   .editor-actions { display: flex; gap: 8px; }
 
-  .btn {
-    padding: 7px 16px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    transition: all 0.15s;
-    letter-spacing: 0.02em;
-  }
+  .btn { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; letter-spacing: 0.02em; }
   .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--ink-dim); }
   .btn-ghost:hover { background: rgba(240,234,216,0.06); color: var(--ink); }
   .btn-primary { background: var(--accent); color: #1c1a17; }
@@ -475,9 +251,7 @@
   ═══════════════════════════════════════ */
 
   .notes-area { grid-column: 2; grid-row: 2; min-width: 0; width: 100%; }
-
   .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-
   .section-label { font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); }
 
   .notes-list { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
@@ -487,19 +261,14 @@
 
   .note-card { background: var(--linen); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: border-color 0.2s; }
   .note-card:hover { border-color: rgba(240,234,216,0.16); }
-
   .note-card-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; user-select: none; }
-
   .note-card-expand { color: var(--ink-faint); font-size: 10px; transition: transform 0.2s; flex-shrink: 0; }
   .note-card.expanded .note-card-expand { transform: rotate(90deg); }
-
   .note-card-title { font-size: 13px; font-weight: 500; color: var(--ink); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .note-card-time { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-faint); flex-shrink: 0; }
   .note-card-preview { font-size: 12px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
-
   .note-card-body { display: none; padding: 0 14px 14px; border-top: 1px solid var(--border); }
   .note-card.expanded .note-card-body { display: block; }
-
   .note-card-content { font-size: 13px; color: var(--ink-dim); line-height: 1.6; padding-top: 10px; max-height: 200px; overflow-y: auto; }
   .note-card-actions { display: flex; gap: 6px; margin-top: 10px; }
 
@@ -509,40 +278,18 @@
   .empty-state { text-align: center; padding: 40px 20px; color: var(--ink-faint); font-size: 13px; border: 1px dashed var(--border); border-radius: 8px; }
   .empty-state .icon { font-size: 28px; margin-bottom: 8px; opacity: 0.4; }
 
-  /* ─── ACTION BUTTONS ─── */
-  .btn-export { font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.5px; padding:6px 12px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; text-transform:uppercase; transition:all 0.15s; background:rgba(232,162,58,0.12); border:1px solid var(--accent); color:var(--accent); }
-  .btn-export:hover { background:rgba(232,162,58,0.22); }
+  /* ─── DRIVE ACTION BUTTONS ─── */
+  .btn-drive { background:#1a73e8; border-color:#1a73e8; color:#fff; font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.5px; padding:6px 12px; border-radius:6px; cursor:pointer; border:1px solid transparent; transition:all 0.15s; display:inline-flex; align-items:center; gap:5px; text-transform:uppercase; }
+  .btn-drive:hover { background:#1557b0; border-color:#1557b0; }
+  .btn-drive:disabled { opacity:0.45; cursor:not-allowed; }
 
-  .btn-import { font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.5px; padding:6px 12px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; text-transform:uppercase; transition:all 0.15s; background:rgba(122,158,126,0.12); border:1px solid var(--done-color); color:var(--done-color); }
-  .btn-import:hover { background:rgba(122,158,126,0.22); }
+  /* ─── DRIVE STATUS BAR ─── */
+  .drive-status-bar { text-align: center; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-faint); padding: 5px 32px; letter-spacing: 0.5px; transition: color 0.3s; min-height: 22px; }
+  .drive-status-bar.ok      { color: var(--done-color); }
+  .drive-status-bar.err     { color: var(--red); }
+  .drive-status-bar.working { color: var(--accent); }
 
-  /* ─── MODALS ─── */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(5px); z-index: 500; display: none; align-items: center; justify-content: center; }
-  .modal-overlay.open { display: flex; }
-
-  .modal { background: var(--linen); border: 1px solid rgba(240,234,216,0.12); border-radius: 12px; width: 480px; max-width: 95vw; max-height: 85vh; overflow-y: auto; padding: 24px; animation: modalIn 0.2s ease; }
-  @keyframes modalIn { from { opacity:0; transform:scale(0.96) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
-
-  .modal-title { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800; color: var(--ink); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
-  .modal-close { background: transparent; border: none; color: var(--ink-faint); cursor: pointer; font-size: 20px; line-height: 1; transition: color 0.15s; }
-  .modal-close:hover { color: var(--ink); }
-
-  .modal-actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
-  .modal p { color: var(--ink-dim); font-size: 12px; line-height: 1.6; margin-bottom: 14px; }
-  .modal-summary { background: var(--bg2); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px; color: var(--ink-dim); line-height: 2; }
-
-  .import-area { border: 2px dashed rgba(240,234,216,0.15); border-radius: 8px; padding: 24px; text-align: center; color: var(--ink-faint); cursor: pointer; transition: all 0.2s; margin-bottom: 12px; }
-  .import-area:hover, .import-area.drag-over { border-color: var(--accent); color: var(--accent); background: rgba(232,162,58,0.04); }
-  .import-area-icon { font-size: 28px; margin-bottom: 8px; }
-  .import-area-text { font-size: 12px; }
-
-  .btn-modal-ghost  { font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.5px; padding:7px 14px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; text-transform:uppercase; transition:all 0.15s; background:transparent; border:1px solid rgba(240,234,216,0.15); color:var(--ink-dim); }
-  .btn-modal-ghost:hover { border-color:var(--accent); color:var(--accent); }
-  .btn-modal-accent { font-family:'DM Mono',monospace; font-size:11px; font-weight:600; letter-spacing:0.5px; padding:7px 14px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; text-transform:uppercase; transition:all 0.15s; background:var(--accent); color:var(--bg); border:1px solid var(--accent); }
-  .btn-modal-accent:hover { background:var(--accent2); border-color:var(--accent2); }
-  .btn-modal-danger { font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.5px; padding:7px 14px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; text-transform:uppercase; transition:all 0.15s; background:transparent; border:1px solid var(--red); color:var(--red); }
-  .btn-modal-danger:hover { background:rgba(217,95,95,0.1); }
-
+  /* header action buttons area */
   .hdr-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 
   /* ─── SAVE INDICATOR ─── */
@@ -615,11 +362,13 @@
   <div class="hdr-title">Life <span>Command Center</span></div>
   <div class="hdr-spacer"></div>
   <div class="hdr-actions">
-    <button class="btn-export" onclick="openExport()">↓ Export</button>
-    <button class="btn-import" onclick="openImport()">↑ Import</button>
+    <button class="btn-drive" id="drive-save-btn" onclick="gdriveSave()" title="Save to Google Drive">☁ Save</button>
+    <button class="btn-drive" id="drive-load-btn" onclick="gdriveLoad()" title="Load from Google Drive">☁ Load</button>
   </div>
   <div class="app-date" id="live-date"></div>
 </header>
+
+<div class="drive-status-bar" id="drive-status-bar"></div>
 
 <div class="main-layout">
 
@@ -685,44 +434,6 @@
 
 </div>
 
-<!-- EXPORT MODAL -->
-<div class="modal-overlay" id="export-modal">
-  <div class="modal">
-    <div class="modal-title">
-      Export Data
-      <button class="modal-close" onclick="closeExport()">×</button>
-    </div>
-    <p>Download a complete backup of all your data — todos, notes, colors, and collapse states. You can import it anytime to restore.</p>
-    <div class="modal-summary" id="export-summary"></div>
-    <div class="modal-actions">
-      <button class="btn-modal-ghost" onclick="closeExport()">Cancel</button>
-      <button class="btn-modal-accent" onclick="doExport()">↓ Download JSON</button>
-    </div>
-  </div>
-</div>
-
-<!-- IMPORT MODAL -->
-<div class="modal-overlay" id="import-modal">
-  <div class="modal">
-    <div class="modal-title">
-      Import Data
-      <button class="modal-close" onclick="closeImport()">×</button>
-    </div>
-    <p>Load a previously exported JSON file. Existing entries can be <strong style="color:var(--accent)">merged</strong> or fully overwritten.</p>
-    <div class="import-area" id="import-drop-area" onclick="document.getElementById('file-input').click()">
-      <div class="import-area-icon">📂</div>
-      <div class="import-area-text">Click or drag & drop your backup file here</div>
-    </div>
-    <input type="file" id="file-input" accept=".json" style="display:none" onchange="handleFileImport(event)">
-    <div id="import-preview" style="display:none;" class="modal-summary"></div>
-    <div class="modal-actions">
-      <button class="btn-modal-ghost" onclick="closeImport()">Cancel</button>
-      <button class="btn-modal-danger" id="overwrite-btn" style="display:none" onclick="doImport(true)">Full Overwrite</button>
-      <button class="btn-modal-accent" id="merge-btn" style="display:none" onclick="doImport(false)">Merge Import</button>
-    </div>
-  </div>
-</div>
-
 <div class="save-indicator" id="save-indicator">
   <div class="save-dot"></div>
   <span id="save-text">Saving…</span>
@@ -782,6 +493,7 @@ function _writeSave() {
   } catch(e) { console.warn('Save error', e); }
 }
 
+// Flush immediately when navigating away
 window.addEventListener('beforeunload', () => {
   clearTimeout(saveTimer);
   _writeSave();
@@ -834,38 +546,6 @@ function showSaved() {
   txt.textContent = 'Saved ✓';
   clearTimeout(saveHideTimer);
   saveHideTimer = setTimeout(() => el.classList.remove('show'), 2000);
-}
-
-// ═══════════════════════════════════════════════
-// CLOUDFLARE WORKERS SYNC
-// ═══════════════════════════════════════════════
-const CF_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/doit-lcc';
-const CF_SECRET = 'widget-sync-secret-2024';
-
-async function cloudSave() {
-  try {
-    await fetch(CF_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
-      body: JSON.stringify(state)
-    });
-  } catch(e) { console.warn('Cloud save failed', e); }
-}
-
-async function cloudLoad() {
-  try {
-    const res  = await fetch(CF_URL, { headers: { 'X-Secret': CF_SECRET } });
-    const data = await res.json();
-    if (data && Object.keys(data).length > 0) {
-      applyStateData(data);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        savedAt: new Date().toISOString(),
-        postits: state.postits,
-        notes:   state.notes,
-      }));
-      renderAll();
-    }
-  } catch(e) { console.warn('Cloud load failed', e); }
 }
 
 // ═══════════════════════════════════════════════
@@ -1051,13 +731,11 @@ function createTodoItemEl(postitId, item) {
     e.dataTransfer.setData('text/plain', item.id + '|' + postitId);
     setTimeout(() => row.classList.add('dragging'), 0);
   });
-
   row.addEventListener('dragend', () => {
     row.classList.remove('dragging');
     document.querySelectorAll('.drag-over-top, .drag-over-bottom')
       .forEach(el => el.classList.remove('drag-over-top', 'drag-over-bottom'));
   });
-
   row.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -1067,34 +745,26 @@ function createTodoItemEl(postitId, item) {
       .forEach(el => el.classList.remove('drag-over-top', 'drag-over-bottom'));
     row.classList.add(e.clientY < midY ? 'drag-over-top' : 'drag-over-bottom');
   });
-
   row.addEventListener('dragleave', () => {
     row.classList.remove('drag-over-top', 'drag-over-bottom');
   });
-
   row.addEventListener('drop', (e) => {
     e.preventDefault();
     row.classList.remove('drag-over-top', 'drag-over-bottom');
-
     const raw = e.dataTransfer.getData('text/plain');
     const [draggedId, draggedPostitId] = raw.split('|');
-
     if (draggedPostitId !== postitId) return;
     if (draggedId === item.id) return;
-
     const items = state.postits[postitId].items;
     const fromIdx = items.findIndex(i => i.id === draggedId);
     const toIdx   = items.findIndex(i => i.id === item.id);
     if (fromIdx === -1 || toIdx === -1) return;
-
     const rect = row.getBoundingClientRect();
     const insertBefore = e.clientY < rect.top + rect.height / 2;
     let targetIdx = insertBefore ? toIdx : toIdx + 1;
     if (fromIdx < targetIdx) targetIdx--;
-
     const [moved] = items.splice(fromIdx, 1);
     items.splice(targetIdx, 0, moved);
-
     saveToLS();
     renderPostits();
   });
@@ -1149,7 +819,6 @@ function deleteItemFromPostit(postitId, itemId) {
   const postit = state.postits[postitId];
   postit.items = postit.items.filter(i => i.id !== itemId);
   saveToLS();
-
   const container = document.getElementById(`items-${postitId}`);
   if (container) {
     const row = container.querySelector(`.todo-item[data-iid="${itemId}"]`);
@@ -1177,7 +846,6 @@ function toggleItemDone(postitId, itemId) {
   if (!item) return;
   item.done = !item.done;
   saveToLS();
-
   const container = document.getElementById(`items-${postitId}`);
   if (container) {
     const row = container.querySelector(`.todo-item[data-iid="${itemId}"]`);
@@ -1293,14 +961,10 @@ function buildPostit(id, def) {
     container.appendChild(createPlaceholderEl(id));
   } else {
     items.forEach(item => container.appendChild(createTodoItemEl(id, item)));
-    if (items.length < MAX_ITEMS) {
-      container.appendChild(createPlaceholderEl(id));
-    }
+    if (items.length < MAX_ITEMS) container.appendChild(createPlaceholderEl(id));
   }
 
-  if (items.length >= MAX_ITEMS) {
-    el.querySelector('.add-btn').style.display = 'none';
-  }
+  if (items.length >= MAX_ITEMS) el.querySelector('.add-btn').style.display = 'none';
 
   return el;
 }
@@ -1387,7 +1051,6 @@ function renderNotes() {
     </div>`;
     return;
   }
-
   list.innerHTML = state.notes.map(note => `
     <div class="note-card" id="note-card-${note.id}">
       <div class="note-card-header" onclick="toggleNoteCard('${note.id}')">
@@ -1448,105 +1111,132 @@ function deleteNote(id) {
 }
 
 // ═══════════════════════════════════════════════
-// EXPORT / IMPORT JSON
+// GOOGLE DRIVE SYNC
 // ═══════════════════════════════════════════════
-let pendingImportData = null;
+const GD_CLIENT_ID = '453884215011-bnuqib76c5lt7vr87g6e5sd59q7r2cip.apps.googleusercontent.com';
+const GD_SCOPE     = 'https://www.googleapis.com/auth/drive.file';
+const GD_FILENAME  = 'doit_lcc_data.json';
 
-function openExport() {
-  const todoCount = Object.values(state.postits).reduce((s, p) => s + p.items.length, 0);
-  const noteCount = state.notes.length;
-  document.getElementById('export-summary').innerHTML = `
-    <div>📌 Todo items: <strong style="color:var(--ink)">${todoCount}</strong></div>
-    <div>📝 Saved notes: <strong style="color:var(--ink)">${noteCount}</strong></div>
-    <div>🕐 Exported at: <strong style="color:var(--ink)">${new Date().toLocaleString('fr-FR')}</strong></div>
-  `;
-  document.getElementById('export-modal').classList.add('open');
+let gdToken  = null;
+let gdFileId = null;
+
+function gdStatus(msg, type) {
+  const el = document.getElementById('drive-status-bar');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'drive-status-bar' + (type ? ' ' + type : '');
 }
 
-function closeExport() { document.getElementById('export-modal').classList.remove('open'); }
-
-function doExport() {
-  const payload = { version: 1, exportedAt: new Date().toISOString(), data: state };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  const d = new Date();
-  a.download = `doit_lcc_backup_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  closeExport();
-  showToast('Backup downloaded ✓');
+function gdSetBusy(busy) {
+  const s = document.getElementById('drive-save-btn');
+  const l = document.getElementById('drive-load-btn');
+  if (s) s.disabled = busy;
+  if (l) l.disabled = busy;
 }
 
-function openImport() {
-  pendingImportData = null;
-  document.getElementById('import-preview').style.display  = 'none';
-  document.getElementById('merge-btn').style.display       = 'none';
-  document.getElementById('overwrite-btn').style.display   = 'none';
-  document.getElementById('file-input').value              = '';
-  document.getElementById('import-modal').classList.add('open');
-}
-
-function closeImport() { document.getElementById('import-modal').classList.remove('open'); }
-
-function handleFileImport(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const payload = JSON.parse(e.target.result);
-      if (!payload.data) throw new Error('Invalid format');
-      pendingImportData = payload;
-
-      const todoCount = Object.values(payload.data.postits || {}).reduce((s, p) => s + (p.items||[]).length, 0);
-      const noteCount = (payload.data.notes || []).length;
-      document.getElementById('import-preview').style.display = 'block';
-      document.getElementById('import-preview').innerHTML = `
-        <div>✅ Valid backup detected</div>
-        <div>📌 Todo items: <strong style="color:var(--ink)">${todoCount}</strong></div>
-        <div>📝 Saved notes: <strong style="color:var(--ink)">${noteCount}</strong></div>
-        <div>🕐 Exported: <strong style="color:var(--ink)">${payload.exportedAt ? new Date(payload.exportedAt).toLocaleString('fr-FR') : '—'}</strong></div>
-      `;
-      document.getElementById('merge-btn').style.display     = 'inline-flex';
-      document.getElementById('overwrite-btn').style.display = 'inline-flex';
-    } catch(err) {
-      document.getElementById('import-preview').style.display = 'block';
-      document.getElementById('import-preview').innerHTML =
-        `<div style="color:var(--red)">❌ Invalid file. Please select a valid DOit! backup JSON.</div>`;
+function gdAuth(callback) {
+  if (gdToken) { callback(gdToken); return; }
+  gdStatus('Connecting to Google…', 'working');
+  gdSetBusy(true);
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: GD_CLIENT_ID,
+    scope: GD_SCOPE,
+    callback: (response) => {
+      if (response.error) {
+        gdStatus('Sign-in failed: ' + response.error, 'err');
+        gdSetBusy(false);
+        return;
+      }
+      gdToken = response.access_token;
+      gdStatus('Connected to Google Drive', 'ok');
+      callback(gdToken);
     }
-  };
-  reader.readAsText(file);
+  });
+  client.requestAccessToken();
 }
 
-function doImport(overwrite) {
-  if (!pendingImportData) return;
-  if (overwrite) {
-    applyStateData(pendingImportData.data);
-  } else {
-    const src = pendingImportData.data;
-    if (src.postits) {
-      Object.keys(src.postits).forEach(k => {
-        if (state.postits[k]) {
-          const existingIds = new Set(state.postits[k].items.map(i => i.id));
-          src.postits[k].items.forEach(item => {
-            if (!existingIds.has(item.id)) state.postits[k].items.push(item);
-          });
-        }
+function gdFindFile(token, callback) {
+  if (gdFileId) { callback(gdFileId); return; }
+  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%22' + GD_FILENAME + '%22+and+trashed%3Dfalse&fields=files(id,name)', {
+    headers: { Authorization: 'Bearer ' + token }
+  })
+  .then(r => r.json())
+  .then(res => {
+    gdFileId = (res.files && res.files.length > 0) ? res.files[0].id : null;
+    callback(gdFileId);
+  })
+  .catch(err => {
+    console.error('[GD] find file error:', err);
+    gdStatus('Drive search failed', 'err');
+    gdSetBusy(false);
+  });
+}
+
+function gdriveSave() {
+  gdSetBusy(true);
+  gdStatus('Saving to Google Drive…', 'working');
+  gdAuth(token => {
+    const payload = { version: 1, exportedAt: new Date().toISOString(), data: state };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+
+    gdFindFile(token, fileId => {
+      const url    = fileId
+        ? 'https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=multipart'
+        : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+      const method = fileId ? 'PATCH' : 'POST';
+
+      const formData = new FormData();
+      formData.append('metadata', new Blob([JSON.stringify({ name: GD_FILENAME, mimeType: 'application/json' })], { type: 'application/json' }));
+      formData.append('file', blob);
+
+      fetch(url, { method, headers: { Authorization: 'Bearer ' + token }, body: formData })
+      .then(r => r.json())
+      .then(res => {
+        if (res.error) throw new Error(JSON.stringify(res.error));
+        if (!fileId) gdFileId = res.id;
+        gdStatus('✓ Saved to Google Drive — ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}), 'ok');
+        gdSetBusy(false);
+      })
+      .catch(err => {
+        console.error('[GD] save error:', err);
+        if (String(err).includes('401')) { gdToken = null; gdFileId = null; gdStatus('Session expired — click Save again', 'err'); }
+        else gdStatus('Save failed — try again', 'err');
+        gdSetBusy(false);
       });
-    }
-    if (src.notes) {
-      const existingIds = new Set(state.notes.map(n => n.id));
-      src.notes.forEach(note => {
-        if (!existingIds.has(note.id)) state.notes.unshift(note);
+    });
+  });
+}
+
+function gdriveLoad() {
+  gdSetBusy(true);
+  gdStatus('Loading from Google Drive…', 'working');
+  gdAuth(token => {
+    gdFindFile(token, fileId => {
+      if (!fileId) {
+        gdStatus('No file found in Drive — save first', 'err');
+        gdSetBusy(false);
+        return;
+      }
+      fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+        headers: { Authorization: 'Bearer ' + token }
+      })
+      .then(r => r.json())
+      .then(payload => {
+        if (!payload.data) throw new Error('Invalid format');
+        applyStateData(payload.data);
+        saveToLS();
+        renderAll();
+        gdStatus('✓ Loaded from Google Drive — ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}), 'ok');
+        gdSetBusy(false);
+      })
+      .catch(err => {
+        console.error('[GD] load error:', err);
+        if (String(err).includes('401')) { gdToken = null; gdStatus('Session expired — click Load again', 'err'); }
+        else gdStatus('Load failed — try again', 'err');
+        gdSetBusy(false);
       });
-    }
-  }
-  saveToLS();
-  closeImport();
-  renderAll();
-  showToast('Import complete ✓');
+    });
+  });
 }
 
 function applyStateData(data) {
@@ -1567,36 +1257,41 @@ function applyStateData(data) {
   state.editingNoteId = null;
 }
 
+// ═══════════════════════════════════════════════
+// CLOUDFLARE WORKERS AUTO-SYNC
+// ═══════════════════════════════════════════════
+const CF_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/doit-lcc';
+const CF_SECRET = 'widget-sync-secret-2024';
+
+async function cloudSave() {
+  try {
+    await fetch(CF_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
+      body: JSON.stringify(state)
+    });
+  } catch(e) { console.warn('Cloud save failed', e); }
+}
+
+async function cloudLoad() {
+  try {
+    const res  = await fetch(CF_URL, { headers: { 'X-Secret': CF_SECRET } });
+    const data = await res.json();
+    if (data && Object.keys(data).length > 0) {
+      applyStateData(data);
+      saveToLS();
+      renderAll();
+    }
+  } catch(e) { console.warn('Cloud load failed', e); }
+}
+
+// ═══════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════
+
 function renderAll() {
   renderPostits();
   renderNotes();
-}
-
-// Close modals on overlay click
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', e => {
-    if (e.target === overlay) overlay.classList.remove('open');
-  });
-});
-
-// Drag & drop for import modal
-function setupDragDrop() {
-  const area = document.getElementById('import-drop-area');
-  if (!area) return;
-  area.addEventListener('dragover',  e => { e.preventDefault(); area.classList.add('drag-over'); });
-  area.addEventListener('dragleave', ()  => area.classList.remove('drag-over'));
-  area.addEventListener('drop', e => {
-    e.preventDefault();
-    area.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      const input = document.getElementById('file-input');
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      input.files = dt.files;
-      handleFileImport({ target: input });
-    }
-  });
 }
 
 // ═══════════════════════════════════════════════
@@ -1607,7 +1302,6 @@ loadFromLS();
 updateDate();
 setInterval(updateDate, 60000);
 renderAll();
-setupDragDrop();
 cloudLoad();
 </script>
 </body>
