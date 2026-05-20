@@ -205,10 +205,10 @@ body {
 /* Drive status below the header row */
 .drive-status-bar {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  height: 20px;
-  padding: 0 1.5rem;
+  gap: 3px;
+  padding: 3px 1.5rem 5px;
   max-width: 1280px;
   margin: 0 auto;
 }
@@ -218,15 +218,45 @@ body {
   font-weight: 400;
   color: var(--text-3);
   letter-spacing: 0.02em;
-  transition: color 0.3s;
+  transition: color 0.3s, opacity 0.5s;
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
 }
+.drive-status.visible { opacity: 1; height: auto; }
 .drive-status.ok      { color: var(--green); }
 .drive-status.err     { color: var(--red);   }
 .drive-status.working { color: var(--amber); }
 
+/* Cloudflare sync status — persistent, slightly larger */
+.cf-status {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-3);
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.3s;
+  min-height: 16px;
+}
+.cf-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-3);
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+.cf-status.ok   { color: var(--green); }
+.cf-status.ok   .cf-status-dot { background: var(--green); box-shadow: 0 0 4px rgba(26,170,132,0.5); }
+.cf-status.err  { color: var(--red);   }
+.cf-status.err  .cf-status-dot { background: var(--red); }
+
 /* Mobile: stack logo + actions row, then tabs, then status */
 @media (max-width: 680px) {
-  body { padding-top: 120px; }
+  body { padding-top: 132px; }
   .sticky-header { padding: 0; }
   .header-row {
     flex-wrap: wrap;
@@ -573,8 +603,9 @@ body {
 
     </div>
   </div>
-  <!-- Drive status -->
+  <!-- Drive + CF status -->
   <div class="drive-status-bar">
+    <span class="cf-status" id="cf-status"><span class="cf-status-dot"></span><span id="cf-status-text"></span></span>
     <span class="drive-status" id="drive-status"></span>
   </div>
 </div>
@@ -753,14 +784,30 @@ function showToast(msg) {
 const CF_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/xpenses-calculator';
 const CF_SECRET = 'widget-sync-secret-2024';
 
+function cfSetStatus(ok) {
+  const wrap = document.getElementById('cf-status');
+  const text = document.getElementById('cf-status-text');
+  const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  wrap.className = 'cf-status ' + (ok ? 'ok' : 'err');
+  text.textContent = ok ? 'Synced at ' + time : 'Sync failed at ' + time;
+}
+
+let cfSaveTimer = null;
 async function cloudSave() {
-  try {
-    await fetch(CF_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
-      body: JSON.stringify(states),
-    });
-  } catch (e) { console.warn('Cloud save failed', e); }
+  clearTimeout(cfSaveTimer);
+  cfSaveTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(CF_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
+        body: JSON.stringify(states),
+      });
+      cfSetStatus(res.ok);
+    } catch (e) {
+      cfSetStatus(false);
+      console.warn('Cloud save failed', e);
+    }
+  }, 3000);
 }
 
 async function cloudLoad() {
@@ -773,8 +820,12 @@ async function cloudLoad() {
       saveLocal(null);
       render('now');
       render('fire');
+      cfSetStatus(true);
     }
-  } catch (e) { console.warn('Cloud load failed', e); }
+  } catch (e) {
+    cfSetStatus(false);
+    console.warn('Cloud load failed', e);
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -786,10 +837,15 @@ async function cloudLoad() {
 let gdToken  = null;
 let gdFileId = null;
 
+let driveStatusTimer = null;
 function driveSetStatus(msg, cls) {
   const el = document.getElementById('drive-status');
   el.textContent = msg;
-  el.className = 'drive-status' + (cls ? ' ' + cls : '');
+  el.className = 'drive-status visible' + (cls ? ' ' + cls : '');
+  clearTimeout(driveStatusTimer);
+  driveStatusTimer = setTimeout(() => {
+    el.classList.remove('visible');
+  }, 4000);
 }
 
 function driveSetBusy(busy) {
