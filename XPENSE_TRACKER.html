@@ -715,13 +715,28 @@
 
   /* ─── LAST SAVE BANNER ─── */
   .last-save-bar {
-    text-align: center;
-    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font-size: 11px;
     color: var(--text3);
     padding: 6px;
     letter-spacing: 0.5px;
     margin-bottom: 8px;
+    transition: color 0.4s;
   }
+  .last-save-bar.synced { color: var(--green); }
+  .sync-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    flex-shrink: 0;
+    box-shadow: 0 0 5px var(--green);
+    display: none;
+  }
+  .last-save-bar.synced .sync-dot { display: inline-block; }
 
   input[type="number"]::-webkit-inner-spin-button,
   input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
@@ -815,7 +830,7 @@
     .header-actions { order: 0; margin-left: auto; }
   }
 
-  /* ─── TABLET (769–1280px): row1=title, row2=all totals, row3=buttons ─── */
+  /* ─── TABLET (769–1280px): row1=title, row2=totals+buttons, row3=nothing ─── */
   @media (max-width: 1280px) {
     .app-header {
       flex-wrap: wrap;
@@ -825,27 +840,29 @@
     }
     .header-totals {
       order: 2;
-      flex: 0 0 100%;
+      flex: 1;
       display: flex;
       flex-wrap: nowrap;
       gap: 0;
       padding: 6px 0;
       border-top: 1px solid var(--border);
       overflow-x: auto;
+      min-width: 0;
     }
     .header-stat-group {
       gap: 14px;
     }
     .hsg-sep { display: flex; margin: 0 12px; }
     .header-actions {
-      order: 3;
-      flex: 0 0 100%;
-      margin-left: 0;
+      order: 2;
+      flex: 0 0 auto;
+      margin-left: auto;
       gap: 6px;
       padding: 6px 0;
       border-top: 1px solid var(--border);
-      justify-content: flex-start;
-      flex-wrap: wrap;
+      justify-content: flex-end;
+      flex-wrap: nowrap;
+      align-self: center;
     }
   }
 
@@ -1315,7 +1332,7 @@
 
 <!-- MAIN -->
 <main class="main">
-  <div class="last-save-bar" id="last-save-bar">No data saved yet</div>
+  <div class="last-save-bar" id="last-save-bar"><span class="sync-dot" id="sync-dot"></span><span id="last-save-text">No data saved yet</span></div>
   <div class="drive-status-bar" id="drive-status-bar"></div>
 
   <!-- Month Nav -->
@@ -1498,6 +1515,7 @@ let settings = {
 };
 
 let saveTimer = null;
+let cloudSaveTimer = null;
 
 // ═══════════════════════════════════════════════
 // INIT
@@ -1548,19 +1566,40 @@ function saveToStorage() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
       localStorage.setItem('depenses_last_save', new Date().toISOString());
-      cloudSave();
       showSaved();
       updateLastSaveBar();
     } catch(e) { console.warn('Save error', e); }
   }, 400);
+
+  // Cloudflare sync: separate 3-second debounce
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(() => {
+    cloudSave();
+  }, 3000);
 }
 
-function updateLastSaveBar() {
-  const el = document.getElementById('last-save-bar');
+function updateLastSaveBar(synced) {
+  const bar  = document.getElementById('last-save-bar');
+  const text = document.getElementById('last-save-text');
+  if (!bar || !text) return;
   const ts = localStorage.getItem('depenses_last_save');
-  if (!ts) { el.textContent = 'No data saved yet'; return; }
-  const d = new Date(ts);
-  el.textContent = `Last saved: ${d.toLocaleDateString('fr-FR')} at ${d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}`;
+  if (!ts) { text.textContent = 'No data saved yet'; bar.classList.remove('synced'); return; }
+  if (synced) {
+    const d = new Date();
+    text.textContent = 'Synced at ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    bar.classList.add('synced');
+    // Fade back to neutral after 4 seconds
+    clearTimeout(bar._fadeTimer);
+    bar._fadeTimer = setTimeout(() => {
+      bar.classList.remove('synced');
+      const d2 = new Date(localStorage.getItem('depenses_last_save'));
+      text.textContent = 'Last synced: ' + d2.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    }, 4000);
+  } else {
+    const d = new Date(ts);
+    text.textContent = 'Last synced: ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    bar.classList.remove('synced');
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -2330,10 +2369,15 @@ function cfSave() {
   showSaving();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    cloudSave();
     showSaved();
     updateLastSaveBar();
   }, 400);
+
+  // Cloudflare sync: separate 3-second debounce
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(() => {
+    cloudSave();
+  }, 3000);
 }
 
 function cfToggle() {
@@ -2635,6 +2679,7 @@ async function cloudSave() {
       headers: { 'Content-Type': 'application/json', 'X-Secret': CW_SECRET },
       body: JSON.stringify(payload)
     });
+    updateLastSaveBar(true);
   } catch(e) { console.warn('Cloud save failed', e); }
 }
 
@@ -2772,7 +2817,6 @@ function notesSave() {
   document.getElementById('notes-saved').className = 'notes-saved';
   notesSaveTimer = setTimeout(() => {
     localStorage.setItem(NOTES_KEY, JSON.stringify(notesData));
-    cloudSave();
     document.getElementById('notes-saved').textContent = 'Saved ✓';
     document.getElementById('notes-saved').className = 'notes-saved ok';
     setTimeout(() => {
@@ -2780,6 +2824,12 @@ function notesSave() {
       if (el) { el.textContent = ''; el.className = 'notes-saved'; }
     }, 2000);
   }, 400);
+
+  // Cloudflare sync: separate 3-second debounce
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(() => {
+    cloudSave();
+  }, 3000);
 }
 
 function notesUpdateHint(text) {
