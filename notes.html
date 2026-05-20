@@ -86,8 +86,6 @@
 
   .hdr-spacer { flex: 1; }
 
-  .app-date { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-faint); flex-shrink: 0; }
-
   .main-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -304,6 +302,12 @@
   .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--linen); border: 1px solid var(--border); color: var(--ink); padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 500; opacity: 0; transition: all 0.3s ease; pointer-events: none; z-index: 1000; white-space: nowrap; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  /* ─── CF SYNC STATUS ─── */
+  .cf-sync-status { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-faint); letter-spacing: 0.4px; white-space: nowrap; flex-shrink: 0; transition: color 0.3s; }
+  .cf-sync-status.ok      { color: var(--done-color); }
+  .cf-sync-status.err     { color: var(--red); }
+  .cf-sync-status.working { color: var(--accent); }
+
   /* Scrollbar */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -320,7 +324,9 @@
   @media (max-width: 600px) {
     .postit { width: 100%; }
     .postits-area { flex-direction: column; }
-    .sticky-header { padding: 12px 16px; }
+    .sticky-header { padding: 8px 16px; flex-wrap: nowrap; }
+    .hdr-spacer { display: none; }
+    .hdr-actions { margin-left: auto; }
     .main-layout { padding: 12px 16px 24px; }
   }
 </style>
@@ -362,10 +368,10 @@
   <div class="hdr-title">Life <span>Command Center</span></div>
   <div class="hdr-spacer"></div>
   <div class="hdr-actions">
-    <button class="btn-drive" id="drive-save-btn" onclick="gdriveSave()" title="Save to Google Drive">☁ Save</button>
-    <button class="btn-drive" id="drive-load-btn" onclick="gdriveLoad()" title="Load from Google Drive">☁ Load</button>
+    <span class="cf-sync-status" id="cf-sync-status"></span>
+    <button class="btn-drive" id="drive-save-btn" onclick="gdriveSave()" title="Save to Google Drive">☁ GD Save</button>
+    <button class="btn-drive" id="drive-load-btn" onclick="gdriveLoad()" title="Load from Google Drive">☁ GD Load</button>
   </div>
-  <div class="app-date" id="live-date"></div>
 </header>
 
 <div class="drive-status-bar" id="drive-status-bar"></div>
@@ -477,7 +483,7 @@ function saveToLS() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     _writeSave();
-  }, 10000);
+  }, 1000);
 }
 
 function _writeSave() {
@@ -488,7 +494,7 @@ function _writeSave() {
       notes: state.notes,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-    cloudSave();
+    scheduleCfSave();
     showSaved();
   } catch(e) { console.warn('Save error', e); }
 }
@@ -561,12 +567,6 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
-}
-
-function updateDate() {
-  const now = new Date();
-  document.getElementById('live-date').textContent =
-    now.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function formatTs(ts) {
@@ -1195,7 +1195,6 @@ function gdriveSave() {
         if (res.error) throw new Error(JSON.stringify(res.error));
         if (!fileId) gdFileId = res.id;
         gdStatus('✓ Saved to Google Drive — ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}), 'ok');
-        gdSetBusy(false);
       })
       .catch(err => {
         console.error('[GD] save error:', err);
@@ -1263,14 +1262,35 @@ function applyStateData(data) {
 const CF_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/doit-lcc';
 const CF_SECRET = 'widget-sync-secret-2024';
 
+let cfSaveTimer = null;
+
+function cfStatus(msg, type) {
+  const el = document.getElementById('cf-sync-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'cf-sync-status' + (type ? ' ' + type : '');
+}
+
+function scheduleCfSave() {
+  clearTimeout(cfSaveTimer);
+  cfSaveTimer = setTimeout(() => cloudSave(), 3000);
+}
+
 async function cloudSave() {
+  cfStatus('Syncing\u2026', 'working');
   try {
-    await fetch(CF_URL, {
+    const res = await fetch(CF_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
       body: JSON.stringify(state)
     });
-  } catch(e) { console.warn('Cloud save failed', e); }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const t = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    cfStatus('\u2b24 Synced at ' + t, 'ok');
+  } catch(e) {
+    console.warn('Cloud save failed', e);
+    cfStatus('\u2b24 Sync failed', 'err');
+  }
 }
 
 async function cloudLoad() {
@@ -1281,8 +1301,13 @@ async function cloudLoad() {
       applyStateData(data);
       saveToLS();
       renderAll();
+      const t = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+      cfStatus('\u2b24 Synced at ' + t, 'ok');
     }
-  } catch(e) { console.warn('Cloud load failed', e); }
+  } catch(e) {
+    console.warn('Cloud load failed', e);
+    cfStatus('\u2b24 Sync failed', 'err');
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -1299,8 +1324,6 @@ function renderAll() {
 // ═══════════════════════════════════════════════
 
 loadFromLS();
-updateDate();
-setInterval(updateDate, 60000);
 renderAll();
 cloudLoad();
 </script>
