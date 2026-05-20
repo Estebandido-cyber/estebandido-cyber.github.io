@@ -231,6 +231,13 @@
   .drive-status-bar.err { color:#e06060; }
   .drive-status-bar.working { color:#f0c060; }
 
+  .cf-status-bar { display:flex; align-items:center; justify-content:center; gap:7px; font-size:12px; font-family:'DM Mono',monospace; color:#4b5563; padding:3px 8px 6px; letter-spacing:0.5px; transition:color 0.3s; min-height:22px; }
+  .cf-status-bar.ok   { color:#34d399; }
+  .cf-status-bar.err  { color:#f87171; }
+  .cf-status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .cf-status-bar.ok  .cf-status-dot { background:#34d399; box-shadow:0 0 6px #34d39988; }
+  .cf-status-bar.err .cf-status-dot { background:#f87171; box-shadow:0 0 6px #f8717188; }
+
   /* MODALS */
   .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center; }
   .modal-overlay.open { display:flex; }
@@ -307,6 +314,7 @@
 
   </header>
   <div class="drive-status-bar" id="drive-status-bar"></div>
+  <div class="cf-status-bar" id="cf-status-bar"></div>
 
   <!-- MANUAL UPDATE MODAL -->
   <div class="modal-overlay" id="update-modal">
@@ -786,7 +794,7 @@ function saveManualUpdates() {
   pendingManualChanges = {};
   closeUpdateModal();
   render();
-  cloudSave();
+  debouncedCloudSave();
 }
 
 function markAllReviewed() {
@@ -989,7 +997,7 @@ function updateRate(key,val,idx,type) {
   if (type==='livret') LIVRETS[idx].rate=rate;
   else FONDS_EUROS[idx].rate=rate;
   render();
-  cloudSave();
+  debouncedCloudSave();
 }
 
 // ─── BENCHMARK ────────────────────────────────────────────────────────────────
@@ -1137,7 +1145,7 @@ function renderTable(allRows,totalValue) {
 
 function setFilter(f,el) { currentFilter=f; document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); render(); }
 function sortBy(key) { if(sortKey===key) sortDir*=-1; else{sortKey=key;sortDir=-1;} render(); }
-function updateCash(val) { CASH=parseFloat(val)||0; localStorage.setItem('portfolio_cash',CASH); render(); cloudSave(); }
+function updateCash(val) { CASH=parseFloat(val)||0; localStorage.setItem('portfolio_cash',CASH); render(); debouncedCloudSave(); }
 
 // Initial render with stored values immediately (no flicker — fetch updates in place)
 render();
@@ -1249,6 +1257,21 @@ function gdriveLoad() {
 // ═══════════════════════════════════════════════════════
 const CF_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/lukas-flow';
 const CF_SECRET = 'widget-sync-secret-2024';
+let cfSaveTimer = null;
+
+function cfStatus(msg, type) {
+  const el = document.getElementById('cf-status-bar');
+  if (!el) return;
+  el.className = 'cf-status-bar' + (type ? ' ' + type : '');
+  el.innerHTML = type
+    ? `<span class="cf-status-dot"></span>${msg}`
+    : msg;
+}
+
+function debouncedCloudSave() {
+  clearTimeout(cfSaveTimer);
+  cfSaveTimer = setTimeout(cloudSave, 3000);
+}
 
 async function cloudSave() {
   try {
@@ -1257,7 +1280,12 @@ async function cloudSave() {
       headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
       body: JSON.stringify(getAllWidgetData())
     });
-  } catch(e) { console.warn('[CF] Cloud save failed', e); }
+    const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    cfStatus('Synced at ' + t, 'ok');
+  } catch(e) {
+    console.warn('[CF] Cloud save failed', e);
+    cfStatus('Sync failed', 'err');
+  }
 }
 
 async function cloudLoad() {
@@ -1267,8 +1295,13 @@ async function cloudLoad() {
     const data = await res.json();
     if (data && Object.keys(data).length > 0) {
       restoreAllWidgetData(data); // already calls render() internally
+      const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      cfStatus('Synced at ' + t, 'ok');
     }
-  } catch(e) { console.warn('[CF] Cloud load failed', e); }
+  } catch(e) {
+    console.warn('[CF] Cloud load failed', e);
+    cfStatus('Sync failed', 'err');
+  }
 }
 
 // ═══════════════════════════════════════════════════════
