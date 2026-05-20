@@ -832,5 +832,117 @@ function loadAll() {
 }
 loadAll();
 </script>
+<script>
+// ── NOTIFICATIONS SETUP ──────────────────────────────────────────
+async function setupNotifications() {
+  if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
+
+  const reg = await navigator.serviceWorker.register('./sw.js');
+  await navigator.serviceWorker.ready;
+
+  if (Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+  if (Notification.permission !== 'granted') return;
+
+  scheduleNotifications(reg);
+}
+
+function scheduleNotifications(reg) {
+  const now = new Date();
+
+  // ── 1. "DoIT!" every day at 8:00am ──────────────────────────────
+  const doIt = new Date(now);
+  doIt.setHours(8, 0, 0, 0);
+  if (doIt <= now) doIt.setDate(doIt.getDate() + 1);
+  const doItDelay = doIt - now;
+
+  setTimeout(() => {
+    reg.showNotification('Life Hub', {
+      body: 'DoIT!',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: 'doit-daily',
+      renotify: true
+    });
+    setInterval(() => {
+      reg.showNotification('Life Hub', {
+        body: 'DoIT!',
+        icon: './icon-192.png',
+        badge: './icon-192.png',
+        tag: 'doit-daily',
+        renotify: true
+      });
+    }, 24 * 60 * 60 * 1000);
+  }, doItDelay);
+
+  // ── 2. "Log Workout!" Mon, Wed, Fri at 11:00am ───────────────────
+  function msUntilNext(targetDay, targetHour, targetMin) {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(targetHour, targetMin, 0, 0);
+    const currentDay = now.getDay();
+    let daysAhead = (targetDay - currentDay + 7) % 7;
+    if (daysAhead === 0 && next <= now) daysAhead = 7;
+    next.setDate(next.getDate() + daysAhead);
+    return next - now;
+  }
+
+  function scheduleWorkoutNotif(day) {
+    const delay = msUntilNext(day, 11, 0);
+    setTimeout(() => {
+      reg.showNotification('Life Hub', {
+        body: 'Log Workout!',
+        icon: './icon-192.png',
+        badge: './icon-192.png',
+        tag: 'workout-' + day,
+        renotify: true
+      });
+      setInterval(() => {
+        reg.showNotification('Life Hub', {
+          body: 'Log Workout!',
+          icon: './icon-192.png',
+          badge: './icon-192.png',
+          tag: 'workout-' + day,
+          renotify: true
+        });
+      }, 7 * 24 * 60 * 60 * 1000);
+    }, delay);
+  }
+
+  scheduleWorkoutNotif(1); // Monday
+  scheduleWorkoutNotif(3); // Wednesday
+  scheduleWorkoutNotif(5); // Friday
+
+  // ── 3. "Track Xpenses NOW!" if not saved in 24h ──────────────────
+  const xpensesSavedAt = localStorage.getItem('depenses_last_save');
+  if (xpensesSavedAt) {
+    const lastSave = new Date(xpensesSavedAt);
+    const hoursSince = (now - lastSave) / (1000 * 60 * 60);
+    if (hoursSince >= 24) {
+      reg.showNotification('Life Hub', {
+        body: 'Track Xpenses NOW!',
+        icon: './icon-192.png',
+        badge: './icon-192.png',
+        tag: 'xpenses-reminder',
+        renotify: true
+      });
+    } else {
+      const msUntilOverdue = (24 * 60 * 60 * 1000) - (now - lastSave);
+      setTimeout(() => {
+        reg.showNotification('Life Hub', {
+          body: 'Track Xpenses NOW!',
+          icon: './icon-192.png',
+          badge: './icon-192.png',
+          tag: 'xpenses-reminder',
+          renotify: true
+        });
+      }, msUntilOverdue);
+    }
+  }
+}
+
+setupNotifications();
+</script>
 </body>
 </html>
