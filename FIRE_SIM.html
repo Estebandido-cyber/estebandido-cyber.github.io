@@ -42,13 +42,6 @@
   --sticky-border: rgba(0,0,0,0.12);
   --sticky-shadow: 0 2px 12px rgba(0,0,0,0.10);
   --stat-bg:       rgba(0,0,0,0.04);
-  /* header buttons */
-  --btn-export-bg:     rgba(24,95,165,0.12);
-  --btn-export-fg:     #185FA5;
-  --btn-export-border: rgba(24,95,165,0.30);
-  --btn-import-bg:     rgba(133,79,11,0.10);
-  --btn-import-fg:     #854F0B;
-  --btn-import-border: rgba(133,79,11,0.30);
   /* scenario cards */
   --scen-empty-bg:     rgba(0,0,0,0.03);
   --scen-empty-border: rgba(0,0,0,0.12);
@@ -90,12 +83,6 @@
     --sticky-border: rgba(255,255,255,0.10);
     --sticky-shadow: 0 2px 16px rgba(0,0,0,0.40);
     --stat-bg:       rgba(255,255,255,0.06);
-    --btn-export-bg:     rgba(106,171,247,0.14);
-    --btn-export-fg:     #6aabf7;
-    --btn-export-border: rgba(106,171,247,0.30);
-    --btn-import-bg:     rgba(240,168,48,0.13);
-    --btn-import-fg:     #f0a830;
-    --btn-import-border: rgba(240,168,48,0.30);
     --scen-empty-bg:     rgba(255,255,255,0.04);
     --scen-empty-border: rgba(255,255,255,0.10);
     --scen-filled-bg:    rgba(255,255,255,0.07);
@@ -144,8 +131,6 @@ body { margin: 0; padding: 0; background: var(--color-bg-tertiary); color: var(-
 
 .hdr-btn { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer; border: 1px solid; white-space: nowrap; transition: opacity .15s; }
 .hdr-btn:hover { opacity: .75; }
-.hdr-btn-export { background: var(--btn-export-bg); color: var(--btn-export-fg); border-color: var(--btn-export-border); }
-.hdr-btn-import { background: var(--btn-import-bg); color: var(--btn-import-fg); border-color: var(--btn-import-border); }
 
 /* ═══════════════════════════════════════════════
    SCENARIO STRIP
@@ -190,37 +175,7 @@ body { margin: 0; padding: 0; background: var(--color-bg-tertiary); color: var(-
 }
 #save-toast.show { opacity: 1; transform: translateY(0); }
 
-/* ═══════════════════════════════════════════════
-   IMPORT MODAL
-═══════════════════════════════════════════════ */
-#import-modal {
-  display: none; position: fixed; inset: 0; z-index: 3000;
-  background: rgba(0,0,0,0.55); backdrop-filter: blur(3px);
-  align-items: center; justify-content: center;
-}
-#import-modal.open { display: flex; }
-#import-modal-box {
-  background: var(--color-bg-primary); border: 1px solid var(--color-border-secondary);
-  border-radius: 14px; padding: 28px 28px 22px;
-  width: 100%; max-width: 400px; margin: 16px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.30);
-}
-#import-modal-title { font-size: 15px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 6px; }
-#import-modal-sub   { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 18px; }
-#import-drop-zone {
-  border: 2px dashed var(--color-border-secondary); border-radius: 10px;
-  padding: 32px 20px; text-align: center; cursor: pointer; margin-bottom: 14px;
-  background: var(--color-bg-secondary); transition: border-color .15s, background .15s;
-}
-#import-drop-zone.drag-over { border-color: var(--color-text-info); background: var(--color-bg-info); }
-#import-drop-icon { font-size: 32px; margin-bottom: 8px; }
-#import-drop-text { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 4px; }
-#import-drop-hint { font-size: 11px; color: var(--color-text-tertiary); margin: 0; }
-#import-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
-.modal-btn { font-size: 12px; font-weight: 600; padding: 7px 16px; border-radius: 7px; cursor: pointer; border: 1px solid var(--color-border-secondary); background: transparent; transition: opacity .15s; }
-.modal-btn:hover { opacity: .75; }
-.modal-btn-browse { background: var(--btn-import-bg); color: var(--btn-import-fg); border-color: var(--btn-import-border); }
-.modal-btn-cancel { color: var(--color-text-tertiary); }
+
 
 /* ═══════════════════════════════════════════════
    LAYOUT PRIMITIVES
@@ -583,9 +538,6 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
     <div id="sticky-right">
       <button class="hdr-btn btn-drive" id="drive-save-btn" onclick="gdriveSave()" title="Save to Google Drive">☁ Save</button>
       <button class="hdr-btn btn-drive" id="drive-load-btn" onclick="gdriveLoad()" title="Load from Google Drive">☁ Load</button>
-      <button class="hdr-btn hdr-btn-export" onclick="exportData()">⬇ Export</button>
-      <button class="hdr-btn hdr-btn-import" onclick="openImportModal()">⬆ Import</button>
-      <input type="file" id="import-file" accept=".json,application/json,text/plain" style="display:none" onchange="importData(event)">
     </div>
   </div>
   <div id="sticky-row2">
@@ -626,25 +578,8 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
   </div>
 </div>
 
-<!-- Toast + Import modal -->
+<!-- Toast -->
 <div id="save-toast">Saved ✓</div>
-
-<div id="import-modal" onclick="handleModalBackdropClick(event)">
-  <div id="import-modal-box">
-    <p id="import-modal-title">⬆ Import FIRE Sim data</p>
-    <p id="import-modal-sub">Drag &amp; drop your exported JSON file, or browse to find it.</p>
-    <div id="import-drop-zone" onclick="document.getElementById('import-file').click()"
-         ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-      <div id="import-drop-icon">📂</div>
-      <p id="import-drop-text">Drop your fire-sim-*.json here</p>
-      <p id="import-drop-hint">or click to browse</p>
-    </div>
-    <div id="import-modal-actions">
-      <button class="modal-btn modal-btn-cancel" onclick="closeImportModal()">Cancel</button>
-      <button class="modal-btn modal-btn-browse" onclick="document.getElementById('import-file').click()">Browse files…</button>
-    </div>
-  </div>
-</div>
 
 <!-- ═══════════════════════════════════════════
      MAIN CONTENT
@@ -978,6 +913,7 @@ function saveState() {
       S: { ...S }, colChecks: getColChecks(),
       scenarios, activeScenario, savedAt: new Date().toISOString()
     }));
+    cloudSaveDebounced();
     showToast('Saved ✓');
   } catch(e) { console.warn('Save failed', e); }
 }
@@ -1009,81 +945,46 @@ function showToast(msg) {
 }
 
 /* ═══════════════════════════════════════════════
-   EXPORT / IMPORT
+   CLOUDFLARE WORKERS AUTO-SYNC
 ═══════════════════════════════════════════════ */
-function exportData() {
+const CF_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/fire-sim';
+const CF_SECRET = 'widget-sync-secret-2024';
+let cfSaveTimer = null;
+
+async function cloudSave() {
   try {
-    const blob = new Blob([JSON.stringify({
-      version:1, appName:'FIRE Sim', savedAt: new Date().toISOString(),
+    const payload = {
+      version: 1, appName: 'FIRE Sim', savedAt: new Date().toISOString(),
       S: { ...S }, colChecks: getColChecks(), scenarios, activeScenario
-    }, null, 2)], { type:'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `fire-sim-${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    showToast('Exported ✓');
-  } catch(e) { alert('Export failed: ' + e.message); }
+    };
+    await fetch(CF_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
+      body: JSON.stringify(payload)
+    });
+  } catch(e) { console.warn('Cloud save failed', e); }
 }
 
-function importData(event) {
-  const file = event.target.files[0];
-  if (file) processImportFile(file);
-  event.target.value = '';
+function cloudSaveDebounced() {
+  if (cfSaveTimer) clearTimeout(cfSaveTimer);
+  cfSaveTimer = setTimeout(cloudSave, 3000);
 }
 
-function processImportFile(file) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const p = JSON.parse(e.target.result);
-      if (!p.S) throw new Error('Invalid file — no S object found');
-      p2Init.clear();
-      Object.keys(p.S).forEach(k => { S[k] = p.S[k]; if (!(k in LIM)) LIM[k] = [0,1e9]; });
-      applyColChecks(p.colChecks);
-      if (p.scenarios)      p.scenarios.forEach((s, i) => { scenarios[i] = s || null; });
-      if (p.activeScenario !== undefined) activeScenario = p.activeScenario;
-      closeImportModal();
-      draw();
-      showToast('Imported ✓');
-    } catch(err) { closeImportModal(); alert('Import failed: ' + err.message); }
-  };
-  reader.readAsText(file);
-}
-
-/* ═══════════════════════════════════════════════
-   IMPORT MODAL — DRAG & DROP
-═══════════════════════════════════════════════ */
-function openImportModal() {
-  document.getElementById('import-modal').classList.add('open');
-  document.getElementById('import-drop-zone').classList.remove('drag-over');
-  document.getElementById('import-drop-icon').textContent = '📂';
-  document.getElementById('import-drop-text').textContent = 'Drop your fire-sim-*.json here';
-  document.getElementById('import-drop-hint').textContent = 'or click to browse';
-}
-function closeImportModal() {
-  document.getElementById('import-modal').classList.remove('open');
-}
-function handleModalBackdropClick(e) {
-  if (e.target === document.getElementById('import-modal')) closeImportModal();
-}
-function handleDragOver(e) {
-  e.preventDefault(); e.stopPropagation();
-  document.getElementById('import-drop-zone').classList.add('drag-over');
-  document.getElementById('import-drop-icon').textContent = '📥';
-  document.getElementById('import-drop-text').textContent = 'Release to import';
-}
-function handleDragLeave(e) {
-  e.preventDefault(); e.stopPropagation();
-  document.getElementById('import-drop-zone').classList.remove('drag-over');
-  document.getElementById('import-drop-icon').textContent = '📂';
-  document.getElementById('import-drop-text').textContent = 'Drop your fire-sim-*.json here';
-}
-function handleDrop(e) {
-  e.preventDefault(); e.stopPropagation();
-  handleDragLeave(e);
-  const file = e.dataTransfer?.files?.[0];
-  if (file) processImportFile(file);
+async function cloudLoad() {
+  try {
+    const res = await fetch(CF_URL, { headers: { 'X-Secret': CF_SECRET } });
+    if (!res.ok) return;
+    const p = await res.json();
+    if (!p || !p.S) return;
+    p2Init.clear();
+    Object.keys(p.S).forEach(k => { S[k] = p.S[k]; if (!(k in LIM)) LIM[k] = [0, 1e9]; });
+    applyColChecks(p.colChecks);
+    if (p.scenarios)      p.scenarios.forEach((s, i) => { scenarios[i] = s || null; });
+    if (p.activeScenario !== undefined) activeScenario = p.activeScenario;
+    saveState();
+    draw();
+    showToast('Synced ✓');
+  } catch(e) { console.warn('Cloud load failed', e); }
 }
 
 /* ═══════════════════════════════════════════════
@@ -1814,6 +1715,7 @@ function gdriveLoad() {
 ensureAllP2();
 loadState();
 draw();
+cloudLoad();
 </script>
 </body>
 </html>
