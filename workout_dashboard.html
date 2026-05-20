@@ -215,18 +215,6 @@ canvas{display:block;width:100%!important}
       Load from Drive
     </button>
   </div>
-  <div class="toolbar-sep"></div>
-  <div class="toolbar-group">
-    <button class="tbtn" onclick="exportJSON()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-      Export JSON
-    </button>
-    <button class="tbtn" onclick="document.getElementById('importFile').click()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-      Import JSON
-    </button>
-    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
-  </div>
 </div>
 
 <nav class="nav">
@@ -521,6 +509,7 @@ async function decompress(b64) {
 // ══════════════════════════════════════════════════════════════
 function saveToLS() {
   try { localStorage.setItem(LS_KEY, JSON.stringify({savedAt: new Date().toISOString(), sessions, monthly, ts: Date.now()})); } catch(e){}
+  cloudSave();
 }
 function loadFromLS() {
   try {
@@ -639,29 +628,33 @@ function loadFromDrive() {
   });
 }
 
-function exportJSON() {
-  const data = {sessions, monthly, exportedAt: new Date().toISOString(), version: 1};
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `workout_insights_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  setStatus(`Exported JSON · ${fmtTime(new Date())}`,'ok');
+// ═══════════════════════════════════════════════
+// CLOUDFLARE WORKERS AUTO-SYNC
+// ═══════════════════════════════════════════════
+const CF_URL = 'https://widgets-sync.estebandido80.workers.dev/data/workout';
+const CF_SECRET = 'widget-sync-secret-2024';
+async function cloudSave() {
+  try {
+    await fetch(CF_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
+      body: JSON.stringify({ sessions, monthly })
+    });
+  } catch(e) { console.warn('Cloud save failed', e); }
 }
-
-function importJSON(evt) {
-  const file = evt.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const d = JSON.parse(e.target.result);
-      if (!d.sessions || !d.monthly) throw new Error('Invalid format');
-      showModal('Import JSON',`Replace all data with ${d.sessions.length} sessions from this file?`,
-        'Import', () => { sessions=d.sessions; monthly=d.monthly; saveToLS(); rebuildAll(); setStatus(`Imported ${d.sessions.length} sessions · ${fmtTime(new Date())}`,'ok'); closeModal(); });
-    } catch(err) { showModal('Import failed','Invalid JSON file.','OK'); }
-  };
-  reader.readAsText(file);
-  evt.target.value = '';
+async function cloudLoad() {
+  try {
+    const res = await fetch(CF_URL, {
+      headers: { 'X-Secret': CF_SECRET }
+    });
+    const data = await res.json();
+    if (data && data.sessions && data.monthly) {
+      sessions = data.sessions;
+      monthly = data.monthly;
+      saveToLS();
+      rebuildAll();
+    }
+  } catch(e) { console.warn('Cloud load failed', e); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1655,6 +1648,9 @@ async function init() {
     const savedTab = localStorage.getItem('workout_insights_active_tab');
     if (savedTab && document.getElementById('tab-'+savedTab)) showTab(savedTab);
   } catch(e){}
+
+  // Sync from cloud (non-blocking)
+  cloudLoad();
 }
 
 init();
