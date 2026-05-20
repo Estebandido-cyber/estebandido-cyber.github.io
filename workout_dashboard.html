@@ -189,12 +189,24 @@ canvas{display:block;width:100%!important}
       <div class="sub" id="headerSub">Loading…</div>
     </div>
   </div>
-  <div class="header-stats">
-    <div class="hstat"><div class="hstat-val" id="hSessions">—</div><div class="hstat-label">Sessions</div></div>
-    <div class="hstat"><div class="hstat-val" id="hPU">—</div><div class="hstat-label">Push-ups</div></div>
-    <div class="hstat"><div class="hstat-val" id="hDom">—</div><div class="hstat-label">Pull-ups</div></div>
-    <div class="hstat"><div class="hstat-val" id="hJR">—</div><div class="hstat-label">Jump Rope</div></div>
-    <div class="hstat"><div class="hstat-val" id="hRun">—</div><div class="hstat-label">Total Run</div></div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+    <div style="display:flex;gap:6px">
+      <button class="tbtn primary" data-drive onclick="saveToDrive()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Save
+      </button>
+      <button class="tbtn" data-drive onclick="loadFromDrive()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Load
+      </button>
+    </div>
+    <div class="header-stats">
+      <div class="hstat"><div class="hstat-val" id="hSessions">—</div><div class="hstat-label">Sessions</div></div>
+      <div class="hstat"><div class="hstat-val" id="hPU">—</div><div class="hstat-label">Push-ups</div></div>
+      <div class="hstat"><div class="hstat-val" id="hDom">—</div><div class="hstat-label">Pull-ups</div></div>
+      <div class="hstat"><div class="hstat-val" id="hJR">—</div><div class="hstat-label">Jump Rope</div></div>
+      <div class="hstat"><div class="hstat-val" id="hRun">—</div><div class="hstat-label">Total Run</div></div>
+    </div>
   </div>
 </div>
 
@@ -202,18 +214,12 @@ canvas{display:block;width:100%!important}
 <div class="toolbar">
   <div class="toolbar-group">
     <div class="status-dot" id="statusDot"></div>
-    <span id="statusText">Loading data…</span>
+    <span id="statusText"></span>
   </div>
   <div class="toolbar-sep"></div>
   <div class="toolbar-group">
-    <button class="tbtn primary" data-drive onclick="saveToDrive()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      Save to Drive
-    </button>
-    <button class="tbtn" data-drive onclick="loadFromDrive()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      Load from Drive
-    </button>
+    <div class="status-dot" id="cfDot"></div>
+    <span id="cfText" style="font-size:11px;color:#9a9aaa"></span>
   </div>
 </div>
 
@@ -633,15 +639,33 @@ function loadFromDrive() {
 // ═══════════════════════════════════════════════
 const CF_URL = 'https://widgets-sync.estebandido80.workers.dev/data/workout';
 const CF_SECRET = 'widget-sync-secret-2024';
-async function cloudSave() {
-  try {
-    await fetch(CF_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
-      body: JSON.stringify({ sessions, monthly })
-    });
-  } catch(e) { console.warn('Cloud save failed', e); }
+let _cfSaveTimer = null;
+
+function setCfStatus(ok, msg) {
+  const dot = document.getElementById('cfDot');
+  const txt = document.getElementById('cfText');
+  if (!dot || !txt) return;
+  dot.className = 'status-dot' + (ok ? ' ok' : ' warn');
+  txt.textContent = msg;
 }
+
+function cloudSave() {
+  clearTimeout(_cfSaveTimer);
+  _cfSaveTimer = setTimeout(async () => {
+    try {
+      await fetch(CF_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
+        body: JSON.stringify({ sessions, monthly })
+      });
+      setCfStatus(true, `Synced at ${fmtTime(new Date())}`);
+    } catch(e) {
+      console.warn('Cloud save failed', e);
+      setCfStatus(false, 'Sync failed');
+    }
+  }, 3000);
+}
+
 async function cloudLoad() {
   try {
     const res = await fetch(CF_URL, {
@@ -654,7 +678,11 @@ async function cloudLoad() {
       saveToLS();
       rebuildAll();
     }
-  } catch(e) { console.warn('Cloud load failed', e); }
+    setCfStatus(true, `Synced at ${fmtTime(new Date())}`);
+  } catch(e) {
+    console.warn('Cloud load failed', e);
+    setCfStatus(false, 'Sync failed');
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1623,23 +1651,18 @@ function closeModal(){document.getElementById('modal').classList.remove('show');
 // INIT
 // ══════════════════════════════════════════════════════════════
 async function init() {
-  setStatus('Loading…');
   initAddWorkout();
 
   // Try localStorage first
   const lsTs = loadFromLS();
   if (lsTs) {
     rebuildAll();
-    const ago = Math.round((Date.now()-lsTs)/60000);
-    setStatus(`Loaded from cache · saved ${ago<1?'just now':ago+'min ago'}`,'ok');
   } else {
     // Fall back to embedded data
-    setStatus('Decompressing embedded data…');
     try {
       [sessions, monthly] = await Promise.all([decompress(EMBEDDED_SESSIONS), decompress(EMBEDDED_MONTHLY)]);
       rebuildAll();
       saveToLS();
-      setStatus(`Loaded ${sessions.length} sessions from embedded data`,'ok');
     } catch(e) { console.error(e); setStatus('Failed to load data','warn'); }
   }
 
