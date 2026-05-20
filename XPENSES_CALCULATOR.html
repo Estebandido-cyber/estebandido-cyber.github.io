@@ -268,29 +268,6 @@ body {
 }
 .hbtn-drive:hover { background: #1558c0; border-color: #1558c0; color: #fff; }
 
-/* Export — teal */
-.hbtn-export {
-  background: rgba(13,138,106,0.09);
-  border-color: rgba(13,138,106,0.55);
-  color: #0d8a6a;
-}
-.hbtn-export:hover { background: rgba(13,138,106,0.16); color: #0d8a6a; }
-@media (prefers-color-scheme: dark) {
-  .hbtn-export { background: rgba(46,201,154,0.10); border-color: rgba(46,201,154,0.45); color: #2ec99a; }
-  .hbtn-export:hover { background: rgba(46,201,154,0.18); }
-}
-
-/* Import — violet */
-.hbtn-import {
-  background: rgba(91,78,186,0.09);
-  border-color: rgba(91,78,186,0.50);
-  color: #5b4eba;
-}
-.hbtn-import:hover { background: rgba(91,78,186,0.16); color: #5b4eba; }
-@media (prefers-color-scheme: dark) {
-  .hbtn-import { background: rgba(168,152,240,0.10); border-color: rgba(168,152,240,0.45); color: #a898f0; }
-  .hbtn-import:hover { background: rgba(168,152,240,0.18); }
-}
 
 /* ── Autosave toast — green pill with dot ── */
 .toast {
@@ -593,9 +570,7 @@ body {
     <div class="header-actions">
       <button class="hbtn hbtn-drive"  id="btn-drive-save" onclick="driveSave()">☁ Save</button>
       <button class="hbtn hbtn-drive"  id="btn-drive-load" onclick="driveLoad()">☁ Load</button>
-      <button class="hbtn hbtn-export" onclick="exportJSON()">↓ Export</button>
-      <button class="hbtn hbtn-import" onclick="document.getElementById('import-input').click()">↑ Import</button>
-      <input type="file" id="import-input" accept=".json" style="display:none" onchange="importJSON(event)">
+
     </div>
   </div>
   <!-- Drive status -->
@@ -744,6 +719,7 @@ function saveLocal(tab) {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(states));
     showToast(tab === 'now' ? 'Now · saved' : tab === 'fire' ? 'FIRE · saved' : 'Saved');
+    cloudSave();
   } catch (_) {}
 }
 
@@ -772,37 +748,33 @@ function showToast(msg) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  EXPORT / IMPORT JSON
+//  CLOUDFLARE WORKERS AUTO-SYNC
 // ════════════════════════════════════════════════════════════════════
-function exportJSON() {
-  const a = Object.assign(document.createElement('a'), {
-    href: URL.createObjectURL(new Blob([JSON.stringify(states, null, 2)], { type: 'application/json' })),
-    download: DRIVE_FILENAME,
-  });
-  a.click();
-  showToast('Exported ✓');
+const CF_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/xpenses-calculator';
+const CF_SECRET = 'widget-sync-secret-2024';
+
+async function cloudSave() {
+  try {
+    await fetch(CF_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
+      body: JSON.stringify(states),
+    });
+  } catch (e) { console.warn('Cloud save failed', e); }
 }
 
-function importJSON(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const saved = JSON.parse(e.target.result);
-      if (!saved.now || !saved.fire) throw new Error('invalid');
-      states.now  = { ...DEFAULTS.now,  ...saved.now  };
-      states.fire = { ...DEFAULTS.fire, ...saved.fire };
+async function cloudLoad() {
+  try {
+    const res  = await fetch(CF_URL, { headers: { 'X-Secret': CF_SECRET } });
+    const data = await res.json();
+    if (data && data.now && data.fire) {
+      states.now  = { ...DEFAULTS.now,  ...data.now  };
+      states.fire = { ...DEFAULTS.fire, ...data.fire };
       saveLocal(null);
       render('now');
       render('fire');
-      driveSetStatus('JSON imported ✓', 'ok');
-    } catch (_) {
-      driveSetStatus('Import failed — invalid file', 'err');
     }
-    event.target.value = '';
-  };
-  reader.readAsText(file);
+  } catch (e) { console.warn('Cloud load failed', e); }
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1132,6 +1104,7 @@ function switchTab(tab) {
 // ════════════════════════════════════════════════════════════════════
 loadLocal();
 ['now', 'fire'].forEach(tab => { buildCard(tab); render(tab); });
+cloudLoad();
 </script>
 </body>
 </html>
