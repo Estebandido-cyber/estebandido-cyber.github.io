@@ -315,6 +315,8 @@
     transition: background 0.15s;
   }
   .week-header:hover { background: var(--surface2); }
+  .week-header.alt { background: rgba(240, 192, 96, 0.06); }
+  .week-header.alt:hover { background: rgba(240, 192, 96, 0.11); }
 
   .week-chevron {
     color: var(--text3);
@@ -780,8 +782,8 @@
 
   /* ─── CASHFLOW ─── */
   .cf-section { background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:24px; overflow:hidden; }
-  .cf-hdr { padding:12px 16px; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; border-bottom:1px solid transparent; transition:background .15s,border-color .2s; }
-  .cf-hdr:hover { background:var(--surface2); }
+  .cf-hdr { padding:12px 16px; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; border-bottom:1px solid transparent; transition:background .15s,border-color .2s; background: rgba(240, 192, 96, 0.06); }
+  .cf-hdr:hover { background: rgba(240, 192, 96, 0.11); }
   .cf-hdr.open { border-bottom-color:var(--border); }
   .cf-title { font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--text2); }
   .cf-hint { margin-left:auto; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; }
@@ -974,8 +976,8 @@
 
   /* ─── NOTES ─── */
   .notes-section { background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:24px; overflow:hidden; }
-  .notes-hdr { padding:12px 16px; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; border-bottom:1px solid transparent; transition:background .15s,border-color .2s; }
-  .notes-hdr:hover { background:var(--surface2); }
+  .notes-hdr { padding:12px 16px; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; border-bottom:1px solid transparent; transition:background .15s,border-color .2s; background: rgba(240, 192, 96, 0.06); }
+  .notes-hdr:hover { background: rgba(240, 192, 96, 0.11); }
   .notes-hdr.open { border-bottom-color:var(--border); }
   .notes-title { font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--text2); }
   .notes-hint { margin-left:auto; font-size:10px; color:var(--text3); font-style:italic; }
@@ -1671,7 +1673,7 @@ function renderMonth() {
       : '';
 
     block.innerHTML = `
-      <div class="week-header" onclick="toggleWeek(${wi})">
+      <div class="week-header ${wi % 2 === 0 ? 'alt' : ''}" onclick="toggleWeek(${wi})">
         <span class="week-chevron ${isCurrentWeek ? 'open' : ''}" id="wchev-${wi}">▶</span>
         <span class="week-label">Week ${wi + 1}</span>
         <span class="week-date-range">${rangeStr}</span>
