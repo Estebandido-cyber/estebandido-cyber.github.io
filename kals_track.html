@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nourish — Calorie Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f3;
+  --bg-tertiary: #eeede9;
+  --text-primary: #1a1a18;
+  --text-secondary: #5f5e5a;
+  --text-tertiary: #888780;
+  --border: rgba(0,0,0,0.12);
+  --border-med: rgba(0,0,0,0.2);
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --green: #1D9E75;
+  --blue: #378ADD;
+  --teal: #5DCAA5;
+  --amber: #EF9F27;
+  --red: #E24B4A;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1e1e1c;
+    --bg-secondary: #2a2a28;
+    --bg-tertiary: #323230;
+    --text-primary: #f0ede6;
+    --text-secondary: #a8a69f;
+    --text-tertiary: #6e6d69;
+    --border: rgba(255,255,255,0.1);
+    --border-med: rgba(255,255,255,0.18);
+  }
+}
+body { font-family: var(--font); background: var(--bg-tertiary); color: var(--text-primary); min-height: 100vh; padding: 1.5rem; }
+.app { max-width: 860px; margin: 0 auto; }
+h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 1.5rem; color: var(--text-primary); }
+h1 span { color: var(--green); }
+
+/* Top cards */
+.top-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+.card { background: var(--bg-primary); border-radius: var(--radius-lg); padding: 14px 16px; border: 0.5px solid var(--border); }
+.card-label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.card-value { font-size: 24px; font-weight: 600; color: var(--text-primary); line-height: 1; }
+.card-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+.card-bar { height: 3px; border-radius: 2px; background: var(--border); margin-top: 8px; overflow: hidden; }
+.card-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+
+/* Main grid */
+.main { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.panel { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; }
+.panel-title { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 1rem; }
+
+/* Tabs */
+.tab-row { display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 0.5px solid var(--border); }
+.tab { font-size: 12px; font-weight: 500; color: var(--text-tertiary); padding: 4px 12px 9px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; letter-spacing: 0.04em; text-transform: uppercase; }
+.tab.active { color: var(--text-primary); border-bottom-color: var(--text-primary); }
+
+/* Form elements */
+textarea { width: 100%; border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; font-family: var(--font); font-size: 14px; color: var(--text-primary); background: var(--bg-secondary); resize: none; line-height: 1.5; outline: none; transition: border-color 0.15s; }
+textarea:focus { border-color: var(--border-med); }
+textarea::placeholder { color: var(--text-tertiary); }
+input[type="text"], input[type="number"] { font-family: var(--font); font-size: 13px; color: var(--text-primary); background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 7px 10px; outline: none; transition: border-color 0.15s; }
+input[type="text"]:focus, input[type="number"]:focus { border-color: var(--border-med); }
+select { font-family: var(--font); font-size: 13px; color: var(--text-secondary); background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 7px 10px; outline: none; cursor: pointer; }
+.btn-primary { background: var(--text-primary); color: var(--bg-primary); border: none; border-radius: var(--radius-md); padding: 7px 16px; font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; }
+.btn-primary:hover { opacity: 0.8; }
+.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-sm { background: transparent; border: 0.5px solid var(--border-med); border-radius: var(--radius-md); padding: 5px 10px; font-family: var(--font); font-size: 12px; color: var(--text-secondary); cursor: pointer; transition: background 0.1s; }
+.btn-sm:hover { background: var(--bg-secondary); }
+.btn-confirm { background: var(--green); color: #fff; border: none; border-radius: var(--radius-md); padding: 7px 16px; font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; }
+.btn-discard { background: transparent; border: 0.5px solid var(--border-med); border-radius: var(--radius-md); padding: 7px 14px; font-family: var(--font); font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+.entry-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+.entry-row select { flex-shrink: 0; }
+
+/* AI status */
+.ai-thinking { display: flex; align-items: center; gap: 8px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); margin-top: 8px; font-size: 13px; color: var(--text-secondary); }
+.dot-anim span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--text-tertiary); margin: 0 1px; animation: bounce 1.2s infinite; }
+.dot-anim span:nth-child(2) { animation-delay: 0.2s; }
+.dot-anim span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
+.ai-result { margin-top: 8px; background: var(--bg-secondary); border-radius: var(--radius-md); padding: 10px 12px; font-size: 13px; }
+.ai-result-item { display: flex; justify-content: space-between; padding: 3px 0; color: var(--text-secondary); border-bottom: 0.5px solid var(--border); }
+.ai-result-item:last-child { border-bottom: none; }
+.ai-result-total { display: flex; justify-content: space-between; padding: 7px 0 0; font-weight: 600; color: var(--text-primary); font-size: 14px; margin-top: 4px; border-top: 0.5px solid var(--border-med); }
+.confirm-row { display: flex; gap: 6px; margin-top: 8px; }
+.note-text { font-size: 11px; color: var(--amber); margin-top: 5px; }
+.error-box { margin-top: 8px; padding: 10px 12px; background: #FCEBEB; border-radius: var(--radius-md); font-size: 13px; color: #A32D2D; border: 0.5px solid #F7C1C1; }
+@media (prefers-color-scheme: dark) { .error-box { background: #2d1a1a; color: #f09595; border-color: #4a2020; } }
+
+/* Meal list */
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.meal-list { max-height: 300px; overflow-y: auto; }
+.meal-item { padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.meal-item:last-child { border-bottom: none; }
+.meal-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+.meal-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+.meal-kcal { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.meal-macros { font-size: 11px; color: var(--text-tertiary); }
+.meal-time { font-size: 11px; color: var(--text-tertiary); }
+.meal-uncertainty { font-size: 11px; color: var(--amber); margin-top: 2px; }
+.empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-tertiary); font-size: 13px; line-height: 1.6; }
+.day-total-row { display: flex; justify-content: space-between; padding-top: 8px; margin-top: 6px; border-top: 0.5px solid var(--border-med); font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.calories-over { color: var(--red) !important; }
+
+/* Bottom grid */
+.bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.water-quick { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0; }
+.water-input-row { display: flex; gap: 8px; margin-top: 8px; }
+.water-input-row input { flex: 1; }
+.water-log { margin-top: 10px; max-height: 120px; overflow-y: auto; }
+.water-entry { font-size: 12px; color: var(--text-secondary); padding: 4px 0; display: flex; justify-content: space-between; border-bottom: 0.5px solid var(--border); }
+.water-entry:last-child { border-bottom: none; }
+
+/* Week bars */
+.week-bars { display: flex; gap: 6px; align-items: flex-end; height: 90px; }
+.week-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; }
+.week-bar-bg { width: 100%; background: var(--bg-secondary); border-radius: 3px; flex: 1; display: flex; align-items: flex-end; overflow: hidden; border: 0.5px solid var(--border); }
+.week-bar-fill { width: 100%; transition: height 0.5s ease; }
+.week-bar-label { font-size: 10px; color: var(--text-tertiary); }
+.week-bar-val { font-size: 10px; color: var(--text-secondary); font-weight: 500; min-height: 14px; }
+
+/* Settings */
+.settings-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+.settings-row:last-child { border-bottom: none; }
+.settings-label { color: var(--text-secondary); }
+.settings-val { display: flex; align-items: center; gap: 6px; }
+.settings-val input { width: 75px; text-align: right; }
+.settings-unit { font-size: 12px; color: var(--text-tertiary); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-med); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>nourish <span>·</span></h1>
+
+  <div class="top-cards">
+    <div class="card">
+      <div class="card-label">Calories left</div>
+      <div class="card-value" id="calLeft">2000</div>
+      <div class="card-sub" id="calLeftSub">of 2000 budget</div>
+      <div class="card-bar"><div class="card-bar-fill" id="calBar" style="width:0%;background:var(--green);"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Protein</div>
+      <div class="card-value" id="protVal">0g</div>
+      <div class="card-sub" id="protSub">of 120g goal</div>
+      <div class="card-bar"><div class="card-bar-fill" id="protBar" style="width:0%;background:var(--blue);"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Water today</div>
+      <div class="card-value" id="waterVal">0 ml</div>
+      <div class="card-sub" id="waterSub">of 2500ml goal</div>
+      <div class="card-bar"><div class="card-bar-fill" id="waterBar" style="width:0%;background:var(--teal);"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Alcohol</div>
+      <div class="card-value" id="alcVal">0</div>
+      <div class="card-sub">units this week</div>
+      <div class="card-bar"><div class="card-bar-fill" id="alcBar" style="width:0%;background:var(--amber);"></div></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="panel">
+      <div class="tab-row">
+        <div class="tab active" id="tab-log" onclick="switchTab('log')">Log meal</div>
+        <div class="tab" id="tab-settings" onclick="switchTab('settings')">Settings</div>
+      </div>
+      <div id="tabLog">
+        <textarea id="mealInput" rows="4" placeholder="Describe what you ate or drank... e.g. 'For breakfast I had 60g of oats with almond milk, a banana, and two scoops of protein powder' or 'Big margarita pizza and a 33cl beer at a restaurant'"></textarea>
+        <div class="entry-row">
+          <select id="portionSelect">
+            <option value="normal">Normal portion</option>
+            <option value="small">Small portion</option>
+            <option value="big">Big portion</option>
+            <option value="huge">Huge portion</option>
+          </select>
+          <button class="btn-primary" id="analyzeBtn" onclick="analyzeMeal()">Analyse ↗</button>
+        </div>
+        <div id="aiStatus"></div>
+      </div>
+      <div id="tabSettings" style="display:none;">
+        <div class="settings-row">
+          <span class="settings-label">Daily calorie budget</span>
+          <span class="settings-val"><input type="number" id="setBudget" value="2000"><span class="settings-unit">kcal</span></span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Protein goal</span>
+          <span class="settings-val"><input type="number" id="setProt" value="120"><span class="settings-unit">g</span></span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Water goal</span>
+          <span class="settings-val"><input type="number" id="setWater" value="2500"><span class="settings-unit">ml</span></span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Current weight</span>
+          <span class="settings-val"><input type="number" id="setWeight" value="75"><span class="settings-unit">kg</span></span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Calories burned today</span>
+          <span class="settings-val"><input type="number" id="setBurned" value="0" oninput="updateBurned()"><span class="settings-unit">kcal</span></span>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn-primary" onclick="saveSettings()">Save settings</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <div class="panel-title" style="margin-bottom:0;">Today's meals</div>
+        <div style="font-size:11px;color:var(--text-tertiary);" id="mealCount">0 entries</div>
+      </div>
+      <div class="meal-list" id="mealList">
+        <div class="empty-state">Nothing logged yet.<br>Describe your first meal on the left.</div>
+      </div>
+      <div id="dayTotal" style="display:none;" class="day-total-row">
+        <span>Total logged</span><span id="dayTotalVal">0 kcal</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="panel">
+      <div class="panel-title">Water intake</div>
+      <div class="water-quick">
+        <button class="btn-sm" onclick="addWater(250)">+250 ml</button>
+        <button class="btn-sm" onclick="addWater(330)">+330 ml</button>
+        <button class="btn-sm" onclick="addWater(500)">+500 ml</button>
+        <button class="btn-sm" onclick="addWater(750)">+750 ml</button>
+        <button class="btn-sm" onclick="addWater(1000)">+1 L</button>
+      </div>
+      <div class="water-input-row">
+        <input type="text" id="waterDesc" placeholder="or describe: 'just finished my 500ml gourde'" />
+        <button class="btn-primary" onclick="logWaterDesc()">Log</button>
+      </div>
+      <div class="water-log" id="waterLog">
+        <div style="font-size:12px;color:var(--text-tertiary);padding:8px 0;">No water logged yet</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">This week</div>
+      <div class="week-bars" id="weekBars"></div>
+      <div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;" id="weekAvg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let settings = { budget: 2000, protein: 120, water: 2500, weight: 75, burned: 0 };
+let meals = [];
+let waterEntries = [];
+let waterTotal = 0;
+let weekData = [0, 0, 0, 0, 0, 0, 0];
+let pendingMeal = null;
+
+function getTime() {
+  const now = new Date();
+  return now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+}
+
+function switchTab(tab) {
+  document.getElementById('tabLog').style.display = tab === 'log' ? '' : 'none';
+  document.getElementById('tabSettings').style.display = tab === 'settings' ? '' : 'none';
+  document.getElementById('tab-log').classList.toggle('active', tab === 'log');
+  document.getElementById('tab-settings').classList.toggle('active', tab === 'settings');
+}
+
+function saveSettings() {
+  settings.budget = parseInt(document.getElementById('setBudget').value) || 2000;
+  settings.protein = parseInt(document.getElementById('setProt').value) || 120;
+  settings.water = parseInt(document.getElementById('setWater').value) || 2500;
+  settings.weight = parseFloat(document.getElementById('setWeight').value) || 75;
+  updateUI();
+  switchTab('log');
+}
+
+function updateBurned() {
+  settings.burned = parseInt(document.getElementById('setBurned').value) || 0;
+  updateUI();
+}
+
+function updateUI() {
+  const totalIn = meals.reduce((s, m) => s + m.kcal, 0);
+  const totalProt = meals.reduce((s, m) => s + m.protein, 0);
+  const totalAlc = meals.reduce((s, m) => s + (m.alcohol || 0), 0);
+  const effectiveBudget = settings.budget + settings.burned;
+  const remaining = effectiveBudget - totalIn;
+
+  const calEl = document.getElementById('calLeft');
+  calEl.textContent = Math.round(remaining);
+  calEl.className = 'card-value' + (remaining < 0 ? ' calories-over' : '');
+  document.getElementById('calLeftSub').textContent = 'of ' + effectiveBudget + ' kcal budget' + (settings.burned > 0 ? ' (+' + settings.burned + ' burned)' : '');
+
+  const calPct = Math.min(100, Math.round((totalIn / effectiveBudget) * 100));
+  const calBar = document.getElementById('calBar');
+  calBar.style.width = calPct + '%';
+  calBar.style.background = remaining < 0 ? 'var(--red)' : 'var(--green)';
+
+  document.getElementById('protVal').textContent = Math.round(totalProt) + 'g';
+  document.getElementById('protSub').textContent = 'of ' + settings.protein + 'g goal';
+  document.getElementById('protBar').style.width = Math.min(100, Math.round((totalProt / settings.protein) * 100)) + '%';
+
+  document.getElementById('waterVal').textContent = waterTotal >= 1000 ? (waterTotal / 1000).toFixed(1) + ' L' : waterTotal + ' ml';
+  document.getElementById('waterSub').textContent = 'of ' + (settings.water >= 1000 ? (settings.water / 1000).toFixed(1) + 'L' : settings.water + 'ml') + ' goal';
+  document.getElementById('waterBar').style.width = Math.min(100, Math.round((waterTotal / settings.water) * 100)) + '%';
+
+  document.getElementById('alcVal').textContent = totalAlc.toFixed(1);
+  document.getElementById('alcBar').style.width = Math.min(100, Math.round((totalAlc / 14) * 100)) + '%';
+
+  renderMealList();
+  renderWeek();
+}
+
+function renderMealList() {
+  const list = document.getElementById('mealList');
+  const count = document.getElementById('mealCount');
+  const dayTotal = document.getElementById('dayTotal');
+  const dayTotalVal = document.getElementById('dayTotalVal');
+
+  if (meals.length === 0) {
+    list.innerHTML = '<div class="empty-state">Nothing logged yet.<br>Describe your first meal on the left.</div>';
+    count.textContent = '0 entries';
+    dayTotal.style.display = 'none';
+    return;
+  }
+
+  count.textContent = meals.length + ' ' + (meals.length === 1 ? 'entry' : 'entries');
+  dayTotal.style.display = 'flex';
+  const total = meals.reduce((s, m) => s + m.kcal, 0);
+  dayTotalVal.textContent = Math.round(total) + ' kcal';
+
+  list.innerHTML = meals.slice().reverse().map(m => `
+    <div class="meal-item">
+      <div class="meal-header">
+        <span class="meal-name">${m.label}</span>
+        <span class="meal-kcal">${Math.round(m.kcal)} kcal</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <span class="meal-macros">P ${Math.round(m.protein)}g &middot; F ${Math.round(m.fat)}g &middot; C ${Math.round(m.carbs)}g${m.alcohol > 0 ? ' &middot; ' + m.alcohol.toFixed(1) + ' alc units' : ''}</span>
+        <span class="meal-time">${m.time}</span>
+      </div>
+      ${m.uncertain ? '<div class="meal-uncertainty">&#9888; Estimated range: ' + m.uncertain + '</div>' : ''}
+    </div>
+  `).join('');
+}
+
+function renderWeek() {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const today = (new Date().getDay() + 6) % 7;
+  const displayData = [...weekData];
+  displayData[today] = meals.reduce((s, m) => s + m.kcal, 0);
+
+  const max = Math.max(...displayData, settings.budget);
+  const barsEl = document.getElementById('weekBars');
+  barsEl.innerHTML = days.map((d, i) => {
+    const val = displayData[i];
+    const pct = max > 0 ? Math.round((val / max) * 100) : 0;
+    const isToday = i === today;
+    const color = isToday ? 'var(--green)' : 'var(--text-tertiary)';
+    return `<div class="week-bar-wrap">
+      <div class="week-bar-val">${val > 0 ? Math.round(val) : ''}</div>
+      <div class="week-bar-bg"><div class="week-bar-fill" style="height:${pct}%;background:${color};"></div></div>
+      <div class="week-bar-label" style="font-weight:${isToday ? '600' : '400'};color:${isToday ? 'var(--text-primary)' : 'var(--text-tertiary)'};">${d}</div>
+    </div>`;
+  }).join('');
+
+  const nonZero = displayData.filter(v => v > 0);
+  const avg = nonZero.length > 0 ? Math.round(nonZero.reduce((a, b) => a + b, 0) / nonZero.length) : 0;
+  document.getElementById('weekAvg').textContent = avg > 0 ? 'Weekly avg: ' + avg + ' kcal/day' : 'Log meals to see your week';
+}
+
+async function analyzeMeal() {
+  const text = document.getElementById('mealInput').value.trim();
+  if (!text) return;
+  const portion = document.getElementById('portionSelect').value;
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  pendingMeal = null;
+
+  document.getElementById('aiStatus').innerHTML = `
+    <div class="ai-thinking">
+      Analysing your meal
+      <div class="dot-anim"><span></span><span></span><span></span></div>
+    </div>`;
+
+  const portionNote = portion !== 'normal' ? ` (the user described this as a ${portion} portion — adjust quantities accordingly)` : '';
+
+  const prompt = `You are a nutrition expert. Analyse this meal description and return ONLY a valid JSON object with no markdown formatting, no code fences, no explanation — just the raw JSON.
+
+Meal: "${text}"${portionNote}
+
+Return this exact structure:
+{
+  "label": "short descriptive meal name, max 45 characters",
+  "kcal": <total calories as integer>,
+  "protein": <protein in grams as number>,
+  "fat": <fat in grams as number>,
+  "carbs": <carbs in grams as number>,
+  "alcohol_units": <alcohol units as number, 0 if none. 1 unit = 10ml pure alcohol>,
+  "uncertain": <"estimated range e.g. 450-600 kcal" if you are not confident, or null if confident>,
+  "items": [
+    {"name": "item name", "kcal": <calories as integer>}
+  ]
+}
+
+Be realistic with portions. For restaurant meals use generous estimates. For branded French products (Happyvore, Cassegrain, etc.) use your best knowledge. Return only the JSON, nothing else.`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || 'API error ' + response.status);
+    }
+
+    const data = await response.json();
+    const raw = data.content[0].text.trim().replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(raw);
+    pendingMeal = parsed;
+    showAIResult(parsed);
+
+  } catch (e) {
+    document.getElementById('aiStatus').innerHTML = `
+      <div class="error-box">
+        <strong>Analysis failed:</strong> ${e.message}<br>
+        <span style="font-size:11px;margin-top:4px;display:block;">Make sure you're connected to the internet and try again.</span>
+      </div>`;
+  }
+
+  btn.disabled = false;
+}
+
+function showAIResult(p) {
+  const itemsHtml = (p.items || []).map(it =>
+    `<div class="ai-result-item"><span>${it.name}</span><span>${Math.round(it.kcal)} kcal</span></div>`
+  ).join('');
+  const alcHtml = p.alcohol_units > 0
+    ? `<div class="ai-result-item"><span>Alcohol</span><span>${p.alcohol_units.toFixed(1)} units</span></div>`
+    : '';
+  const uncertainHtml = p.uncertain
+    ? `<div class="note-text">&#9888; Uncertain estimate: ${p.uncertain}</div>`
+    : '';
+
+  document.getElementById('aiStatus').innerHTML = `
+    <div class="ai-result">
+      ${itemsHtml}
+      ${alcHtml}
+      <div class="ai-result-total">
+        <span>${p.label}</span>
+        <span>${Math.round(p.kcal)} kcal &middot; P${Math.round(p.protein)}g F${Math.round(p.fat)}g C${Math.round(p.carbs)}g</span>
+      </div>
+    </div>
+    ${uncertainHtml}
+    <div class="confirm-row">
+      <button class="btn-confirm" onclick="confirmMeal()">&#10003; Add to log</button>
+      <button class="btn-discard" onclick="discardMeal()">Discard</button>
+    </div>`;
+}
+
+function confirmMeal() {
+  if (!pendingMeal) return;
+  meals.push({
+    label: pendingMeal.label,
+    kcal: pendingMeal.kcal,
+    protein: pendingMeal.protein,
+    fat: pendingMeal.fat,
+    carbs: pendingMeal.carbs,
+    alcohol: pendingMeal.alcohol_units || 0,
+    uncertain: pendingMeal.uncertain,
+    time: getTime()
+  });
+  pendingMeal = null;
+  document.getElementById('mealInput').value = '';
+  document.getElementById('portionSelect').value = 'normal';
+  document.getElementById('aiStatus').innerHTML = '';
+  updateUI();
+}
+
+function discardMeal() {
+  pendingMeal = null;
+  document.getElementById('aiStatus').innerHTML = '';
+}
+
+function addWater(ml) {
+  waterTotal += ml;
+  waterEntries.push({
+    label: ml >= 1000 ? (ml / 1000).toFixed(1) + 'L' : ml + 'ml',
+    ml,
+    time: getTime()
+  });
+  renderWaterLog();
+  updateUI();
+}
+
+async function logWaterDesc() {
+  const text = document.getElementById('waterDesc').value.trim();
+  if (!text) return;
+
+  const prompt = `Extract the total water or liquid amount in millilitres from this text: "${text}". Ignore non-water items like creatine or supplements. Return only a JSON object with no markdown: {"ml": <number>, "label": "<short description>"}`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await response.json();
+    const parsed = JSON.parse(data.content[0].text.trim().replace(/```json|```/g, '').trim());
+    waterTotal += parsed.ml;
+    waterEntries.push({ label: parsed.label + ' (' + parsed.ml + 'ml)', ml: parsed.ml, time: getTime() });
+    document.getElementById('waterDesc').value = '';
+    renderWaterLog();
+    updateUI();
+  } catch (e) {
+    console.error('Water parse error:', e);
+  }
+}
+
+function renderWaterLog() {
+  const el = document.getElementById('waterLog');
+  if (waterEntries.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-tertiary);padding:8px 0;">No water logged yet</div>';
+    return;
+  }
+  el.innerHTML = waterEntries.slice().reverse().map(e =>
+    `<div class="water-entry"><span>${e.label}</span><span>${e.time}</span></div>`
+  ).join('');
+}
+
+updateUI();
+</script>
+</body>
+</html>
