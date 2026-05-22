@@ -594,7 +594,7 @@ async function callAPI(messages, maxTokens) {
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true'
     },
-    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: maxTokens, messages })
+    body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: maxTokens, messages })
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
