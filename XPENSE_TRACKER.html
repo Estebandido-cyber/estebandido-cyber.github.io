@@ -918,6 +918,51 @@
     }
   }
 
+  /* ─── YEARLY TRENDS ─── */
+  .trends-section { border-radius: 12px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 12px; }
+  .trends-hdr { padding: 12px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; transition: background .15s, border-color .2s; background: rgba(240,192,96,0.06); }
+  .trends-hdr:hover { background: rgba(240,192,96,0.11); }
+  .trends-hdr.open { border-bottom-color: var(--border); }
+  .trends-title { font-size: 13px; font-weight: 600; color: var(--text1); letter-spacing: 0.5px; }
+  .trends-body { display: none; padding: 16px; }
+  .trends-body.open { display: block; }
+
+  .trends-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .trends-year-stepper { display: flex; align-items: center; gap: 6px; }
+  .trends-year-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--text1); border-radius: 6px; width: 26px; height: 26px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+  .trends-year-btn:hover { background: var(--surface3); }
+  .trends-year-label { font-size: 13px; font-weight: 600; color: var(--text1); min-width: 36px; text-align: center; }
+
+
+  .trends-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+  .trends-stat { background: var(--surface2); border-radius: 8px; padding: 10px 12px; text-align: center; }
+  .trends-stat-val { font-size: 15px; font-weight: 700; color: var(--text1); }
+  .trends-stat-lbl { font-size: 10px; color: var(--text3); margin-top: 2px; letter-spacing: 0.4px; }
+  .trends-stat-val.green { color: var(--green); }
+  .trends-stat-val.red { color: var(--red); }
+
+  .trends-chart-wrap { position: relative; width: 100%; height: 220px; margin-bottom: 16px; }
+  .trends-canvas { width: 100% !important; height: 100% !important; }
+
+  .trends-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .trends-table th { color: var(--text3); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; letter-spacing: 0.5px; }
+  .trends-table th:not(:first-child) { text-align: right; }
+  .trends-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); color: var(--text2); }
+  .trends-table td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+  .trends-table tr:last-child td { border-bottom: none; }
+  .trends-table tr:hover td { background: var(--surface2); }
+  .trends-table .td-month { color: var(--text1); font-weight: 500; }
+  .trends-table .td-delta.pos { color: var(--green); }
+  .trends-table .td-delta.neg { color: var(--red); }
+  .trends-table .td-top { color: var(--text3); font-style: italic; }
+  .trends-table .td-cur { background: rgba(240,192,96,0.07); }
+  .trends-table .td-cur td { color: var(--accent); }
+
+  @media (max-width: 600px) {
+    .trends-summary { grid-template-columns: repeat(2, 1fr); }
+    .trends-table .td-top { display: none; }
+  }
+
   /* ─── UNDO TOAST ─── */
   .undo-toast {
     position: fixed;
@@ -1467,6 +1512,33 @@
 
   <!-- Weeks -->
   <div id="weeks-container"></div>
+
+  <!-- Yearly Trends -->
+  <div class="trends-section">
+    <div class="trends-hdr" id="trends-hdr" onclick="trendsToggle()">
+      <span class="week-chevron" id="trends-chev">▶</span>
+      <span class="trends-title">Yearly Spending Trends</span>
+    </div>
+    <div class="trends-body" id="trends-body">
+      <div class="trends-controls">
+        <div class="trends-year-stepper">
+          <button class="trends-year-btn" onclick="trendsChangeYear(-1)">‹</button>
+          <span class="trends-year-label" id="trends-year-label">2026</span>
+          <button class="trends-year-btn" onclick="trendsChangeYear(1)">›</button>
+        </div>
+      </div>
+      <div class="trends-summary" id="trends-summary"></div>
+      <div class="trends-chart-wrap">
+        <canvas id="trends-canvas" class="trends-canvas"></canvas>
+      </div>
+      <table class="trends-table" id="trends-table">
+        <thead><tr>
+          <th>Month</th><th>Total</th><th>vs Avg</th><th>Top Category</th>
+        </tr></thead>
+        <tbody id="trends-tbody"></tbody>
+      </table>
+    </div>
+  </div>
 </main>
 
 <!-- SAVE INDICATOR -->
@@ -2845,6 +2917,205 @@ function notesUpdateHint(text) {
 function notesUpdateCharcount(text) {
   const el = document.getElementById('notes-charcount');
   if (el) el.textContent = text.length + ' / 1000';
+}
+
+// ═══════════════════════════════════════════════
+// YEARLY TRENDS
+// ═══════════════════════════════════════════════
+let trendsYear = new Date().getFullYear();
+let trendsChart = null;
+
+function trendsToggle() {
+  const body = document.getElementById('trends-body');
+  const chev = document.getElementById('trends-chev');
+  const hdr  = document.getElementById('trends-hdr');
+  const open = body.classList.toggle('open');
+  chev.classList.toggle('open', open);
+  hdr.classList.toggle('open', open);
+  if (open) renderTrends();
+}
+
+function trendsChangeYear(delta) {
+  trendsYear += delta;
+  document.getElementById('trends-year-label').textContent = trendsYear;
+  renderTrends();
+}
+
+function getTrendsData(year) {
+  const months = Array(12).fill(0);
+  Object.keys(data).forEach(key => {
+    if (!key.startsWith(year + '-')) return;
+    const month = parseInt(key.split('-')[1], 10) - 1;
+    (data[key] || []).forEach(e => {
+      if (!e.amt) return;
+      months[month] += parseFloat(e.amt) || 0;
+    });
+  });
+  return months;
+}
+
+function getTopCategory(year, month) {
+  const totals = {};
+  Object.keys(data).forEach(key => {
+    if (!key.startsWith(`${year}-${String(month+1).padStart(2,'0')}-`)) return;
+    (data[key] || []).forEach(e => {
+      if (!e.cat || !e.amt) return;
+      totals[e.cat] = (totals[e.cat] || 0) + (parseFloat(e.amt) || 0);
+    });
+  });
+  const sorted = Object.entries(totals).sort((a,b) => b[1]-a[1]);
+  return sorted.length ? sorted[0][0] : '—';
+}
+
+function renderTrendsSummary(months, avg) {
+  const filled = months.filter(v => v > 0);
+  const total  = months.reduce((a,b) => a+b, 0);
+  const best   = filled.length ? Math.min(...filled) : 0;
+  const worst  = filled.length ? Math.max(...filled) : 0;
+  const bestIdx  = months.indexOf(best);
+  const worstIdx = months.indexOf(worst);
+
+  document.getElementById('trends-summary').innerHTML = `
+    <div class="trends-stat">
+      <div class="trends-stat-val">${fmt(total)}</div>
+      <div class="trends-stat-lbl">YEAR TOTAL</div>
+    </div>
+    <div class="trends-stat">
+      <div class="trends-stat-val">${filled.length ? fmt(avg) : '—'}</div>
+      <div class="trends-stat-lbl">MONTHLY AVG</div>
+    </div>
+    <div class="trends-stat">
+      <div class="trends-stat-val green">${filled.length ? fmt(best) : '—'}</div>
+      <div class="trends-stat-lbl">BEST MONTH${filled.length ? ' · '+MONTH_SHORT[bestIdx] : ''}</div>
+    </div>
+    <div class="trends-stat">
+      <div class="trends-stat-val red">${filled.length ? fmt(worst) : '—'}</div>
+      <div class="trends-stat-lbl">WORST MONTH${filled.length ? ' · '+MONTH_SHORT[worstIdx] : ''}</div>
+    </div>
+  `;
+}
+
+function renderTrendsTable(months, avg) {
+  const now = new Date();
+  const isCurrentYear = trendsYear === now.getFullYear();
+  const tbody = document.getElementById('trends-tbody');
+  tbody.innerHTML = months.map((val, i) => {
+    const isCurrent = isCurrentYear && i === now.getMonth();
+    const delta = avg > 0 ? val - avg : 0;
+    const deltaStr = val === 0 ? '—' : (delta >= 0 ? '+' : '') + fmt(delta);
+    const deltaClass = delta > 0 ? 'neg' : (delta < 0 ? 'pos' : '');
+    const topCat = val > 0 ? getTopCategory(trendsYear, i) : '—';
+    return `<tr class="${isCurrent ? 'td-cur' : ''}">
+      <td class="td-month">${MONTH_SHORT[i]}${isCurrent ? ' ●' : ''}</td>
+      <td>${val > 0 ? fmt(val) : '—'}</td>
+      <td class="td-delta ${val > 0 ? deltaClass : ''}">${val > 0 ? deltaStr : '—'}</td>
+      <td class="td-top">${topCat}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTrendsChart(months, avg) {
+  const canvas = document.getElementById('trends-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  // Get device pixel ratio for sharp rendering
+  const dpr = window.devicePixelRatio || 1;
+  const wrap = canvas.parentElement;
+  const W = wrap.clientWidth;
+  const H = 220;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  const PAD = { top: 16, right: 16, bottom: 36, left: 52 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top  - PAD.bottom;
+
+  const maxVal = Math.max(...months, avg * 1.1, 1);
+  const barW   = chartW / 12;
+  const barGap = barW * 0.25;
+
+  // Clear
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines
+  const gridSteps = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  for (let g = 0; g <= gridSteps; g++) {
+    const y = PAD.top + chartH - (g / gridSteps) * chartH;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + chartW, y); ctx.stroke();
+    // Y labels
+    const val = (maxVal * g / gridSteps);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '10px DM Mono, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(val >= 1000 ? (val/1000).toFixed(1)+'k' : Math.round(val), PAD.left - 6, y + 3);
+  }
+
+  // Bars
+  const now = new Date();
+  const isCurrentYear = trendsYear === now.getFullYear();
+
+  months.forEach((val, i) => {
+    if (val === 0) {
+      // Render empty month as faint placeholder
+      const x = PAD.left + i * barW + barGap / 2;
+      const bw = barW - barGap;
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.beginPath();
+      ctx.roundRect(x, PAD.top + chartH - 4, bw, 4, 3);
+      ctx.fill();
+    } else {
+      const barH = (val / maxVal) * chartH;
+      const x = PAD.left + i * barW + barGap / 2;
+      const y = PAD.top + chartH - barH;
+      const bw = barW - barGap;
+      const isCurrent = isCurrentYear && i === now.getMonth();
+      ctx.fillStyle = isCurrent ? 'rgba(240,192,96,0.85)' : 'rgba(91,158,240,0.7)';
+      ctx.beginPath();
+      ctx.roundRect(x, y, bw, barH, [4, 4, 0, 0]);
+      ctx.fill();
+    }
+
+    // Month label
+    const lx = PAD.left + i * barW + barW / 2;
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '10px DM Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(MONTH_SHORT[i], lx, H - 8);
+  });
+
+  // Average line
+  if (avg > 0) {
+    const avgY = PAD.top + chartH - (avg / maxVal) * chartH;
+    ctx.strokeStyle = 'rgba(240,192,96,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, avgY);
+    ctx.lineTo(PAD.left + chartW, avgY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Avg label
+    ctx.fillStyle = 'rgba(240,192,96,0.8)';
+    ctx.font = '10px DM Mono, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('avg', PAD.left + 4, avgY - 4);
+  }
+}
+
+function renderTrends() {
+  const months = getTrendsData(trendsYear);
+  const filled = months.filter(v => v > 0);
+  const avg    = filled.length ? filled.reduce((a,b)=>a+b,0) / filled.length : 0;
+
+  renderTrendsSummary(months, avg);
+  renderTrendsChart(months, avg);
+  renderTrendsTable(months, avg);
 }
 
 notesLoad();
