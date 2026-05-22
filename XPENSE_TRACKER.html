@@ -920,10 +920,10 @@
 
   /* ─── YEARLY TRENDS ─── */
   .trends-section { border-radius: 12px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 12px; }
-  .trends-hdr { padding: 12px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; transition: background .15s, border-color .2s; background: rgba(240,192,96,0.06); }
-  .trends-hdr:hover { background: rgba(240,192,96,0.11); }
+  .trends-hdr { padding: 12px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; transition: background .15s, border-color .2s; background: rgba(96, 200, 140, 0.06); }
+  .trends-hdr:hover { background: rgba(96, 200, 140, 0.11); }
   .trends-hdr.open { border-bottom-color: var(--border); }
-  .trends-title { font-size: 13px; font-weight: 600; color: var(--text1); letter-spacing: 0.5px; }
+  .trends-title { font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--text2); }
   .trends-body { display: none; padding: 16px; }
   .trends-body.open { display: block; }
 
@@ -2959,7 +2959,7 @@ function renderTrendsPills(cats) {
   const container = document.getElementById('trends-pills');
   if (!container) return;
   container.innerHTML = cats.map(c =>
-    `<button class="trends-pill ${c === trendsCategory ? 'active' : ''}" onclick="trendsSetCategory(${JSON.stringify(c)})">${c === 'All' ? 'All categories' : c}</button>`
+    `<button class="trends-pill ${c === trendsCategory ? 'active' : ''}" onclick="trendsSetCategory(this.dataset.cat)" data-cat="${c.replace(/"/g,'&quot;')}">${c === 'All' ? 'All categories' : c}</button>`
   ).join('');
 }
 
