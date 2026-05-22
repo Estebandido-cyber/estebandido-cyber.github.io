@@ -45,6 +45,9 @@
     --accent-notes: #818cf8;
     --accent-notes-dim: rgba(129,140,248,0.12);
     --accent-notes-glow: rgba(129,140,248,0.25);
+    --accent-kals: #fb923c;
+    --accent-kals-dim: rgba(251,146,60,0.12);
+    --accent-kals-glow: rgba(251,146,60,0.25);
   }
 
   body {
@@ -173,6 +176,7 @@
   .tile:nth-child(6) { animation-delay: 0.3s; }
   .tile:nth-child(7) { animation-delay: 0.35s; }
   .tile:nth-child(8) { animation-delay: 0.4s; }
+  .tile:nth-child(9) { animation-delay: 0.45s; }
 
   .tile::before {
     content: '';
@@ -203,6 +207,11 @@
   .tile-workout:hover { border-color: var(--accent-workout-glow); }
   .tile-workout .tile-icon { background: var(--accent-workout-dim); }
   .tile-workout .tile-name { color: var(--accent-workout); }
+  .tile-kals { border-color: rgba(251,146,60,0.3); }
+  .tile-kals::before { background: radial-gradient(ellipse at top left, var(--accent-kals-dim), transparent 70%); }
+  .tile-kals:hover { border-color: var(--accent-kals-glow); }
+  .tile-kals .tile-icon { background: var(--accent-kals-dim); }
+  .tile-kals .tile-name { color: var(--accent-kals); }
   .tile-strat { border-color: rgba(251,113,133,0.3); }
   .tile-strat::before { background: radial-gradient(ellipse at top left, rgba(251,113,133,0.1), transparent 70%); }
   .tile-strat:hover { border-color: rgba(251,113,133,0.5); }
@@ -482,6 +491,16 @@
       </div>
       <div class="tile-stats" id="stats-workout"><div class="no-data">Loading…</div></div>
       <div class="tile-footer" id="footer-workout"></div>
+      <div class="tile-arrow">↗</div>
+    </a>
+
+    <a class="tile tile-kals" href="kals_track.html">
+      <div class="tile-header">
+        <div class="tile-icon">⚡</div>
+        <div class="tile-name">Kals</div>
+      </div>
+      <div class="tile-stats" id="stats-kals"><div class="no-data">Coming soon…</div></div>
+      <div class="tile-footer" id="footer-kals"></div>
       <div class="tile-arrow">↗</div>
     </a>
 
