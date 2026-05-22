@@ -928,6 +928,10 @@
   .trends-body.open { display: block; }
 
   .trends-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .trends-pills { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+  .trends-pill { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text2); font-size: 11px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+  .trends-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .trends-pill.active { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 600; }
   .trends-year-stepper { display: flex; align-items: center; gap: 6px; }
   .trends-year-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--text1); border-radius: 6px; width: 26px; height: 26px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: background .15s; }
   .trends-year-btn:hover { background: var(--surface3); }
@@ -1526,6 +1530,7 @@
           <span class="trends-year-label" id="trends-year-label">2026</span>
           <button class="trends-year-btn" onclick="trendsChangeYear(1)">›</button>
         </div>
+        <div class="trends-pills" id="trends-pills"></div>
       </div>
       <div class="trends-summary" id="trends-summary"></div>
       <div class="trends-chart-wrap">
@@ -2923,6 +2928,7 @@ function notesUpdateCharcount(text) {
 // YEARLY TRENDS
 // ═══════════════════════════════════════════════
 let trendsYear = new Date().getFullYear();
+let trendsCategory = 'All';
 let trendsChart = null;
 
 function trendsToggle() {
@@ -2941,14 +2947,38 @@ function trendsChangeYear(delta) {
   renderTrends();
 }
 
-function getTrendsData(year) {
+function getAllTrendsCategories() {
+  const cats = new Set();
+  Object.values(data).forEach(entries => {
+    (entries || []).forEach(e => { if (e.cat && e.cat.trim()) cats.add(e.cat.trim()); });
+  });
+  return ['All', ...Array.from(cats).sort()];
+}
+
+function renderTrendsPills(cats) {
+  const container = document.getElementById('trends-pills');
+  if (!container) return;
+  container.innerHTML = cats.map(c =>
+    `<button class="trends-pill ${c === trendsCategory ? 'active' : ''}" onclick="trendsSetCategory(${JSON.stringify(c)})">${c === 'All' ? 'All categories' : c}</button>`
+  ).join('');
+}
+
+function trendsSetCategory(cat) {
+  trendsCategory = cat;
+  renderTrends();
+}
+
+function getTrendsData(year, category) {
   const months = Array(12).fill(0);
   Object.keys(data).forEach(key => {
     if (!key.startsWith(year + '-')) return;
     const month = parseInt(key.split('-')[1], 10) - 1;
     (data[key] || []).forEach(e => {
       if (!e.amt) return;
-      months[month] += parseFloat(e.amt) || 0;
+      const amt = parseFloat(e.amt) || 0;
+      if (category === 'All' || (e.cat || '').toLowerCase() === category.toLowerCase()) {
+        months[month] += amt;
+      }
     });
   });
   return months;
@@ -3110,10 +3140,12 @@ function renderTrendsChart(months, avg) {
 }
 
 function renderTrends() {
-  const months = getTrendsData(trendsYear);
+  const cats   = getAllTrendsCategories();
+  const months = getTrendsData(trendsYear, trendsCategory);
   const filled = months.filter(v => v > 0);
   const avg    = filled.length ? filled.reduce((a,b)=>a+b,0) / filled.length : 0;
 
+  renderTrendsPills(cats);
   renderTrendsSummary(months, avg);
   renderTrendsChart(months, avg);
   renderTrendsTable(months, avg);
