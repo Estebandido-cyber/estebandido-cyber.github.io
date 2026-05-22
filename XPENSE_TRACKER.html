@@ -2932,7 +2932,7 @@ function trendsToggle() {
   const open = body.classList.toggle('open');
   chev.classList.toggle('open', open);
   hdr.classList.toggle('open', open);
-  if (open) renderTrends();
+  if (open) requestAnimationFrame(() => renderTrends());
 }
 
 function trendsChangeYear(delta) {
@@ -3023,6 +3023,7 @@ function renderTrendsChart(months, avg) {
   const dpr = window.devicePixelRatio || 1;
   const wrap = canvas.parentElement;
   const W = wrap.clientWidth;
+  if (!W) return; // section not yet visible, skip
   const H = 220;
   canvas.width  = W * dpr;
   canvas.height = H * dpr;
