@@ -1696,6 +1696,7 @@ function getDateKey(year, month, day) {
 
 const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 // ═══════════════════════════════════════════════
 // MONTH NAVIGATION
@@ -2568,7 +2569,6 @@ function cfRenderTrend() {
 
   const maxAbs = Math.max(...remainings.map(Math.abs), 1);
   const browseMk = cfMk();
-  const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   months.forEach((mk, i) => {
     const rem = remainings[i];
