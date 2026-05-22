@@ -2938,7 +2938,7 @@ function trendsToggle() {
   const open = body.classList.toggle('open');
   chev.classList.toggle('open', open);
   hdr.classList.toggle('open', open);
-  if (open) requestAnimationFrame(() => renderTrends());
+  if (open) setTimeout(() => renderTrends(), 50);
 }
 
 function trendsChangeYear(delta) {
@@ -3092,24 +3092,18 @@ function renderTrendsChart(months, avg) {
   const isCurrentYear = trendsYear === now.getFullYear();
 
   months.forEach((val, i) => {
+    const x  = PAD.left + i * barW + barGap / 2;
+    const bw = barW - barGap;
+
     if (val === 0) {
-      // Render empty month as faint placeholder
-      const x = PAD.left + i * barW + barGap / 2;
-      const bw = barW - barGap;
       ctx.fillStyle = 'rgba(255,255,255,0.04)';
-      ctx.beginPath();
-      ctx.roundRect(x, PAD.top + chartH - 4, bw, 4, 3);
-      ctx.fill();
+      ctx.fillRect(x, PAD.top + chartH - 4, bw, 4);
     } else {
       const barH = (val / maxVal) * chartH;
-      const x = PAD.left + i * barW + barGap / 2;
       const y = PAD.top + chartH - barH;
-      const bw = barW - barGap;
       const isCurrent = isCurrentYear && i === now.getMonth();
       ctx.fillStyle = isCurrent ? 'rgba(240,192,96,0.85)' : 'rgba(91,158,240,0.7)';
-      ctx.beginPath();
-      ctx.roundRect(x, y, bw, barH, [4, 4, 0, 0]);
-      ctx.fill();
+      ctx.fillRect(x, y, bw, barH);
     }
 
     // Month label
