@@ -296,6 +296,50 @@ select {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-med); border-radius: 2px; }
+
+/* ── Responsive: tablet and mobile ── */
+@media (max-width: 680px) {
+  body { padding-left: 1rem; padding-right: 1rem; padding-top: calc(var(--header-h) + 1rem); }
+  .site-header { padding: 0 1rem; }
+  .logo-kals { font-size: 22px; }
+  .logo-track { font-size: 14px; }
+
+  /* 4 cards → 2×2 grid */
+  .top-cards { grid-template-columns: repeat(2, 1fr); }
+
+  /* All side-by-side grids → single column stack */
+  .main { grid-template-columns: 1fr; }
+  .bottom { grid-template-columns: 1fr; }
+
+  /* The narrative + assistant row (inline style grid) */
+  .two-col-bottom { grid-template-columns: 1fr !important; }
+
+  /* Meal list taller on mobile since it's full width */
+  .meal-list { max-height: 240px; }
+
+  /* Memory chips scroll horizontally instead of wrapping too much */
+  .memory-row { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .memory-chip { flex-shrink: 0; }
+
+  /* Assistant messages panel a bit shorter */
+  .assistant-messages { height: 160px; }
+
+  /* Narrative stats 3 cols still fine, but tighten padding */
+  .narrative-stat { padding: 8px 10px; }
+  .narrative-stat-val { font-size: 16px; }
+
+  /* Week bar values hidden on tiny screens to avoid cramping */
+  .week-bar-val { display: none; }
+  .week-bars { height: 70px; }
+
+  /* Water quick buttons wrap nicely */
+  .water-quick { gap: 5px; }
+  .btn-sm { padding: 5px 8px; font-size: 11px; }
+
+  /* Entry row: portion select + button */
+  .entry-row { flex-wrap: wrap; }
+  .entry-row select { flex: 1; }
+}
 </style>
 </head>
 <body>
@@ -452,7 +496,7 @@ select {
     </div>
 
     <!-- Weekly narrative + AI assistant side by side -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div class="two-col-bottom" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
 
       <!-- Weekly narrative -->
       <div class="narrative-panel">
