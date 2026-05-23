@@ -797,7 +797,6 @@ document.getElementById('addbtn').addEventListener('click',doAdd);
 document.getElementById('newinput').addEventListener('keydown',e=>{if(e.key==='Enter')doAdd();});
 
 load();buildGrid();renderTabs();renderChips();renderBlocks();renderTracker();renderNote();
-cloudLoad();
 
 // ═══════════════════════════════════════════════
 // CLOUDFLARE WORKERS AUTO-SYNC
@@ -859,6 +858,8 @@ async function cloudLoad(){
   }
 }
 
+
+cloudLoad();
 
 // ── Google Drive Sync ──
 const GD_CLIENT_ID='453884215011-bnuqib76c5lt7vr87g6e5sd59q7r2cip.apps.googleusercontent.com';
