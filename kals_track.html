@@ -280,6 +280,22 @@ body {
 #drive-status.ok { color: #1a7a4a; }
 #drive-status.err { color: #c0392b; }
 #drive-status.working { color: #854F0B; }
+
+/* ── Cloudflare sync status ── */
+#cf-status {
+  text-align: center; font-size: 12px; font-weight: 500; color: #999;
+  padding: 4px 14px; letter-spacing: 0.03em; min-height: 0;
+  transition: color 0.3s; display: none; align-items: center;
+  justify-content: center; gap: 6px;
+}
+#cf-status.visible { display: flex; }
+#cf-status.ok { color: #1a7a4a; }
+#cf-status.err { color: #c0392b; }
+#cf-status.working { color: #854F0B; }
+.cf-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #999; }
+#cf-status.ok .cf-dot { background: #1a7a4a; }
+#cf-status.err .cf-dot { background: #c0392b; }
+#cf-status.working .cf-dot { background: #854F0B; }
 /* ── Responsive ── */
 @media (max-width: 640px) {
   body { padding: calc(var(--header-h) + 0.9rem) 0.9rem 2rem; }
@@ -343,6 +359,7 @@ body {
   </div>
 </header>
 <div id="drive-status"></div>
+<div id="cf-status"><span class="cf-dot"></span><span id="cf-status-msg"></span></div>
 
 <!-- Setup screen -->
 <div id="setupScreen" style="display:none;">
@@ -559,7 +576,7 @@ function loadDay(key) {
   try { return JSON.parse(localStorage.getItem('kals_day_' + key)) || { meals:[], water:[], waterTotal:0 }; }
   catch(e) { return { meals:[], water:[], waterTotal:0 }; }
 }
-function saveDay(key, data) { localStorage.setItem('kals_day_' + key, JSON.stringify(data)); }
+function saveDay(key, data) { localStorage.setItem('kals_day_' + key, JSON.stringify(data)); scheduleCloudsave(); }
 function getCurrentDay() { return loadDay(getCurrentKey()); }
 function saveCurrentDay(data) { saveDay(getCurrentKey(), data); }
 
@@ -574,6 +591,7 @@ function saveRecap(recap) {
   if (existing >= 0) recaps[existing] = recap; else recaps.unshift(recap);
   recaps.sort((a,b) => b.weekStart.localeCompare(a.weekStart));
   localStorage.setItem('kals_recaps', JSON.stringify(recaps.slice(0, 52)));
+  scheduleCloudsave();
 }
 
 // ── Meal memory ──
@@ -682,6 +700,7 @@ function saveSettings() {
   settings.water = parseInt(document.getElementById('setWater').value) || DEFAULT_SETTINGS.water;
   settings.weight = parseFloat(document.getElementById('setWeight').value) || DEFAULT_SETTINGS.weight;
   localStorage.setItem('kals_settings', JSON.stringify(settings));
+  scheduleCloudsave();
   updateUI(); switchTab('chat');
 }
 function updateBurned() {
@@ -1272,6 +1291,62 @@ function gdriveLoad() {
 
 document.getElementById('drivesavebtn').addEventListener('click', gdriveSave);
 document.getElementById('driveloadbtn').addEventListener('click', gdriveLoad);
+
+// ═══════════════════════════════════════════════
+// CLOUDFLARE WORKERS AUTO-SYNC
+// ═══════════════════════════════════════════════
+const CF_URL = 'https://widgets-sync.estebandido80.workers.dev/data/kalstrack';
+const CF_SECRET = 'widget-sync-secret-2024';
+let cfSaveTimer = null;
+
+function cfStatus(msg, type) {
+  const el = document.getElementById('cf-status');
+  const ms = document.getElementById('cf-status-msg');
+  if (!el || !ms) return;
+  ms.textContent = msg;
+  el.className = 'visible' + (type ? ' ' + type : '');
+}
+
+function scheduleCloudsave() {
+  clearTimeout(cfSaveTimer);
+  cfSaveTimer = setTimeout(cloudSave, 4000);
+}
+
+async function cloudSave() {
+  try {
+    const payload = getStateToSave();
+    cfStatus('Syncing…', 'working');
+    const res = await fetch(CF_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const t = new Date();
+    cfStatus('Synced at ' + t.getHours() + ':' + String(t.getMinutes()).padStart(2,'0'), 'ok');
+  } catch(e) {
+    console.warn('Cloud save failed', e);
+    cfStatus('Sync failed', 'err');
+  }
+}
+
+async function cloudLoad() {
+  try {
+    const res = await fetch(CF_URL, { headers: { 'X-Secret': CF_SECRET } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data && Object.keys(data).length > 0) {
+      applyLoadedState(data);
+      const t = new Date();
+      cfStatus('Synced at ' + t.getHours() + ':' + String(t.getMinutes()).padStart(2,'0'), 'ok');
+    }
+  } catch(e) {
+    console.warn('Cloud load failed', e);
+    cfStatus('Sync failed', 'err');
+  }
+}
+
+cloudLoad();
 
 init();
 </script>
