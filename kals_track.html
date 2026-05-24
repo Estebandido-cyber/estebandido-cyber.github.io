@@ -90,7 +90,7 @@ body {
 .day-nav-today:hover { background: var(--bg-secondary); }
 
 /* ── Top cards ── */
-.top-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 1rem; }
+.top-cards { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin-bottom: 1rem; }
 .card { background: var(--bg-primary); border-radius: var(--radius-lg); padding: 12px 14px; border: 0.5px solid var(--border); }
 .card-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; font-weight: 500; }
 .card-value { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1; }
@@ -329,7 +329,55 @@ body {
 
 /* ── Water week bars (second row) ── */
 .week-bars-water { display: flex; gap: 5px; align-items: flex-end; height: 50px; margin-top: 8px; }
+
+/* ── Calories card dual display ── */
+.cal-dual { display: flex; flex-direction: column; gap: 0; }
+.cal-remaining { font-size: 22px; font-weight: 600; color: var(--text-primary); line-height: 1; }
+.cal-budget { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; letter-spacing: 0.01em; }
+.cal-budget span { font-weight: 500; color: var(--text-secondary); }
+
+/* ── Chat panel highlight ── */
+.chat-panel {
+  background: rgba(55,138,221,0.04) !important;
+  border: 1.5px solid rgba(55,138,221,0.28) !important;
+}
+@media (prefers-color-scheme: dark) {
+  .chat-panel {
+    background: rgba(55,138,221,0.07) !important;
+    border-color: rgba(55,138,221,0.35) !important;
+  }
+}
+
 /* ── Responsive ── */
+
+/* ── Tablet (641px – 1024px) ── */
+@media (min-width: 641px) and (max-width: 1024px) {
+  body { padding: calc(var(--header-h) + 1.25rem) 1.25rem 2rem; font-size: 15px; }
+  .top-cards { grid-template-columns: repeat(4, 1fr); gap: 9px; }
+  .card-value { font-size: 20px; }
+  .card-label { font-size: 11px; }
+  .card-sub { font-size: 11px; }
+  .layout-main { grid-template-columns: 1fr 1fr; gap: 14px; }
+  .layout-bottom { grid-template-columns: 1fr 1fr; gap: 14px; }
+  .panel { padding: 1.2rem; }
+  .panel-title { font-size: 11px; }
+  .tab { font-size: 12px; padding: 5px 13px 9px; }
+  .chat-textarea { font-size: 15px; }
+  .msg { font-size: 14px; }
+  .meal-name { font-size: 14px; }
+  .meal-macros { font-size: 12px; }
+  .meal-kcal { font-size: 13px; }
+  .day-nav-date { font-size: 16px; }
+  .day-nav-label { font-size: 12px; }
+  .chat-messages { max-height: 380px; min-height: 280px; }
+  .meal-list { max-height: 380px; }
+  .memory-chip { font-size: 12px; padding: 4px 12px 4px 10px; }
+  .water-pill { font-size: 12px; padding: 4px 12px; }
+  .narrative-text { font-size: 13px; }
+  .btn-send { font-size: 14px; padding: 9px 16px; height: 40px; }
+}
+
+
 @media (max-width: 640px) {
   /* Root: never wider than the screen */
   html { overflow-x: hidden; }
@@ -353,9 +401,9 @@ body {
   .logo-kals { font-size: 20px; }
   .logo-track { font-size: 12px; letter-spacing: 0.1em; }
 
-  /* Cards 2×2+1 */
+  /* Cards 2×4 on mobile */
   .top-cards { grid-template-columns: repeat(2,1fr); gap: 7px; }
-  .top-cards .card:last-child { grid-column: span 2; }
+  .top-cards .card:last-child { grid-column: unset; }
 
   /* Stack all two-col layouts */
   .layout-main { grid-template-columns: 1fr; }
@@ -471,8 +519,10 @@ body {
   <div class="top-cards">
     <div class="card">
       <div class="card-label">Calories left</div>
-      <div class="card-value" id="calLeft">2650</div>
-      <div class="card-sub" id="calLeftSub">of 2650 budget</div>
+      <div class="cal-dual">
+        <div class="cal-remaining calories-ok" id="calLeft">2650</div>
+        <div class="cal-budget">of <span id="calBudgetDisplay">2650</span> kcal budget</div>
+      </div>
       <div class="card-bar"><div class="card-bar-fill" id="calBar" style="width:0%;background:var(--green);"></div></div>
     </div>
     <div class="card">
@@ -498,6 +548,24 @@ body {
       <div class="card-value" id="burnedVal">0</div>
       <div class="card-sub" id="burnedSub">kcal from Fitbit</div>
       <div class="card-bar"><div class="card-bar-fill" id="burnedBar" style="width:0%;background:var(--red);"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Fat</div>
+      <div class="card-value" id="fatVal">0g</div>
+      <div class="card-sub" id="fatSub">today</div>
+      <div class="card-bar"><div class="card-bar-fill" id="fatBar" style="width:0%;background:#E8916A;"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Carbs</div>
+      <div class="card-value" id="carbsVal">0g</div>
+      <div class="card-sub" id="carbsSub">today</div>
+      <div class="card-bar"><div class="card-bar-fill" id="carbsBar" style="width:0%;background:#F2C94C;"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Sugar</div>
+      <div class="card-value" id="sugarVal">0g</div>
+      <div class="card-sub" id="sugarSub">today</div>
+      <div class="card-bar"><div class="card-bar-fill" id="sugarBar" style="width:0%;background:#EB5757;"></div></div>
     </div>
   </div>
 
@@ -811,8 +879,8 @@ function updateUI() {
 
   const calEl = document.getElementById('calLeft');
   calEl.textContent = Math.round(remaining);
-  calEl.className = 'card-value' + (remaining < 0 ? ' calories-over' : '');
-  document.getElementById('calLeftSub').textContent = 'of ' + effectiveBudget + ' kcal' + (totalBurned > 0 ? ' (+' + totalBurned + ' burned)' : '');
+  calEl.className = 'cal-remaining' + (remaining < 0 ? ' calories-over' : '');
+  document.getElementById('calBudgetDisplay').textContent = effectiveBudget + (totalBurned > 0 ? ' (+' + totalBurned + ' 🔥)' : '');
   const calPct = Math.min(100, Math.round((totalIn/effectiveBudget)*100));
   document.getElementById('calBar').style.width = calPct + '%';
   document.getElementById('calBar').style.background = remaining < 0 ? 'var(--red)' : 'var(--green)';
@@ -832,6 +900,18 @@ function updateUI() {
   document.getElementById('burnedVal').textContent = totalBurned;
   document.getElementById('burnedSub').textContent = totalBurned > 0 ? 'kcal burned today' : 'tell me via chat';
   document.getElementById('burnedBar').style.width = Math.min(100, Math.round((totalBurned/settings.budget)*100)) + '%';
+
+  // Fat, carbs, sugar cards
+  const totalFat = Math.round(meals.reduce((s,m)=>s+(m.fat||0),0));
+  const totalCarbs = Math.round(meals.reduce((s,m)=>s+(m.carbs||0),0));
+  const totalSugar = Math.round(meals.reduce((s,m)=>s+(m.sugar||0),0));
+  document.getElementById('fatVal').textContent = totalFat + 'g';
+  document.getElementById('carbsVal').textContent = totalCarbs + 'g';
+  document.getElementById('sugarVal').textContent = totalSugar + 'g';
+  // Progress bars: fat vs ~70g ref, carbs vs ~300g ref, sugar vs ~50g ref
+  document.getElementById('fatBar').style.width = Math.min(100, Math.round((totalFat/70)*100)) + '%';
+  document.getElementById('carbsBar').style.width = Math.min(100, Math.round((totalCarbs/300)*100)) + '%';
+  document.getElementById('sugarBar').style.width = Math.min(100, Math.round((totalSugar/50)*100)) + '%';
 
   renderMealList(meals);
   renderWaterLog(day.water || [], waterTotal);
@@ -1065,7 +1145,7 @@ ${buildDayContext()}
 RESPONSE RULES — always return a valid JSON object:
 
 For food logging:
-{"type":"log_food","label":"short name max 40 chars","meal_type":"breakfast|lunch|dinner|snack|apero|drink","kcal":number,"protein":number,"fat":number,"carbs":number,"alcohol_units":number,"uncertain":"range or null","items":[{"name":"item","kcal":number}],"reply":"brief warm confirmation"}
+{"type":"log_food","label":"short name max 40 chars","meal_type":"breakfast|lunch|dinner|snack|apero|drink","kcal":number,"protein":number,"fat":number,"carbs":number,"sugar":number,"alcohol_units":number,"uncertain":"range or null","items":[{"name":"item","kcal":number}],"reply":"brief warm confirmation"}
 
 For water logging:
 {"type":"log_water","ml":number,"label":"short description","reply":"brief confirmation"}
@@ -1145,7 +1225,7 @@ function confirmFood(btn) {
   const msgEl = btn.closest('.msg');
   const p = msgEl._foodData;
   const day = getCurrentDay();
-  day.meals.push({ label:p.label, kcal:p.kcal, protein:p.protein, fat:p.fat, carbs:p.carbs, alcohol:p.alcohol_units||0, uncertain:p.uncertain||null, mealType:p.meal_type||null, time:getTime() });
+  day.meals.push({ label:p.label, kcal:p.kcal, protein:p.protein, fat:p.fat, carbs:p.carbs, sugar:p.sugar||0, alcohol:p.alcohol_units||0, uncertain:p.uncertain||null, mealType:p.meal_type||null, time:getTime() });
   saveCurrentDay(day);
   // Replace bubble with a compact confirmation
   msgEl.className = 'msg msg-system';
