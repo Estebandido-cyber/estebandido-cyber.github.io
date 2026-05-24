@@ -837,7 +837,35 @@ function loadDoIt() {
   if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
 }
 
-// ── init ─────────────────────────────────────────────────────────
+// ── KALS ─────────────────────────────────────────────────────────
+function loadKals() {
+  const el = document.getElementById('stats-kals');
+  const foot = document.getElementById('footer-kals');
+
+  const todayKey = 'kals_day_' + new Date().toISOString().slice(0, 10);
+  const settings = safeParse(safeGet('kals_settings')) || { budget: 2650 };
+  const data = safeParse(safeGet(todayKey)) || { meals: [], waterTotal: 0, burned: [] };
+
+  if (!data.meals && !data.waterTotal) { el.innerHTML = noData('Open Kals to start'); return; }
+
+  const consumed = Math.round((data.meals || []).reduce((s, m) => s + (m.kcal || 0), 0));
+  const burned   = Math.round((data.burned || []).reduce((s, b) => s + (b.kcal || 0), 0));
+  const budget   = settings.budget || 2650;
+  const left     = (budget + burned) - consumed;
+  const water    = data.waterTotal || 0;
+  const waterL   = (water / 1000).toFixed(1) + 'L';
+
+  const leftColor = left >= 0 ? 'var(--text)' : '#ff6b6b';
+
+  el.innerHTML =
+    statHTML('Consumed', consumed + ' kcal', true) +
+    '<div class="stat-divider"></div>' +
+    `<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${leftColor}">${left >= 0 ? '' : ''}${left} kcal</div></div>` +
+    '<div class="stat-divider"></div>' +
+    statHTML('Water', waterL);
+
+  if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
+}
 function loadAll() {
   loadDoIt();
   loadTracker();
@@ -845,6 +873,7 @@ function loadAll() {
   loadPlanner();
   loadFire();
   loadWorkout();
+  loadKals();
   loadLukas();
   const stratFoot = document.getElementById('footer-strat');
   if (stratFoot) stratFoot.textContent = 'To update manually';
