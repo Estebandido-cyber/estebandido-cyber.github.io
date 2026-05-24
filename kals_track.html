@@ -90,7 +90,7 @@ body {
 .day-nav-today:hover { background: var(--bg-secondary); }
 
 /* ── Top cards ── */
-.top-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 1rem; }
+.top-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 1rem; }
 .card { background: var(--bg-primary); border-radius: var(--radius-lg); padding: 12px 14px; border: 0.5px solid var(--border); }
 .card-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; font-weight: 500; }
 .card-value { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1; }
@@ -296,6 +296,39 @@ body {
 #cf-status.ok .cf-dot { background: #1a7a4a; }
 #cf-status.err .cf-dot { background: #c0392b; }
 #cf-status.working .cf-dot { background: #854F0B; }
+
+/* ── Meal type badge ── */
+.meal-type-badge {
+  display: inline-block; font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; border-radius: 20px; padding: 1px 7px; margin-right: 5px;
+  flex-shrink: 0; white-space: nowrap;
+}
+.badge-breakfast { background: rgba(255,179,0,0.15); color: #B37800; }
+.badge-lunch     { background: rgba(55,138,221,0.13); color: #2268B2; }
+.badge-dinner    { background: rgba(139,92,246,0.13); color: #6B35D4; }
+.badge-snack     { background: rgba(29,158,117,0.13); color: #178060; }
+.badge-apero     { background: rgba(239,159,39,0.18); color: #9A5F00; }
+.badge-workout   { background: rgba(226,75,74,0.12);  color: #C0392B; }
+@media (prefers-color-scheme: dark) {
+  .badge-breakfast { background: rgba(255,179,0,0.2);  color: #FFCA55; }
+  .badge-lunch     { background: rgba(55,138,221,0.2); color: #7BB8F0; }
+  .badge-dinner    { background: rgba(139,92,246,0.2); color: #C4A0FF; }
+  .badge-snack     { background: rgba(29,158,117,0.2); color: #5DCAA5; }
+  .badge-apero     { background: rgba(239,159,39,0.2); color: #F5B84A; }
+  .badge-workout   { background: rgba(226,75,74,0.2);  color: #F08080; }
+}
+
+/* ── Burned entry in meal log ── */
+.burned-item { padding: 9px 0; border-bottom: 0.5px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.burned-item:last-child { border-bottom: none; }
+.burned-label { font-size: 12px; font-weight: 500; color: var(--red); display:flex; align-items:center; gap:5px; }
+.burned-time { font-size: 10px; color: var(--text-tertiary); }
+
+/* ── Burned card glow ── */
+#burnedCard { cursor: default; }
+
+/* ── Water week bars (second row) ── */
+.week-bars-water { display: flex; gap: 5px; align-items: flex-end; height: 50px; margin-top: 8px; }
 /* ── Responsive ── */
 @media (max-width: 640px) {
   /* Root: never wider than the screen */
@@ -320,8 +353,9 @@ body {
   .logo-kals { font-size: 20px; }
   .logo-track { font-size: 12px; letter-spacing: 0.1em; }
 
-  /* Cards 2×2 */
+  /* Cards 2×2+1 */
   .top-cards { grid-template-columns: repeat(2,1fr); gap: 7px; }
+  .top-cards .card:last-child { grid-column: span 2; }
 
   /* Stack all two-col layouts */
   .layout-main { grid-template-columns: 1fr; }
@@ -459,6 +493,12 @@ body {
       <div class="card-sub">units this week</div>
       <div class="card-bar"><div class="card-bar-fill" id="alcBar" style="width:0%;background:var(--amber);"></div></div>
     </div>
+    <div class="card" id="burnedCard">
+      <div class="card-label">🔥 Burned today</div>
+      <div class="card-value" id="burnedVal">0</div>
+      <div class="card-sub" id="burnedSub">kcal from Fitbit</div>
+      <div class="card-bar"><div class="card-bar-fill" id="burnedBar" style="width:0%;background:var(--red);"></div></div>
+    </div>
   </div>
 
   <!-- Main: unified chat + log -->
@@ -515,7 +555,6 @@ body {
         <div class="settings-row"><span class="settings-label">Protein goal</span><span class="settings-val"><input type="number" id="setProt" value="120"><span class="settings-unit">g</span></span></div>
         <div class="settings-row"><span class="settings-label">Water goal</span><span class="settings-val"><input type="number" id="setWater" value="3000"><span class="settings-unit">ml</span></span></div>
         <div class="settings-row"><span class="settings-label">Weight</span><span class="settings-val"><input type="number" id="setWeight" value="81"><span class="settings-unit">kg</span></span></div>
-        <div class="settings-row"><span class="settings-label">Calories burned today</span><span class="settings-val"><input type="number" id="setBurned" value="0" oninput="updateBurned()"><span class="settings-unit">kcal</span></span></div>
         <div class="settings-row"><span class="settings-label">API key</span><span class="settings-val key-row"><input type="password" id="keyDisplay" /><button class="btn-sm" onclick="updateKey()">Update</button></span></div>
         <div style="margin-top:12px;"><button class="btn-primary" onclick="saveSettings()">Save settings</button></div>
       </div>
@@ -553,8 +592,12 @@ body {
     <!-- Week bars -->
     <div class="panel">
       <div class="panel-title">Last 7 days</div>
+      <div style="font-size:9px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;">Calories</div>
       <div class="week-bars" id="weekBars"></div>
-      <div style="font-size:10px;color:var(--text-tertiary);margin-top:7px;" id="weekAvg"></div>
+      <div style="font-size:10px;color:var(--text-tertiary);margin-top:5px;" id="weekAvg"></div>
+      <div style="font-size:9px;color:var(--teal);text-transform:uppercase;letter-spacing:0.06em;margin-top:10px;margin-bottom:3px;">💧 Water</div>
+      <div class="week-bars week-bars-water" id="weekBarsWater"></div>
+      <div style="font-size:10px;color:var(--text-tertiary);margin-top:5px;" id="weekAvgWater"></div>
     </div>
 
     <!-- Weekly recap -->
@@ -591,7 +634,7 @@ body {
 </div>
 
 <script>
-const DEFAULT_SETTINGS = { budget: 2650, protein: 120, water: 3000, weight: 81, burned: 0 };
+const DEFAULT_SETTINGS = { budget: 2650, protein: 120, water: 3000, weight: 81 };
 let settings = { ...DEFAULT_SETTINGS };
 let API_KEY = '';
 let viewOffset = 0;
@@ -615,8 +658,8 @@ function getWeekStart() {
 
 // ── Storage ──
 function loadDay(key) {
-  try { return JSON.parse(localStorage.getItem('kals_day_' + key)) || { meals:[], water:[], waterTotal:0 }; }
-  catch(e) { return { meals:[], water:[], waterTotal:0 }; }
+  try { return JSON.parse(localStorage.getItem('kals_day_' + key)) || { meals:[], water:[], waterTotal:0, burned:[] }; }
+  catch(e) { return { meals:[], water:[], waterTotal:0, burned:[] }; }
 }
 function saveDay(key, data) { localStorage.setItem('kals_day_' + key, JSON.stringify(data)); scheduleCloudsave(); }
 function getCurrentDay() { return loadDay(getCurrentKey()); }
@@ -636,14 +679,20 @@ function saveRecap(recap) {
   scheduleCloudsave();
 }
 
-// ── Meal memory ──
+// ── Meal memory — frequency ranked ──
 function getRecentMeals() {
-  const seen = new Map();
-  for (let i = 0; i >= -13; i--) {
+  const freq = new Map(); // label → {meal, count}
+  for (let i = 0; i >= -29; i--) {
     const day = loadDay(dateKey(i));
-    (day.meals||[]).forEach(m => { if (!seen.has(m.label)) seen.set(m.label, m); });
+    (day.meals||[]).forEach(m => {
+      if (freq.has(m.label)) freq.get(m.label).count++;
+      else freq.set(m.label, { meal: m, count: 1 });
+    });
   }
-  return [...seen.values()].slice(0, 6);
+  return [...freq.values()]
+    .sort((a,b) => b.count - a.count)
+    .slice(0, 8)
+    .map(v => v.meal);
 }
 function renderMemoryChips() {
   const recent = getRecentMeals();
@@ -660,11 +709,13 @@ function renderMemoryChips() {
 }
 function reuseMemory(mealStr) {
   const meal = JSON.parse(mealStr);
-  const day = getCurrentDay();
-  day.meals.push({ ...meal, time: getTime() });
-  saveCurrentDay(day);
-  addChatMsg('system', `↩ Re-logged: ${meal.label} (${Math.round(meal.kcal)} kcal)`);
-  updateUI();
+  const input = document.getElementById('chatInput');
+  // Pre-fill with meal description so user can edit before sending
+  const macros = `${Math.round(meal.kcal)} kcal, P${Math.round(meal.protein)}g F${Math.round(meal.fat)}g C${Math.round(meal.carbs)}g`;
+  input.value = meal.label + ' (same as before: ' + macros + ')';
+  input.focus();
+  // Put cursor at start so user can easily modify
+  input.setSelectionRange(0, meal.label.length);
 }
 
 // ── Navigation ──
@@ -741,15 +792,11 @@ function saveSettings() {
   settings.protein = parseInt(document.getElementById('setProt').value) || DEFAULT_SETTINGS.protein;
   settings.water = parseInt(document.getElementById('setWater').value) || DEFAULT_SETTINGS.water;
   settings.weight = parseFloat(document.getElementById('setWeight').value) || DEFAULT_SETTINGS.weight;
+  delete settings.burned;
   localStorage.setItem('kals_settings', JSON.stringify(settings));
   scheduleCloudsave();
   updateUI(); switchTab('chat');
 }
-function updateBurned() {
-  settings.burned = parseInt(document.getElementById('setBurned').value) || 0;
-  updateUI();
-}
-
 // ── Main UI ──
 function updateUI() {
   const day = getCurrentDay();
@@ -757,14 +804,15 @@ function updateUI() {
   const waterTotal = day.waterTotal || 0;
   const totalIn = meals.reduce((s,m)=>s+m.kcal,0);
   const totalProt = meals.reduce((s,m)=>s+m.protein,0);
-  const effectiveBudget = settings.budget + settings.burned;
+  const totalBurned = (day.burned||[]).reduce((s,b)=>s+b.kcal,0);
+  const effectiveBudget = settings.budget + totalBurned;
   const remaining = effectiveBudget - totalIn;
   const weekAlc = getWeekAlcohol();
 
   const calEl = document.getElementById('calLeft');
   calEl.textContent = Math.round(remaining);
   calEl.className = 'card-value' + (remaining < 0 ? ' calories-over' : '');
-  document.getElementById('calLeftSub').textContent = 'of ' + effectiveBudget + ' kcal' + (settings.burned > 0 ? ' (+' + settings.burned + ')' : '');
+  document.getElementById('calLeftSub').textContent = 'of ' + effectiveBudget + ' kcal' + (totalBurned > 0 ? ' (+' + totalBurned + ' burned)' : '');
   const calPct = Math.min(100, Math.round((totalIn/effectiveBudget)*100));
   document.getElementById('calBar').style.width = calPct + '%';
   document.getElementById('calBar').style.background = remaining < 0 ? 'var(--red)' : 'var(--green)';
@@ -779,6 +827,11 @@ function updateUI() {
 
   document.getElementById('alcVal').textContent = weekAlc.toFixed(1);
   document.getElementById('alcBar').style.width = Math.min(100, Math.round((weekAlc/14)*100)) + '%';
+
+  // Burned card
+  document.getElementById('burnedVal').textContent = totalBurned;
+  document.getElementById('burnedSub').textContent = totalBurned > 0 ? 'kcal burned today' : 'tell me via chat';
+  document.getElementById('burnedBar').style.width = Math.min(100, Math.round((totalBurned/settings.budget)*100)) + '%';
 
   renderMealList(meals);
   renderWaterLog(day.water || [], waterTotal);
@@ -796,6 +849,21 @@ function getWeekAlcohol() {
   return total;
 }
 
+
+function getMealTypeBadge(type) {
+  const map = {
+    breakfast: ['Breakfast','badge-breakfast'],
+    lunch:     ['Lunch','badge-lunch'],
+    dinner:    ['Dinner','badge-dinner'],
+    snack:     ['Snack','badge-snack'],
+    apero:     ['Apéro','badge-apero'],
+    drink:     ['Drink','badge-apero'],
+  };
+  const t = (type||'').toLowerCase();
+  const [label, cls] = map[t] || [];
+  return label ? `<span class="meal-type-badge ${cls}">${label}</span>` : '';
+}
+
 function renderMealList(meals) {
   const list = document.getElementById('mealList');
   const count = document.getElementById('mealCount');
@@ -807,11 +875,27 @@ function renderMealList(meals) {
   count.textContent = meals.length + ' ' + (meals.length===1?'entry':'entries');
   dayTotal.style.display = 'flex';
   document.getElementById('dayTotalVal').textContent = Math.round(meals.reduce((s,m)=>s+m.kcal,0)) + ' kcal';
-  list.innerHTML = meals.slice().reverse().map((m,ri) => {
-    const i = meals.length-1-ri;
+
+  // Build meal rows + any burned entries interspersed by time
+  const day = getCurrentDay();
+  const burnedEntries = (day.burned||[]).map(b => ({ ...b, _isBurned: true }));
+  const allEntries = [...meals.map((m,i)=>({...m,_idx:i})), ...burnedEntries]
+    .sort((a,b) => (a.time||'00:00').localeCompare(b.time||'00:00'))
+    .reverse();
+
+  list.innerHTML = allEntries.map(entry => {
+    if (entry._isBurned) {
+      return `<div class="burned-item">
+        <span class="burned-label">🔥 ${entry.label} <span style="font-weight:400;font-size:11px;">+${entry.kcal} kcal to budget</span></span>
+        <span class="burned-time">${entry.time}</span>
+      </div>`;
+    }
+    const i = entry._idx;
+    const m = entry;
     return `<div class="meal-item">
       <div class="meal-header">
         <div class="meal-name-wrap">
+          ${getMealTypeBadge(m.mealType)}
           <span class="meal-name" id="mn-${i}">${m.label}</span>
           <button class="meal-edit-btn" onclick="startEdit(${i})" title="Edit">✎</button>
         </div>
@@ -873,6 +957,27 @@ function renderWeek() {
   const nonZero=totals.filter(v=>v>0);
   const avg=nonZero.length>0?Math.round(nonZero.reduce((a,b)=>a+b,0)/nonZero.length):0;
   document.getElementById('weekAvg').textContent=avg>0?'7-day avg: '+avg+' kcal/day':'Log meals to see your week';
+
+  // Water bars
+  const waterTotals=keys.map(k=>loadDay(k).waterTotal||0);
+  const waterMax=Math.max(...waterTotals,settings.water);
+  const waterBarsEl=document.getElementById('weekBarsWater');
+  if(waterBarsEl){
+    waterBarsEl.innerHTML=keys.map((k,idx)=>{
+      const val=waterTotals[idx];
+      const pct=waterMax>0?Math.round((val/waterMax)*100):0;
+      const isActive=k===viewKey,isToday=k===todayKey();
+      const d=new Date(k+'T12:00:00'),label=days[(d.getDay()+6)%7];
+      const color=isToday?'var(--teal)':isActive?'#5DCAA588':'rgba(93,202,165,0.35)';
+      return `<div class="week-bar-wrap" onclick="jumpToDay(${idx-6})" title="${val>=1000?(val/1000).toFixed(1)+'L':val+'ml'}">
+        <div class="week-bar-bg" style="border-color:rgba(93,202,165,0.2);"><div class="week-bar-fill" style="height:${pct}%;background:${color};"></div></div>
+        <div class="week-bar-label" style="color:${isActive?'var(--teal)':'var(--text-tertiary)'};">${label}</div>
+      </div>`;
+    }).join('');
+    const nonZeroW=waterTotals.filter(v=>v>0);
+    const avgW=nonZeroW.length>0?Math.round(nonZeroW.reduce((a,b)=>a+b,0)/nonZeroW.length):0;
+    document.getElementById('weekAvgWater').textContent=avgW>0?(avgW>=1000?(avgW/1000).toFixed(1)+'L':''+avgW+'ml')+' avg/day':'';
+  }
 }
 
 // ── API ──
@@ -920,10 +1025,11 @@ function buildDayContext() {
   const totalKcal = Math.round(meals.reduce((s,m)=>s+m.kcal,0));
   const totalProt = Math.round(meals.reduce((s,m)=>s+m.protein,0));
   const totalAlc = meals.reduce((s,m)=>s+(m.alcohol||0),0);
-  const effectiveBudget = settings.budget + settings.burned;
+  const totalBurnedCtx = (day.burned||[]).reduce((s,b)=>s+b.kcal,0);
+  const effectiveBudget = settings.budget + totalBurnedCtx;
   const recent = getRecentMeals();
   return `CURRENT DAY CONTEXT (${formatDisplay(getCurrentKey())}):
-- Calorie budget: ${effectiveBudget} kcal (${settings.budget} + ${settings.burned} burned)
+- Calorie budget: ${effectiveBudget} kcal (${settings.budget} base + ${totalBurnedCtx} burned today)
 - Calories consumed: ${totalKcal} kcal (${effectiveBudget-totalKcal} remaining)
 - Protein: ${totalProt}g of ${settings.protein}g goal (${settings.protein-totalProt}g remaining)
 - Water: ${day.waterTotal||0}ml of ${settings.water}ml goal
@@ -947,31 +1053,39 @@ async function sendChat() {
 
   const thinking = addChatMsg('thinking');
 
-  const system = `You are KALS, an intelligent nutrition assistant inside the KALS Track app. You do TWO things in one unified interface:
+  const system = `You are KALS, an intelligent nutrition assistant inside the KALS Track app. You handle THREE things:
 
-1. LOG FOOD & WATER: When the user describes what they ate or drank, you parse it and return a structured JSON entry.
-2. ANSWER QUESTIONS: When the user asks questions about nutrition, their goals, or diet advice, you answer conversationally.
+1. LOG FOOD: When the user describes eating something.
+2. LOG WATER: When the user mentions drinking water or hydrating.
+3. LOG BURNED CALORIES: When the user mentions calories burned (from Fitbit or workout).
+4. ANSWER QUESTIONS: Nutrition advice, goal tracking, diet questions.
 
 ${buildDayContext()}
 
-RESPONSE RULES — always return a valid JSON object in this envelope:
+RESPONSE RULES — always return a valid JSON object:
 
 For food logging:
-{"type":"log_food","label":"short name max 40 chars","kcal":number,"protein":number,"fat":number,"carbs":number,"alcohol_units":number,"uncertain":"range or null","items":[{"name":"item","kcal":number}],"reply":"brief confirmation like 'Logged! That salmon and rice is a solid meal.'"}
+{"type":"log_food","label":"short name max 40 chars","meal_type":"breakfast|lunch|dinner|snack|apero|drink","kcal":number,"protein":number,"fat":number,"carbs":number,"alcohol_units":number,"uncertain":"range or null","items":[{"name":"item","kcal":number}],"reply":"brief warm confirmation"}
 
 For water logging:
 {"type":"log_water","ml":number,"label":"short description","reply":"brief confirmation"}
 
+For burned calories logging:
+{"type":"log_burned","kcal":number,"label":"short description e.g. 'Morning workout' or 'Fitbit daily burn'","reply":"brief confirmation e.g. 'Nice work! +900 kcal added to your budget.'"}
+
 For conversation/questions:
-{"type":"chat","reply":"your answer, warm and concise, 2-4 sentences, no markdown"}
+{"type":"chat","reply":"warm, concise, 2-4 sentences, no markdown"}
 
 INTENT DETECTION:
-- Any description of eating or drinking food → log_food
-- Any mention of water, gourde, hydration, electrolytes, a liquid that isn't alcoholic or caloric → log_water  
-- "same as yesterday", "my usual X", "re-log X" → log_food using recent meal context provided
-- Questions, "how am I doing", advice requests, general nutrition → chat
+- Eating/drinking food → log_food. Detect meal_type from context or time of day.
+- Water, gourde, hydration, electrolytes → log_water
+- "burned X kcal", "Fitbit says X", "workout burned X", "moved X kcal", "sleep burn" → log_burned
+- "same as before", "my usual X", pre-filled memory descriptions → log_food using the provided description
+- Questions, advice, "how am I doing" → chat
 
-Be warm, concise and specific. Use the user's actual numbers when answering questions. No markdown in replies. Return ONLY the JSON object, no other text.`;
+meal_type rules: if user says "breakfast"→breakfast, "lunch"→lunch, "dinner"→dinner, "snack"→snack, "apéro"/"aperitif"/"drink"→apero. If not stated, infer from time: before 10h→breakfast, 11-14h→lunch, 19h+→dinner, otherwise→snack.
+
+Be warm and specific. Use real numbers. No markdown. Return ONLY the JSON object.`;
 
   try {
     const data = await callAPI(chatHistory, 800, system);
@@ -986,6 +1100,9 @@ Be warm, concise and specific. Use the user's actual numbers when answering ques
       chatHistory.push({ role:'assistant', content: raw });
     } else if (parsed.type === 'log_water') {
       handleWaterLog(parsed);
+      chatHistory.push({ role:'assistant', content: raw });
+    } else if (parsed.type === 'log_burned') {
+      handleBurnedLog(parsed);
       chatHistory.push({ role:'assistant', content: raw });
     } else {
       addChatMsg('assistant', parsed.reply);
@@ -1028,7 +1145,7 @@ function confirmFood(btn) {
   const msgEl = btn.closest('.msg');
   const p = msgEl._foodData;
   const day = getCurrentDay();
-  day.meals.push({ label:p.label, kcal:p.kcal, protein:p.protein, fat:p.fat, carbs:p.carbs, alcohol:p.alcohol_units||0, uncertain:p.uncertain||null, time:getTime() });
+  day.meals.push({ label:p.label, kcal:p.kcal, protein:p.protein, fat:p.fat, carbs:p.carbs, alcohol:p.alcohol_units||0, uncertain:p.uncertain||null, mealType:p.meal_type||null, time:getTime() });
   saveCurrentDay(day);
   // Replace bubble with a compact confirmation
   msgEl.className = 'msg msg-system';
@@ -1043,6 +1160,15 @@ function handleWaterLog(p) {
   day.water.push({ label: p.label + ' (' + p.ml + 'ml)', ml: p.ml, time: getTime() });
   saveCurrentDay(day);
   addChatMsg('water', `💧 ${p.label} — ${p.ml}ml logged. ${p.reply}`);
+  updateUI();
+}
+
+function handleBurnedLog(p) {
+  const day = getCurrentDay();
+  if (!day.burned) day.burned = [];
+  day.burned.push({ label: p.label, kcal: p.kcal, time: getTime() });
+  saveCurrentDay(day);
+  addChatMsg('log', `🔥 ${p.label} — +${p.kcal} kcal to your budget. ${p.reply}`, false);
   updateUI();
 }
 
