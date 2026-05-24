@@ -729,7 +729,7 @@ function loadDay(key) {
   try { return JSON.parse(localStorage.getItem('kals_day_' + key)) || { meals:[], water:[], waterTotal:0, burned:[] }; }
   catch(e) { return { meals:[], water:[], waterTotal:0, burned:[] }; }
 }
-function saveDay(key, data) { localStorage.setItem('kals_day_' + key, JSON.stringify(data)); scheduleCloudsave(); }
+function saveDay(key, data) { data.savedAt = new Date().toISOString(); localStorage.setItem('kals_day_' + key, JSON.stringify(data)); scheduleCloudsave(); }
 function getCurrentDay() { return loadDay(getCurrentKey()); }
 function saveCurrentDay(data) { saveDay(getCurrentKey(), data); }
 
