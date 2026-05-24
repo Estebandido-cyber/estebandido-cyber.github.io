@@ -45,9 +45,9 @@
     --accent-notes: #818cf8;
     --accent-notes-dim: rgba(129,140,248,0.12);
     --accent-notes-glow: rgba(129,140,248,0.25);
-    --accent-kals: #fb923c;
-    --accent-kals-dim: rgba(251,146,60,0.12);
-    --accent-kals-glow: rgba(251,146,60,0.25);
+    --accent-kals: #eab308;
+    --accent-kals-dim: rgba(234,179,8,0.12);
+    --accent-kals-glow: rgba(234,179,8,0.25);
   }
 
   body {
@@ -207,7 +207,7 @@
   .tile-workout:hover { border-color: var(--accent-workout-glow); }
   .tile-workout .tile-icon { background: var(--accent-workout-dim); }
   .tile-workout .tile-name { color: var(--accent-workout); }
-  .tile-kals { border-color: rgba(251,146,60,0.3); }
+  .tile-kals { border-color: rgba(234,179,8,0.3); }
   .tile-kals::before { background: radial-gradient(ellipse at top left, var(--accent-kals-dim), transparent 70%); }
   .tile-kals:hover { border-color: var(--accent-kals-glow); }
   .tile-kals .tile-icon { background: var(--accent-kals-dim); }
@@ -227,11 +227,11 @@
   .doit-col:first-child { padding-left: 0; }
   .doit-col:last-child { border-right: none; padding-right: 0; }
   .doit-col-title { font-family: 'DM Mono', monospace; font-size: 9.5px; letter-spacing: 0.1em; color: var(--subtle); text-transform: uppercase; margin-bottom: 4px; flex-shrink: 0; }
-  .tile-lukas { border-color: rgba(245,158,11,0.3); }
-  .tile-lukas::before { background: radial-gradient(ellipse at top left, rgba(245,158,11,0.1), transparent 70%); }
-  .tile-lukas:hover { border-color: rgba(245,158,11,0.5); }
-  .tile-lukas .tile-icon { background-color: rgba(0,212,170,0.1); }
-  .tile-lukas .tile-name { color: #f59e0b; }
+  .tile-lukas { border-color: rgba(239,68,68,0.3); }
+  .tile-lukas::before { background: radial-gradient(ellipse at top left, rgba(239,68,68,0.1), transparent 70%); }
+  .tile-lukas:hover { border-color: rgba(239,68,68,0.5); }
+  .tile-lukas .tile-icon { background-color: rgba(239,68,68,0.1); }
+  .tile-lukas .tile-name { color: #ef4444; }
   .tile-icon-lukas {
     background-color: rgba(0,212,170,0.1);
     background-image: url("data:image/svg+xml,%3Csvg width='22' height='22' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='5' y1='3' x2='5' y2='6' stroke='%2300d4aa' stroke-width='1.2' stroke-linecap='round'/%3E%3Crect x='3.5' y='6' width='3' height='6' rx='0.5' fill='%2300d4aa' opacity='0.9'/%3E%3Cline x1='5' y1='12' x2='5' y2='15' stroke='%2300d4aa' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='12' y1='5' x2='12' y2='8' stroke='%23ef4444' stroke-width='1.2' stroke-linecap='round'/%3E%3Crect x='10.5' y='8' width='3' height='8' rx='0.5' fill='%23ef4444' opacity='0.9'/%3E%3Cline x1='12' y1='16' x2='12' y2='19' stroke='%23ef4444' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='19' y1='4' x2='19' y2='7' stroke='%2300d4aa' stroke-width='1.2' stroke-linecap='round'/%3E%3Crect x='17.5' y='7' width='3' height='7' rx='0.5' fill='%2300d4aa' opacity='0.9'/%3E%3Cline x1='19' y1='14' x2='19' y2='17' stroke='%2300d4aa' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -844,9 +844,11 @@ function loadKals() {
 
   const todayKey = 'kals_day_' + new Date().toISOString().slice(0, 10);
   const settings = safeParse(safeGet('kals_settings')) || { budget: 2650 };
-  const data = safeParse(safeGet(todayKey)) || { meals: [], waterTotal: 0, burned: [] };
+  const raw = safeGet(todayKey);
 
-  if (!data.meals && !data.waterTotal) { el.innerHTML = noData('Open Kals to start'); return; }
+  if (!raw) { el.innerHTML = noData('Open Kals to start'); return; }
+
+  const data = safeParse(raw) || { meals: [], waterTotal: 0, burned: [] };
 
   const consumed = Math.round((data.meals || []).reduce((s, m) => s + (m.kcal || 0), 0));
   const burned   = Math.round((data.burned || []).reduce((s, b) => s + (b.kcal || 0), 0));
@@ -860,7 +862,7 @@ function loadKals() {
   el.innerHTML =
     statHTML('Consumed', consumed + ' kcal', true) +
     '<div class="stat-divider"></div>' +
-    `<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${leftColor}">${left >= 0 ? '' : ''}${left} kcal</div></div>` +
+    `<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${leftColor}">${left} kcal</div></div>` +
     '<div class="stat-divider"></div>' +
     statHTML('Water', waterL);
 
