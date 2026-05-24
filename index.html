@@ -157,7 +157,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 20px;
-    padding: 22px 20px 38px;
+    padding: 22px 20px 18px;
     cursor: pointer;
     text-decoration: none;
     color: inherit;
@@ -210,7 +210,7 @@
   .tile-kals { border-color: rgba(234,179,8,0.3); }
   .tile-kals::before { background: radial-gradient(ellipse at top left, var(--accent-kals-dim), transparent 70%); }
   .tile-kals:hover { border-color: var(--accent-kals-glow); }
-  .tile-kals .tile-icon { background: var(--accent-kals-dim); }
+  .tile-kals .tile-icon { background: rgba(251,146,60,0.15); }
   .tile-kals .tile-name { color: var(--accent-kals); }
   .tile-strat { border-color: rgba(251,113,133,0.3); }
   .tile-strat::before { background: radial-gradient(ellipse at top left, rgba(251,113,133,0.1), transparent 70%); }
@@ -321,14 +321,14 @@
   .tile:hover .tile-arrow { color: var(--muted); transform: translate(2px, -2px); }
 
   .tile-footer {
-    position: absolute;
-    bottom: 16px;
-    left: 20px;
+    margin-top: auto;
+    padding-top: 8px;
     font-family: 'DM Mono', monospace;
     font-size: 9px;
     color: var(--subtle);
     letter-spacing: 0.05em;
     z-index: 1;
+    position: relative;
   }
 
   .no-data {
