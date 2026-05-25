@@ -100,11 +100,11 @@ body {
 .calories-over { color: var(--red) !important; }
 
 /* ── Two-col layout ── */
-.layout-main { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-.layout-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.layout-main { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; margin-bottom: 12px; }
+.layout-bottom { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; }
 
 /* ── Panel base ── */
-.panel { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.1rem; }
+.panel { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.1rem; min-width: 0; max-width: 100%; }
 .panel-title { font-size: 10px; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.9rem; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem; }
 
@@ -350,103 +350,91 @@ body {
 
 /* ── Responsive ── */
 
-/* ── Tablet: 641px – 1199px ── */
-@media (min-width: 641px) and (max-width: 1199px) {
-  /* Scale everything up significantly */
-  :root { --header-h: 64px; }
-  body {
-    padding: calc(var(--header-h) + 1.5rem) 1.5rem 2.5rem;
-    font-size: 16px;
-  }
+/* ── Tablet: 641px – 1280px ── */
+@media (min-width: 641px) and (max-width: 1280px) {
 
-  /* Header */
-  .site-header { height: var(--header-h); padding: 0 1.25rem; }
-  .logo-kals { font-size: 28px; }
-  .logo-track { font-size: 17px; letter-spacing: 0.18em; }
-  #drivesavebtn, #driveloadbtn { font-size: 13px; padding: 7px 14px; }
+  /* Use fluid font scaling via clamp:
+     At 641px → ~14px base, at 1024px → ~16px base */
+  html { font-size: clamp(14px, 1.5vw, 16px); }
+
+  body { padding: calc(var(--header-h) + 1.4rem) 1.4rem 2rem; }
+
+  /* Header: full width, comfortable size */
+  .site-header { padding: 0 1.4rem; }
+  .logo-kals { font-size: clamp(22px, 2.5vw, 28px); }
+  .logo-track { font-size: clamp(13px, 1.6vw, 17px); }
+  #drivesavebtn, #driveloadbtn { font-size: clamp(11px, 1.2vw, 13px); padding: 6px 12px; }
 
   /* Day nav */
-  .day-nav { padding: 12px 18px; margin-bottom: 1.25rem; }
-  .day-nav-date { font-size: 18px; }
-  .day-nav-label { font-size: 13px; }
-  .nav-btn { width: 38px; height: 38px; font-size: 18px; }
+  .day-nav { padding: 11px 16px; margin-bottom: 1.1rem; }
+  .day-nav-date { font-size: clamp(15px, 1.8vw, 18px); }
+  .day-nav-label { font-size: clamp(11px, 1.2vw, 13px); }
 
-  /* Cards: 4 per row, two rows of 4 */
-  .top-cards { grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.25rem; }
-  .card { padding: 16px 18px; }
-  .card-label { font-size: 12px; margin-bottom: 7px; }
-  .card-value { font-size: 26px; }
-  .card-sub { font-size: 12px; margin-top: 5px; }
-  .card-bar { height: 4px; margin-top: 10px; }
-  .cal-remaining { font-size: 26px; }
-  .cal-budget { font-size: 13px; margin-top: 4px; }
+  /* Cards: 4 per row, 2 rows */
+  .top-cards {
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: clamp(7px, 1vw, 10px);
+    margin-bottom: 1rem;
+  }
+  .card { padding: clamp(10px, 1.4vw, 16px) clamp(12px, 1.6vw, 18px); }
+  .card-label { font-size: clamp(10px, 1.1vw, 12px); margin-bottom: 6px; }
+  .card-value { font-size: clamp(18px, 2.2vw, 24px); }
+  .card-sub { font-size: clamp(10px, 1.1vw, 12px); margin-top: 4px; }
+  .card-bar { height: 3px; margin-top: 8px; }
+  .cal-remaining { font-size: clamp(18px, 2.2vw, 24px); }
+  .cal-budget { font-size: clamp(10px, 1.2vw, 13px); }
 
-  /* Main layout: 50/50 */
-  .layout-main { grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-  .layout-bottom { grid-template-columns: 1fr 1fr; gap: 16px; }
+  /* Layouts: strict 50/50, no stretch */
+  .layout-main {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    gap: clamp(10px, 1.4vw, 16px);
+    margin-bottom: clamp(10px, 1.4vw, 16px);
+  }
+  .layout-bottom {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    gap: clamp(10px, 1.4vw, 16px);
+  }
 
   /* Panels */
-  .panel { padding: 1.4rem; }
-  .panel-title { font-size: 12px; margin-bottom: 1.1rem; }
-  .section-header { margin-bottom: 1.1rem; }
-
-  /* Tabs */
-  .tab-row { margin-bottom: 1.1rem; }
-  .tab { font-size: 13px; padding: 6px 14px 10px; }
+  .panel { padding: clamp(1rem, 1.4vw, 1.4rem); min-width: 0; }
+  .panel-title { font-size: clamp(10px, 1.1vw, 12px); }
+  .tab { font-size: clamp(11px, 1.2vw, 13px); padding: 5px 12px 9px; }
 
   /* Chat */
-  .chat-panel { min-height: 500px; }
-  .chat-messages { max-height: 420px; min-height: 320px; font-size: 14px; }
-  .msg { font-size: 14px; padding: 10px 14px; }
-  .chat-textarea { font-size: 15px; padding: 10px 12px; }
-  .btn-send { font-size: 14px; padding: 10px 18px; height: 42px; }
-  .chat-input-wrap { margin-top: 10px; padding-top: 10px; }
-
-  /* Memory chips */
-  .memory-chip { font-size: 13px; padding: 5px 13px 5px 10px; }
-  .memory-label { font-size: 11px; margin-bottom: 7px; }
-
-  /* Water pills */
-  .water-pills { gap: 7px; padding: 8px 0 5px; }
-  .water-pill { font-size: 13px; padding: 5px 13px; }
-
-  /* Suggestion chips */
-  .suggestion-chip { font-size: 12px; padding: 5px 12px; }
+  .chat-panel { min-height: unset; }
+  .chat-messages {
+    max-height: clamp(260px, 30vh, 400px);
+    min-height: clamp(200px, 24vh, 320px);
+  }
+  .msg { font-size: clamp(13px, 1.4vw, 15px); padding: 9px 13px; }
+  .chat-textarea { font-size: clamp(13px, 1.4vw, 15px); padding: 9px 11px; }
+  .btn-send { font-size: clamp(13px, 1.4vw, 15px); height: 38px; }
+  .memory-chip { font-size: clamp(11px, 1.2vw, 13px); }
+  .water-pill { font-size: clamp(11px, 1.2vw, 13px); padding: 4px 11px; }
+  .suggestion-chip { font-size: clamp(11px, 1.2vw, 13px); }
 
   /* Meal list */
-  .meal-list { max-height: 420px; }
-  .meal-name { font-size: 14px; }
-  .meal-kcal { font-size: 13px; }
-  .meal-macros { font-size: 12px; }
-  .meal-time { font-size: 11px; }
-  .meal-item { padding: 12px 0; }
-  .meal-type-badge { font-size: 10px; padding: 2px 8px; }
-  .day-total-row { font-size: 14px; padding-top: 10px; margin-top: 8px; }
-
-  /* Log panel tabs */
-  #mealCount { font-size: 12px; }
+  .meal-list { max-height: clamp(260px, 32vh, 420px); }
+  .meal-name { font-size: clamp(12px, 1.4vw, 14px); }
+  .meal-kcal { font-size: clamp(12px, 1.3vw, 14px); }
+  .meal-macros { font-size: clamp(10px, 1.1vw, 12px); }
+  .meal-item { padding: 10px 0; }
+  .day-total-row { font-size: clamp(12px, 1.3vw, 14px); }
 
   /* Week bars */
-  .week-bars { height: 100px; gap: 7px; }
-  .week-bar-label { font-size: 11px; }
-  .week-bar-val { font-size: 11px; }
-  .week-bars-water { height: 60px; }
-  #weekAvg, #weekAvgWater { font-size: 12px; }
+  .week-bars { height: clamp(70px, 9vw, 100px); }
+  .week-bar-label { font-size: clamp(9px, 1vw, 11px); }
+  .week-bar-val { font-size: clamp(9px, 1vw, 11px); }
+  .week-bars-water { height: clamp(45px, 6vw, 65px); }
 
   /* Narrative */
-  .narrative-stat-val { font-size: 20px; }
-  .narrative-stat-label { font-size: 11px; }
-  .narrative-text { font-size: 13px; line-height: 1.8; }
-  .btn-narrative { font-size: 13px; padding: 7px 15px; }
-
-  /* Recap list */
-  .recap-item-date { font-size: 13px; }
-  .recap-item-stats { font-size: 12px; }
-  .recap-item-preview { font-size: 12px; }
+  .narrative-stat-val { font-size: clamp(16px, 1.8vw, 20px); }
+  .narrative-stat-label { font-size: clamp(9px, 1vw, 11px); }
+  .narrative-text { font-size: clamp(12px, 1.3vw, 14px); line-height: 1.75; }
+  .btn-narrative { font-size: clamp(11px, 1.2vw, 13px); }
 
   /* Settings */
-  .settings-row { font-size: 14px; padding: 11px 0; }
-  .settings-unit { font-size: 13px; }
+  .settings-row { font-size: clamp(12px, 1.4vw, 14px); padding: 10px 0; }
 }
 
 
@@ -507,7 +495,7 @@ body {
 }
 </style>
 </head>
-<body style="overflow-x:hidden;width:100%;max-width:100%;">
+<body style="overflow-x:hidden;width:100%;max-width:100%;padding-left:max(1.25rem, env(safe-area-inset-left));padding-right:max(1.25rem, env(safe-area-inset-right));">
 
 <header class="site-header">
   <div style="display:flex;align-items:center;gap:10px;">
@@ -558,7 +546,7 @@ body {
 <div id="cf-status"><span class="cf-dot"></span><span id="cf-status-msg"></span></div>
 
 <!-- Setup screen -->
-<div id="setupScreen" style="display:none;">
+<div id="setupScreen" style="display:none;max-width:1400px;margin:0 auto;width:100%;">
   <div class="setup-screen">
     <h2>Welcome to KALS Track</h2>
     <p>This tracker uses Claude AI to parse your meals, water and answer nutrition questions — all in one place.</p>
@@ -572,7 +560,7 @@ body {
 </div>
 
 <!-- Main app -->
-<div id="mainApp" style="display:none;">
+<div id="mainApp" style="display:none;max-width:1400px;margin:0 auto;width:100%;">
 
   <!-- Day navigator -->
   <div class="day-nav">
