@@ -350,31 +350,103 @@ body {
 
 /* ── Responsive ── */
 
-/* ── Tablet (641px – 1024px) ── */
-@media (min-width: 641px) and (max-width: 1024px) {
-  body { padding: calc(var(--header-h) + 1.25rem) 1.25rem 2rem; font-size: 15px; }
-  .top-cards { grid-template-columns: repeat(4, 1fr); gap: 9px; }
-  .card-value { font-size: 20px; }
-  .card-label { font-size: 11px; }
-  .card-sub { font-size: 11px; }
-  .layout-main { grid-template-columns: 1fr 1fr; gap: 14px; }
-  .layout-bottom { grid-template-columns: 1fr 1fr; gap: 14px; }
-  .panel { padding: 1.2rem; }
-  .panel-title { font-size: 11px; }
-  .tab { font-size: 12px; padding: 5px 13px 9px; }
-  .chat-textarea { font-size: 15px; }
-  .msg { font-size: 14px; }
+/* ── Tablet: 641px – 1199px ── */
+@media (min-width: 641px) and (max-width: 1199px) {
+  /* Scale everything up significantly */
+  :root { --header-h: 64px; }
+  body {
+    padding: calc(var(--header-h) + 1.5rem) 1.5rem 2.5rem;
+    font-size: 16px;
+  }
+
+  /* Header */
+  .site-header { height: var(--header-h); padding: 0 1.25rem; }
+  .logo-kals { font-size: 28px; }
+  .logo-track { font-size: 17px; letter-spacing: 0.18em; }
+  #drivesavebtn, #driveloadbtn { font-size: 13px; padding: 7px 14px; }
+
+  /* Day nav */
+  .day-nav { padding: 12px 18px; margin-bottom: 1.25rem; }
+  .day-nav-date { font-size: 18px; }
+  .day-nav-label { font-size: 13px; }
+  .nav-btn { width: 38px; height: 38px; font-size: 18px; }
+
+  /* Cards: 4 per row, two rows of 4 */
+  .top-cards { grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .card { padding: 16px 18px; }
+  .card-label { font-size: 12px; margin-bottom: 7px; }
+  .card-value { font-size: 26px; }
+  .card-sub { font-size: 12px; margin-top: 5px; }
+  .card-bar { height: 4px; margin-top: 10px; }
+  .cal-remaining { font-size: 26px; }
+  .cal-budget { font-size: 13px; margin-top: 4px; }
+
+  /* Main layout: 50/50 */
+  .layout-main { grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .layout-bottom { grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* Panels */
+  .panel { padding: 1.4rem; }
+  .panel-title { font-size: 12px; margin-bottom: 1.1rem; }
+  .section-header { margin-bottom: 1.1rem; }
+
+  /* Tabs */
+  .tab-row { margin-bottom: 1.1rem; }
+  .tab { font-size: 13px; padding: 6px 14px 10px; }
+
+  /* Chat */
+  .chat-panel { min-height: 500px; }
+  .chat-messages { max-height: 420px; min-height: 320px; font-size: 14px; }
+  .msg { font-size: 14px; padding: 10px 14px; }
+  .chat-textarea { font-size: 15px; padding: 10px 12px; }
+  .btn-send { font-size: 14px; padding: 10px 18px; height: 42px; }
+  .chat-input-wrap { margin-top: 10px; padding-top: 10px; }
+
+  /* Memory chips */
+  .memory-chip { font-size: 13px; padding: 5px 13px 5px 10px; }
+  .memory-label { font-size: 11px; margin-bottom: 7px; }
+
+  /* Water pills */
+  .water-pills { gap: 7px; padding: 8px 0 5px; }
+  .water-pill { font-size: 13px; padding: 5px 13px; }
+
+  /* Suggestion chips */
+  .suggestion-chip { font-size: 12px; padding: 5px 12px; }
+
+  /* Meal list */
+  .meal-list { max-height: 420px; }
   .meal-name { font-size: 14px; }
-  .meal-macros { font-size: 12px; }
   .meal-kcal { font-size: 13px; }
-  .day-nav-date { font-size: 16px; }
-  .day-nav-label { font-size: 12px; }
-  .chat-messages { max-height: 380px; min-height: 280px; }
-  .meal-list { max-height: 380px; }
-  .memory-chip { font-size: 12px; padding: 4px 12px 4px 10px; }
-  .water-pill { font-size: 12px; padding: 4px 12px; }
-  .narrative-text { font-size: 13px; }
-  .btn-send { font-size: 14px; padding: 9px 16px; height: 40px; }
+  .meal-macros { font-size: 12px; }
+  .meal-time { font-size: 11px; }
+  .meal-item { padding: 12px 0; }
+  .meal-type-badge { font-size: 10px; padding: 2px 8px; }
+  .day-total-row { font-size: 14px; padding-top: 10px; margin-top: 8px; }
+
+  /* Log panel tabs */
+  #mealCount { font-size: 12px; }
+
+  /* Week bars */
+  .week-bars { height: 100px; gap: 7px; }
+  .week-bar-label { font-size: 11px; }
+  .week-bar-val { font-size: 11px; }
+  .week-bars-water { height: 60px; }
+  #weekAvg, #weekAvgWater { font-size: 12px; }
+
+  /* Narrative */
+  .narrative-stat-val { font-size: 20px; }
+  .narrative-stat-label { font-size: 11px; }
+  .narrative-text { font-size: 13px; line-height: 1.8; }
+  .btn-narrative { font-size: 13px; padding: 7px 15px; }
+
+  /* Recap list */
+  .recap-item-date { font-size: 13px; }
+  .recap-item-stats { font-size: 12px; }
+  .recap-item-preview { font-size: 12px; }
+
+  /* Settings */
+  .settings-row { font-size: 14px; padding: 11px 0; }
+  .settings-unit { font-size: 13px; }
 }
 
 
