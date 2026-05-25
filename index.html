@@ -844,7 +844,20 @@ function loadKals() {
 
   const todayKey = 'kals_day_' + new Date().toISOString().slice(0, 10);
   const settings = safeParse(safeGet('kals_settings')) || { budget: 2650 };
-  const raw = safeGet(todayKey);
+
+  // Try today first, then fall back to most recent day with data
+  let raw = safeGet(todayKey);
+  let isToday = true;
+  if (!raw) {
+    isToday = false;
+    // Scan last 30 days for most recent entry
+    for (let i = 1; i <= 30; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = 'kals_day_' + d.toISOString().slice(0, 10);
+      const found = safeGet(key);
+      if (found) { raw = found; break; }
+    }
+  }
 
   if (!raw) { el.innerHTML = noData('Open Kals to start'); return; }
 
