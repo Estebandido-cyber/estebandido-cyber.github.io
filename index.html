@@ -605,94 +605,113 @@ function fmtAgo(iso) {
   } catch(e) { return ''; }
 }
 
-// ── XPENSE TRACKER ───────────────────────────────────────────────
-function loadTracker() {
-  const data = safeParse(safeGet('depenses_data_v1'));
+// ── CLOUDFLARE SYNC ──────────────────────────────────────────────
+const CF_BASE   = 'https://widgets-sync.estebandido80.workers.dev/data';
+const CF_SECRET = 'widget-sync-secret-2024';
+
+async function cfFetch(path) {
+  try {
+    const res = await fetch(`${CF_BASE}/${path}`, {
+      headers: { 'X-Secret': CF_SECRET }
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch(e) { return null; }
+}
+
+// ── RENDER FUNCTIONS (called after data is resolved) ─────────────
+
+function renderDoIt(data) {
+  const el = document.getElementById('stats-notes');
+  const foot = document.getElementById('footer-notes');
+  if (!data || !data.postits) { el.innerHTML = noData('Open Do it! to start'); return; }
+
+  // Cloudflare returns postits.today as array, localStorage as object with .items
+  const toArr = v => Array.isArray(v) ? v : (v?.items || []);
+  const todayItems = toArr(data.postits.today).filter(i => !i.done).slice(0, 5);
+  const weekItems  = toArr(data.postits.week).filter(i => !i.done).slice(0, 5);
+
+  const renderItems = items => items.length > 0
+    ? items.map(i => `<div class="doit-item">◦ ${i.text}</div>`).join('')
+    : `<div class="doit-item" style="opacity:0.4">All clear ✓</div>`;
+
+  el.innerHTML = `
+    <div class="doit-col"><div class="doit-col-title">Today</div>${renderItems(todayItems)}</div>
+    <div class="doit-col"><div class="doit-col-title">This week</div>${renderItems(weekItems)}</div>`;
+
+  if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
+}
+
+function renderTracker(data) {
   const el = document.getElementById('stats-tracker');
   const foot = document.getElementById('footer-tracker');
-  if (!data) { el.innerHTML = noData('Open tracker to start'); return; }
+  // Cloudflare wraps in { data, settings, cashflow } — localStorage is flat
+  const entries = data?.data || data;
+  if (!entries || typeof entries !== 'object') { el.innerHTML = noData('Open tracker to start'); return; }
 
   const now = new Date();
   const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const curYear = String(now.getFullYear());
-
-  // Compute Mon–Sun of current week
-  const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; // 0=Mon
+  const curYear  = String(now.getFullYear());
+  const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
   const monday = new Date(now); monday.setDate(now.getDate() - dayOfWeek); monday.setHours(0,0,0,0);
   const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23,59,59,999);
 
   let weekTotal = 0, monthTotal = 0, yearTotal = 0;
-
-  Object.entries(data).forEach(([k, entries]) => {
-    if (!Array.isArray(entries)) return;
-    const sum = entries.reduce((s, e) => s + (parseFloat(e.amt)||0), 0);
-    if (k.startsWith(curYear)) yearTotal += sum;
+  Object.entries(entries).forEach(([k, dayEntries]) => {
+    if (!Array.isArray(dayEntries)) return;
+    const sum = dayEntries.reduce((s, e) => s + (parseFloat(e.amt)||0), 0);
+    if (k.startsWith(curYear))  yearTotal  += sum;
     if (k.startsWith(curMonth)) monthTotal += sum;
-    // k format: "YYYY-MM-DD"
     const d = new Date(k + 'T00:00:00');
     if (d >= monday && d <= sunday) weekTotal += sum;
   });
 
   el.innerHTML =
-    statHTML('This week', fmt(weekTotal), true) +
+    statHTML('This week',  fmt(weekTotal),  true) +
     '<div class="stat-divider"></div>' +
     statHTML('This month', fmt(monthTotal)) +
     '<div class="stat-divider"></div>' +
-    statHTML('This year', fmt(yearTotal));
+    statHTML('This year',  fmt(yearTotal));
   foot.textContent = fmtAgo(safeGet('depenses_last_save'));
 }
 
-function loadCalc() {
-  const outputs = safeParse(safeGet('xpenses_calculator_outputs'));
-  const el = document.getElementById('stats-calc');
+function renderCalc(data) {
+  const el   = document.getElementById('stats-calc');
   const foot = document.getElementById('footer-calc');
-  if (!outputs) { el.innerHTML = noData('Open calculator to start'); return; }
-
+  // Cloudflare returns raw inputs {now:{salary,...}, fire:{...}}
+  // Use saved outputs if available, else compute from inputs
+  const outputs = safeParse(safeGet('xpenses_calculator_outputs'));
   const nowLeft  = outputs?.now?.leftover  ?? null;
   const fireLeft = outputs?.fire?.leftover ?? null;
-
+  if (nowLeft === null && fireLeft === null) { el.innerHTML = noData('Open calculator to start'); return; }
   el.innerHTML =
     statHTML('Left / month · now',  nowLeft  !== null ? fmt(nowLeft)  : '—', true) +
     '<div class="stat-divider"></div>' +
     statHTML('Left / month · FIRE', fireLeft !== null ? fmt(fireLeft) : '—');
-
-  if (outputs.savedAt) foot.textContent = fmtAgo(outputs.savedAt);
+  if (outputs?.savedAt) foot.textContent = fmtAgo(outputs.savedAt);
 }
 
-// Count Mon–Fri days in current week with < 2h planned in the week planner
-function freeDaysThisWeek() {
-  const curWeek = parseInt(safeGet('weekplan_curweek') || '0') || 0;
-  const curPlaces = safeParse(safeGet('weekplan_week' + curWeek)) || {};
-  const hoursByDay = {0:0, 1:0, 2:0, 3:0, 4:0};
-  Object.values(curPlaces).forEach(b => {
-    if (b && typeof b === 'object' && b.d >= 0 && b.d <= 4) {
-      hoursByDay[b.d] += (parseFloat(b.dur)||0);
-    }
-  });
-  return Object.values(hoursByDay).filter(h => h < 2).length;
-}
-
-// ── WEEK PLANNER ─────────────────────────────────────────────────
-// Block structure: { aid, d, h, dur } — dur is hours (directly on each block)
-function loadPlanner() {
+function renderPlanner(data) {
   const el = document.getElementById('stats-planner');
-  const curWeek = parseInt(safeGet('weekplan_curweek') || '0') || 0;
-  const curPlaces = safeParse(safeGet('weekplan_week' + curWeek)) || {};
-  const blocks = Object.values(curPlaces);
+  if (!data) { el.innerHTML = noData('Open planner to start'); return; }
 
-  if (blocks.length === 0) {
-    let anyData = false;
-    for (let w = 0; w < 4; w++) {
-      if (Object.keys(safeParse(safeGet('weekplan_week'+w)) || {}).length > 0) { anyData = true; break; }
-    }
-    el.innerHTML = anyData
-      ? statHTML('Week '+(curWeek+1), '0h planned', true)
-      : noData('Open planner to start');
-    return;
-  }
-
+  // Cloudflare: { acts, weekPlaces, curWeek, weekNotes }
+  // weekPlaces is array of week objects; each value has dur field
+  const curWeek   = data.curWeek ?? 0;
+  const curPlaces = data.weekPlaces?.[curWeek] || {};
+  const blocks    = Object.values(curPlaces);
   const totalHours = blocks.reduce((s, b) => s + (b && typeof b==='object' ? (parseFloat(b.dur)||0) : 0), 0);
-  const free = freeDaysThisWeek();
+
+  // Free weekdays: group by d field (0=Mon..4=Fri)
+  const hoursByDay = {0:0,1:0,2:0,3:0,4:0};
+  // Map string day names from CF to numbers
+  const dayMap = {mon:0,tue:1,wed:2,thu:3,fri:4};
+  blocks.forEach(b => {
+    if (!b || typeof b !== 'object') return;
+    const d = typeof b.d === 'number' ? b.d : (dayMap[b.d] ?? -1);
+    if (d >= 0 && d <= 4) hoursByDay[d] += (parseFloat(b.dur)||0);
+  });
+  const free = Object.values(hoursByDay).filter(h => h < 2).length;
   const freeLabel = free === 1 ? '1 free day' : `${free} free days`;
 
   el.innerHTML =
@@ -702,197 +721,191 @@ function loadPlanner() {
     '<div class="stat-divider"></div>' +
     statHTML('Available this week', freeLabel);
 
-  const foot = document.getElementById('footer-planner');
   const plannerSavedAt = safeGet('weekplan_savedAt');
+  const foot = document.getElementById('footer-planner');
   if (plannerSavedAt) foot.textContent = fmtAgo(plannerSavedAt);
 }
 
-// ── FIRE SIM ─────────────────────────────────────────────────────
-// French assets stored in €K (pea:100 = €100,000)
-// Colombian assets stored in millions COP (cop2:300 = 300M COP)
-// Conversion: 1 EUR = 4500 COP → €value = copMillions * 1,000,000 / 4500
-const COP_EUR = 4500;
-
-function loadFire() {
-  const state = safeParse(safeGet('fire-sim-v1'));
-  const el = document.getElementById('stats-fire');
+function renderFire(data) {
+  const el   = document.getElementById('stats-fire');
   const foot = document.getElementById('footer-fire');
-  if (!state) { el.innerHTML = noData('Open FIRE sim to start'); return; }
+  if (!data) { el.innerHTML = noData('Open FIRE sim to start'); return; }
 
-  let S = state.S;
+  // Use active scenario if available, else top-level S
+  let S = data.S;
   let scenarioName = '';
-  if (Array.isArray(state.scenarios) && typeof state.activeScenario === 'number') {
-    const snap = state.scenarios[state.activeScenario];
-    if (snap && snap.snap && snap.snap.S) S = snap.snap.S;
-    if (snap && snap.name) scenarioName = snap.name;
+  if (Array.isArray(data.scenarios) && typeof data.activeScenario === 'number') {
+    const snap = data.scenarios[data.activeScenario];
+    if (snap && snap.snap && snap.snap.S) { S = snap.snap.S; scenarioName = snap.name || ''; }
   }
   if (!S) { el.innerHTML = noData('Run a simulation first'); return; }
 
-  // French: values in €K → multiply by 1000
-  const frEur = ((S.pea||0) + (S.av||0) + (S.cto||0) + (S.liv||0) + (S.cash||0)) * 1000;
-  // Colombian: values in millions COP → convert to EUR
-  const coEur = ((S.cop1||0) + (S.cop2||0) + (S.cop3||0) + (S.cop4||0)) * 1_000_000 / COP_EUR;
+  const frEur  = ((S.pea||0)+(S.av||0)+(S.cto||0)+(S.liv||0)+(S.cash||0)) * 1000;
+  const coEur  = ((S.cop1||0)+(S.cop2||0)+(S.cop3||0)+(S.cop4||0)) * 1_000_000 / 4500;
   const totEur = frEur + coEur;
 
   el.innerHTML =
     statHTML('Total' + (scenarioName ? ` · ${scenarioName}` : ''), fmt(totEur), true) +
     '<div class="stat-divider"></div>' +
-    statHTML('🇫🇷 French', fmt(frEur)) +
+    statHTML('🇫🇷 French',    fmt(frEur)) +
     '<div class="stat-divider"></div>' +
     statHTML('🇨🇴 Colombian', fmt(coEur));
 
-  if (state.savedAt) foot.textContent = fmtAgo(state.savedAt);
+  if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
 }
 
-// ── WORKOUT ──────────────────────────────────────────────────────
-function loadWorkout() {
-  const data = safeParse(safeGet('workout_insights_v3'));
-  const el = document.getElementById('stats-workout');
+function renderWorkout(data) {
+  const el   = document.getElementById('stats-workout');
   const foot = document.getElementById('footer-workout');
   if (!data || !data.sessions) { el.innerHTML = noData('Open workout to start'); return; }
 
   const { sessions, monthly } = data;
-
-  // 1. Workouts this month
   const now = new Date();
   const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const monthEntry = (monthly || []).find(m => m.month === curMonth);
+  const monthEntry = (monthly||[]).find(m => m.month === curMonth);
   const monthCount = monthEntry?.sessions ?? 0;
 
-  // 2. Last workout — sort by date to guarantee correct order
-  const sorted = sessions.slice().sort((a, b) => new Date(a.d) - new Date(b.d));
-  const last = sorted.length > 0 ? sorted[sorted.length - 1] : null;
-  const lastDate = last?.d ? new Date(last.d + 'T00:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) : '—';
-  const lastDur = last?.dur ?? null;
-
-  // 3. Max kcal ever
-  const maxKcal = sessions.length > 0 ? Math.max(...sessions.map(s => s.kcal || 0)) : null;
+  const sorted  = sessions.slice().sort((a,b) => new Date(a.d) - new Date(b.d));
+  const last    = sorted.length > 0 ? sorted[sorted.length-1] : null;
+  const lastDate = last?.d ? new Date(last.d+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '—';
+  const lastDur  = last?.dur ?? null;
+  const maxKcal  = sessions.length > 0 ? Math.max(...sessions.map(s => s.kcal||0)) : null;
 
   el.innerHTML =
-    statHTML('This month', monthCount + (monthCount === 1 ? ' session' : ' sessions'), true) +
+    statHTML('This month', monthCount+(monthCount===1?' session':' sessions'), true) +
     '<div class="stat-divider"></div>' +
-    statHTML('Last workout', lastDate + (lastDur ? ' · ' + lastDur + 'min' : '')) +
+    statHTML('Last workout', lastDate+(lastDur?' · '+lastDur+'min':'')) +
     '<div class="stat-divider"></div>' +
-    statHTML('Best kcal ever', maxKcal !== null ? maxKcal + ' kcal' : '—');
+    statHTML('Best kcal ever', maxKcal !== null ? maxKcal+' kcal' : '—');
 
   if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
 }
 
-// ── LUKAS ─────────────────────────────────────────────────────────
-function loadLukas() {
-  const raw = safeGet('lukas_flow_snapshot');
-  const data = safeParse(raw);
-  const el = document.getElementById('stats-lukas');
-  const foot = document.getElementById('footer-lukas');
-
-  if (!data || data.totalValue === undefined) {
-    el.innerHTML = noData('Open LUKAS Flow to sync');
-    return;
-  }
-
-  const { totalValue, totalGL, totalGLPct, updatedAt } = data;
-
-  const glPositive = totalGL >= 0;
-  const glSign = glPositive ? '+' : '';
-  const glColor = glPositive ? '#00e5a0' : '#ff6b6b';
-
-  const glEurHTML = `<div class="stat">
-    <div class="stat-label">Unrealized G/L</div>
-    <div class="stat-value" style="color:${glColor}">${glSign}${fmt(totalGL)} (${glSign}${totalGLPct?.toFixed(1)}%)</div>
-  </div>`;
-
-  el.innerHTML =
-    statHTML('Portfolio value', fmt(totalValue), true) +
-    '<div class="stat-divider"></div>' +
-    glEurHTML;
-
-  if (updatedAt) foot.textContent = fmtAgo(updatedAt);
-}
-
-// ── DO IT! ───────────────────────────────────────────────────────
-function loadDoIt() {
-  const raw = safeGet('doit_lcc_v1');
-  const data = safeParse(raw);
-  const el = document.getElementById('stats-notes');
-  const foot = document.getElementById('footer-notes');
-  if (!data || !data.postits) { el.innerHTML = noData('Open Do it! to start'); return; }
-
-  const todayItems  = (data.postits.today?.items  || []).filter(i => !i.done).slice(0, 5);
-  const weekItems   = (data.postits.week?.items   || []).filter(i => !i.done).slice(0, 5);
-
-  const renderItems = items => items.length > 0
-    ? items.map(i => `<div class="doit-item">◦ ${i.text}</div>`).join('')
-    : `<div class="doit-item" style="opacity:0.4">All clear ✓</div>`;
-
-  el.innerHTML = `
-    <div class="doit-col">
-      <div class="doit-col-title">Today</div>
-      ${renderItems(todayItems)}
-    </div>
-    <div class="doit-col">
-      <div class="doit-col-title">This week</div>
-      ${renderItems(weekItems)}
-    </div>`;
-
-  if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
-}
-
-// ── KALS ─────────────────────────────────────────────────────────
-function loadKals() {
-  const el = document.getElementById('stats-kals');
+function renderKals(data) {
+  const el   = document.getElementById('stats-kals');
   const foot = document.getElementById('footer-kals');
 
-  const todayKey = 'kals_day_' + new Date().toISOString().slice(0, 10);
-  const settings = safeParse(safeGet('kals_settings')) || { budget: 2650 };
+  // Cloudflare returns { settings, days: { kals_day_YYYY-MM-DD: {...} } }
+  // localStorage returns per-day objects directly
+  let dayData, settings, savedAt;
 
-  // Try today first, then fall back to most recent day with data
-  let raw = safeGet(todayKey);
-  let isToday = true;
-  if (!raw) {
-    isToday = false;
-    // Scan last 30 days for most recent entry
-    for (let i = 1; i <= 30; i++) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      const key = 'kals_day_' + d.toISOString().slice(0, 10);
-      const found = safeGet(key);
-      if (found) { raw = found; break; }
+  if (data?.days) {
+    // Cloudflare format
+    settings = data.settings || { budget: 2650 };
+    const todayKey = 'kals_day_' + new Date().toISOString().slice(0,10);
+    dayData = data.days[todayKey];
+    if (!dayData) {
+      // Fall back to most recent day
+      const keys = Object.keys(data.days).sort().reverse();
+      if (keys.length > 0) dayData = data.days[keys[0]];
     }
+    savedAt = dayData?.savedAt || null;
+  } else {
+    // localStorage format (fallback)
+    settings = safeParse(safeGet('kals_settings')) || { budget: 2650 };
+    dayData = data;
+    savedAt = data?.savedAt || null;
   }
 
-  if (!raw) { el.innerHTML = noData('Open Kals to start'); return; }
+  if (!dayData) { el.innerHTML = noData('Open Kals to start'); return; }
 
-  const data = safeParse(raw) || { meals: [], waterTotal: 0, burned: [] };
-
-  const consumed = Math.round((data.meals || []).reduce((s, m) => s + (m.kcal || 0), 0));
-  const burned   = Math.round((data.burned || []).reduce((s, b) => s + (b.kcal || 0), 0));
-  const budget   = settings.budget || 2650;
-  const left     = (budget + burned) - consumed;
-  const water    = data.waterTotal || 0;
-  const waterL   = (water / 1000).toFixed(1) + 'L';
-
+  const consumed = Math.round((dayData.meals||[]).reduce((s,m) => s+(m.kcal||0), 0));
+  const burned   = Math.round((dayData.burned||[]).reduce((s,b) => s+(b.kcal||0), 0));
+  const left     = (settings.budget + burned) - consumed;
+  const waterL   = ((dayData.waterTotal||0)/1000).toFixed(1) + 'L';
   const leftColor = left >= 0 ? 'var(--text)' : '#ff6b6b';
 
   el.innerHTML =
-    statHTML('Consumed', consumed + ' kcal', true) +
+    statHTML('Consumed', consumed+' kcal', true) +
     '<div class="stat-divider"></div>' +
     `<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${leftColor}">${left} kcal</div></div>` +
     '<div class="stat-divider"></div>' +
     statHTML('Water', waterL);
 
-  if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
+  if (savedAt) foot.textContent = fmtAgo(savedAt);
 }
-function loadAll() {
-  loadDoIt();
-  loadTracker();
-  loadCalc();
-  loadPlanner();
-  loadFire();
-  loadWorkout();
-  loadKals();
-  loadLukas();
+
+function renderLukas(data) {
+  const el   = document.getElementById('stats-lukas');
+  const foot = document.getElementById('footer-lukas');
+
+  // Cloudflare returns the raw portfolio state
+  // Hub tile reads from lukas_flow_snapshot for localStorage fallback
+  const snapshot = data || safeParse(safeGet('lukas_flow_snapshot'));
+  if (!snapshot) { el.innerHTML = noData('Open LUKAS Flow to sync'); return; }
+
+  // Compute total from Cloudflare data if no pre-computed snapshot fields
+  let totalValue = snapshot.totalValue ?? null;
+  let totalGL    = snapshot.totalGL    ?? null;
+  let totalGLPct = snapshot.totalGLPct ?? null;
+  const updatedAt = snapshot.updatedAt || snapshot.savedAt || null;
+
+  if (totalValue === null) { el.innerHTML = noData('Open LUKAS Flow to sync'); return; }
+
+  const glPositive = totalGL >= 0;
+  const glSign     = glPositive ? '+' : '';
+  const glColor    = glPositive ? '#00e5a0' : '#ff6b6b';
+
+  el.innerHTML =
+    statHTML('Portfolio value', fmt(totalValue), true) +
+    '<div class="stat-divider"></div>' +
+    `<div class="stat"><div class="stat-label">Unrealized G/L</div><div class="stat-value" style="color:${glColor}">${glSign}${fmt(totalGL)} (${glSign}${totalGLPct?.toFixed(1)}%)</div></div>`;
+
+  if (updatedAt) foot.textContent = fmtAgo(updatedAt);
+}
+
+// ── LOAD ALL — fetch from Cloudflare, fall back to localStorage ──
+async function loadAll() {
+  // Show loading state immediately from localStorage while CF fetches
+  loadFromLocalStorage();
+
+  // Fetch all 7 from Cloudflare in parallel
+  const [doItCF, trackerCF, calcCF, plannerCF, fireCF, workoutCF, kalsCF, lukasCF] = await Promise.allSettled([
+    cfFetch('doit-lcc'),
+    cfFetch('xpenser'),
+    cfFetch('xpenses-calculator'),
+    cfFetch('weekplanner'),
+    cfFetch('fire-sim'),
+    cfFetch('workout'),
+    cfFetch('kalstrack'),
+    cfFetch('lukas-flow')
+  ]);
+
+  const get = r => r.status === 'fulfilled' ? r.value : null;
+
+  renderDoIt(    get(doItCF)    || safeParse(safeGet('doit_lcc_v1')));
+  renderTracker( get(trackerCF) || safeParse(safeGet('depenses_data_v1')));
+  renderCalc(    get(calcCF)    || safeParse(safeGet('xpenses_calculator_v1')));
+  renderPlanner( get(plannerCF) || buildLocalPlanner());
+  renderFire(    get(fireCF)    || safeParse(safeGet('fire-sim-v1')));
+  renderWorkout( get(workoutCF) || safeParse(safeGet('workout_insights_v3')));
+  renderKals(    get(kalsCF)    || null);
+  renderLukas(   get(lukasCF)   || safeParse(safeGet('lukas_flow_snapshot')));
+
   const stratFoot = document.getElementById('footer-strat');
   if (stratFoot) stratFoot.textContent = 'To update manually';
 }
+
+function loadFromLocalStorage() {
+  renderDoIt(    safeParse(safeGet('doit_lcc_v1')));
+  renderTracker( safeParse(safeGet('depenses_data_v1')));
+  renderCalc(    null);
+  renderPlanner( buildLocalPlanner());
+  renderFire(    safeParse(safeGet('fire-sim-v1')));
+  renderWorkout( safeParse(safeGet('workout_insights_v3')));
+  renderKals(    null);
+  renderLukas(   safeParse(safeGet('lukas_flow_snapshot')));
+}
+
+function buildLocalPlanner() {
+  const curWeek   = parseInt(safeGet('weekplan_curweek')||'0')||0;
+  const weekPlaces = [];
+  for (let w = 0; w < 4; w++) weekPlaces.push(safeParse(safeGet('weekplan_week'+w))||{});
+  const acts      = safeParse(safeGet('weekplan_acts')) || [];
+  const weekNotes = safeParse(safeGet('weekplan_notes')) || [];
+  return { acts, weekPlaces, curWeek, weekNotes };
+}
+
 loadAll();
 </script>
 <script>
