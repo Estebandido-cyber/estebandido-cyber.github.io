@@ -348,6 +348,55 @@ body {
   }
 }
 
+
+/* ── Meal edit modal ── */
+.edit-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 300; display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+}
+.edit-modal {
+  background: var(--bg-primary); border-radius: var(--radius-lg);
+  padding: 1.5rem; width: 100%; max-width: 480px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+}
+.edit-modal-title {
+  font-size: 14px; font-weight: 500; color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.edit-modal-sub {
+  font-size: 11px; color: var(--text-tertiary); margin-bottom: 1rem;
+}
+.edit-modal textarea {
+  width: 100%; border: 0.5px solid var(--border-med); border-radius: var(--radius-md);
+  padding: 10px 12px; font-family: var(--font-body); font-size: 14px;
+  color: var(--text-primary); background: var(--bg-secondary);
+  resize: none; line-height: 1.5; outline: none; margin-bottom: 10px;
+}
+.edit-modal textarea:focus { border-color: var(--blue); }
+.edit-modal-preview {
+  background: var(--bg-secondary); border-radius: var(--radius-md);
+  padding: 10px 12px; font-size: 12px; margin-bottom: 10px;
+  border: 0.5px solid var(--border);
+}
+.edit-modal-preview-item {
+  display: flex; justify-content: space-between;
+  color: var(--text-secondary); padding: 2px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.edit-modal-preview-item:last-child { border-bottom: none; }
+.edit-modal-preview-total {
+  display: flex; justify-content: space-between;
+  font-weight: 500; color: var(--text-primary);
+  font-size: 13px; padding-top: 7px; margin-top: 4px;
+  border-top: 0.5px solid var(--border-med);
+}
+.edit-modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 2px; }
+.edit-modal-analysing {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--text-tertiary); padding: 8px 0;
+}
+.edit-note { font-size: 11px; color: var(--amber); margin-bottom: 8px; }
 /* ── Responsive ── */
 
 /* ── Tablet: 641px – 1280px ── */
@@ -749,6 +798,20 @@ body {
 
 </div>
 
+<!-- Meal edit modal -->
+<div class="edit-modal-overlay" id="editModal" style="display:none;" onclick="closeEditModal(event)">
+  <div class="edit-modal">
+    <div class="edit-modal-title">Edit meal entry</div>
+    <div class="edit-modal-sub">Describe the meal again with your corrections — Claude will re-parse it.</div>
+    <textarea id="editModalInput" rows="3" placeholder="e.g. '3 eggs instead of 2, bacon, no banana this time'"></textarea>
+    <div id="editModalStatus"></div>
+    <div class="edit-modal-btns">
+      <button class="btn-discard" onclick="document.getElementById('editModal').style.display='none'">Cancel</button>
+      <button class="btn-confirm" id="editModalSaveBtn" onclick="submitEditModal()">Re-parse &amp; save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Recap modal -->
 <div class="recap-modal" id="recapModal" style="display:none;" onclick="closeModal(event)">
   <div class="recap-modal-box">
@@ -1037,9 +1100,10 @@ function renderMealList(meals) {
         <div class="meal-name-wrap">
           ${getMealTypeBadge(m.mealType)}
           <span class="meal-name" id="mn-${i}">${m.label}</span>
-          <button class="meal-edit-btn" onclick="startEdit(${i})" title="Edit">✎</button>
+          <button class="meal-edit-btn" onclick="startEdit(${i})" title="Rename">✎</button>
         </div>
         <span class="meal-kcal">${Math.round(m.kcal)} kcal</span>
+        <button class="meal-edit-btn" onclick="openEditModal(${i})" title="Edit full entry" style="opacity:0;margin-left:2px;font-size:11px;color:var(--blue);">Edit</button>
         <button class="meal-delete-btn" onclick="deleteMeal(${i})" title="Delete">✕</button>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;">
@@ -1063,6 +1127,110 @@ function startEdit(i) {
 function deleteMeal(i) {
   const day=getCurrentDay(); day.meals.splice(i,1); saveCurrentDay(day); updateUI();
 }
+// ── Full meal edit modal ──
+let editingMealIndex = null;
+
+function openEditModal(i) {
+  const day = getCurrentDay();
+  const meal = day.meals[i];
+  editingMealIndex = i;
+
+  // Pre-fill with the meal label as a starting description
+  const input = document.getElementById('editModalInput');
+  input.value = meal.label;
+  document.getElementById('editModalStatus').innerHTML = '';
+  document.getElementById('editModalSaveBtn').disabled = false;
+  document.getElementById('editModal').style.display = 'flex';
+
+  // Focus and select all so user can immediately type
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+}
+
+function closeEditModal(e) {
+  if (e.target.id === 'editModal') {
+    document.getElementById('editModal').style.display = 'none';
+  }
+}
+
+async function submitEditModal() {
+  const text = document.getElementById('editModalInput').value.trim();
+  if (!text || editingMealIndex === null) return;
+
+  const saveBtn = document.getElementById('editModalSaveBtn');
+  saveBtn.disabled = true;
+  document.getElementById('editModalStatus').innerHTML =
+    '<div class="edit-modal-analysing"><div class="dot-anim"><span></span><span></span><span></span></div> Re-parsing…</div>';
+
+  const prompt = `You are a nutrition expert. Analyse this meal and return ONLY a valid JSON object, no markdown, no explanation.
+Meal: "${text}"
+Return exactly: {"label":"short meal name max 45 chars","meal_type":"breakfast|lunch|dinner|snack|apero|drink","kcal":number,"protein":number,"fat":number,"carbs":number,"sugar":number,"alcohol_units":number,"uncertain":"range or null","items":[{"name":"item","kcal":number}]}
+Be realistic. French brands and restaurant meals: use your best knowledge. Return only JSON.`;
+
+  try {
+    const data = await callAPI([{ role:'user', content: prompt }], 1000);
+    const raw = data.content[0].text.trim().replace(/```json|```/g,'').trim();
+    const p = JSON.parse(raw);
+
+    // Show preview in modal before committing
+    const itemsHTML = (p.items||[]).map(it =>
+      `<div class="edit-modal-preview-item"><span>${it.name}</span><span>${Math.round(it.kcal)} kcal</span></div>`
+    ).join('');
+    const uncHTML = p.uncertain ? `<div class="edit-note">⚠ Uncertain: ${p.uncertain}</div>` : '';
+
+    document.getElementById('editModalStatus').innerHTML = `
+      <div class="edit-modal-preview">
+        ${itemsHTML}
+        <div class="edit-modal-preview-total">
+          <span>${p.label}</span>
+          <span>${Math.round(p.kcal)} kcal · P${Math.round(p.protein)}g F${Math.round(p.fat)}g C${Math.round(p.carbs)}g</span>
+        </div>
+      </div>
+      ${uncHTML}`;
+
+    // Replace save button with confirm flow
+    saveBtn.textContent = '✓ Confirm & replace';
+    saveBtn.disabled = false;
+    saveBtn.onclick = () => commitEdit(p);
+
+  } catch(e) {
+    document.getElementById('editModalStatus').innerHTML =
+      `<div class="error-box"><strong>Parse failed:</strong> ${e.message}</div>`;
+    saveBtn.disabled = false;
+  }
+}
+
+function commitEdit(p) {
+  if (editingMealIndex === null) return;
+  const day = getCurrentDay();
+  const original = day.meals[editingMealIndex];
+
+  // Replace the meal, keeping original time
+  day.meals[editingMealIndex] = {
+    label:    p.label,
+    kcal:     p.kcal,
+    protein:  p.protein,
+    fat:      p.fat,
+    carbs:    p.carbs,
+    sugar:    p.sugar || 0,
+    alcohol:  p.alcohol_units || 0,
+    uncertain: p.uncertain || null,
+    mealType: p.meal_type || original.mealType || null,
+    time:     original.time  // preserve original log time
+  };
+
+  saveCurrentDay(day);
+  document.getElementById('editModal').style.display = 'none';
+
+  // Reset modal for next use
+  document.getElementById('editModalSaveBtn').textContent = 'Re-parse & save';
+  document.getElementById('editModalSaveBtn').onclick = submitEditModal;
+  editingMealIndex = null;
+
+  updateUI();
+  addChatMsg('system', `✓ Meal updated: ${p.label} (${Math.round(p.kcal)} kcal)`);
+}
+
+
 
 function renderWaterLog(entries, total) {
   const summary = document.getElementById('waterSummary');
