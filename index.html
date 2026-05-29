@@ -598,10 +598,10 @@ function fmtAgo(iso) {
     if (diffDays === 0) {
       const hh = String(saved.getHours()).padStart(2,'0');
       const mm = String(saved.getMinutes()).padStart(2,'0');
-      return `Synced at ${hh}:${mm}`;
+      return `Last logged: today ${hh}:${mm}`;
     }
-    if (diffDays === 1) return 'Synced yesterday';
-    return `Synced ${diffDays} days ago`;
+    if (diffDays === 1) return 'Last logged: yesterday';
+    return `Last logged: ${diffDays} days ago`;
   } catch(e) { return ''; }
 }
 
@@ -678,8 +678,6 @@ function renderTracker(data) {
 function renderCalc(data) {
   const el   = document.getElementById('stats-calc');
   const foot = document.getElementById('footer-calc');
-  // Cloudflare returns raw inputs {now:{salary,...}, fire:{...}}
-  // Use saved outputs if available, else compute from inputs
   const outputs = safeParse(safeGet('xpenses_calculator_outputs'));
   const nowLeft  = outputs?.now?.leftover  ?? null;
   const fireLeft = outputs?.fire?.leftover ?? null;
@@ -688,7 +686,9 @@ function renderCalc(data) {
     statHTML('Left / month · now',  nowLeft  !== null ? fmt(nowLeft)  : '—', true) +
     '<div class="stat-divider"></div>' +
     statHTML('Left / month · FIRE', fireLeft !== null ? fmt(fireLeft) : '—');
-  if (outputs?.savedAt) foot.textContent = fmtAgo(outputs.savedAt);
+  // Use savedAt from Cloudflare data first, fall back to local outputs
+  const savedAt = data?.savedAt || outputs?.savedAt || null;
+  if (savedAt) foot.textContent = fmtAgo(savedAt);
 }
 
 function renderPlanner(data) {
