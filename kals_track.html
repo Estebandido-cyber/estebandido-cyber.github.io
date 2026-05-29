@@ -174,9 +174,11 @@ body {
 .meal-name { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meal-edit-btn { background: none; border: none; cursor: pointer; padding: 0 2px; color: var(--text-tertiary); font-size: 11px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
 .meal-item:hover .meal-edit-btn { opacity: 1; }
+.meal-fulledit-btn { background: none; border: 0.5px solid var(--border-med); border-radius: 5px; cursor: pointer; padding: 2px 7px; color: var(--blue); font-size: 11px; font-family: var(--font-body); font-weight: 500; flex-shrink: 0; transition: background 0.12s; }
+.meal-fulledit-btn:hover { background: var(--bg-secondary); }
 .meal-name-input { font-size: 13px; font-weight: 500; font-family: var(--font-body); color: var(--text-primary); background: var(--bg-secondary); border: 0.5px solid var(--border-med); border-radius: 4px; padding: 1px 6px; outline: none; flex: 1; min-width: 0; }
 .meal-kcal { font-size: 12px; font-weight: 500; color: var(--text-primary); flex-shrink: 0; }
-.meal-delete-btn { background: none; border: none; cursor: pointer; padding: 0 2px; color: var(--text-tertiary); font-size: 11px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
+.meal-delete-btn { background: none; border: none; cursor: pointer; padding: 0 2px; color: var(--text-tertiary); font-size: 12px; flex-shrink: 0; opacity: 0.45; transition: opacity 0.15s; }
 .meal-item:hover .meal-delete-btn { opacity: 1; }
 .meal-macros { font-size: 11px; color: var(--text-tertiary); }
 .meal-time { font-size: 10px; color: var(--text-tertiary); }
@@ -1100,10 +1102,10 @@ function renderMealList(meals) {
         <div class="meal-name-wrap">
           ${getMealTypeBadge(m.mealType)}
           <span class="meal-name" id="mn-${i}">${m.label}</span>
-          <button class="meal-edit-btn" onclick="startEdit(${i})" title="Rename">✎</button>
+          <button class="meal-edit-btn" onclick="startEdit(${i})" title="Rename title only">✎</button>
         </div>
         <span class="meal-kcal">${Math.round(m.kcal)} kcal</span>
-        <button class="meal-edit-btn" onclick="openEditModal(${i})" title="Edit full entry" style="opacity:0;margin-left:2px;font-size:11px;color:var(--blue);">Edit</button>
+        <button class="meal-fulledit-btn" onclick="openEditModal(${i})" title="Edit this meal">✏ Edit</button>
         <button class="meal-delete-btn" onclick="deleteMeal(${i})" title="Delete">✕</button>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;">
