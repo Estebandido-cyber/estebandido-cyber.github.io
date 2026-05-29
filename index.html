@@ -829,28 +829,50 @@ function renderLukas(data) {
   const el   = document.getElementById('stats-lukas');
   const foot = document.getElementById('footer-lukas');
 
-  // Cloudflare returns the raw portfolio state
-  // Hub tile reads from lukas_flow_snapshot for localStorage fallback
-  const snapshot = data || safeParse(safeGet('lukas_flow_snapshot'));
-  if (!snapshot) { el.innerHTML = noData('Open LUKAS Flow to sync'); return; }
+  // Try localStorage snapshot first for pre-computed G/L fields
+  const snapshot = safeParse(safeGet('lukas_flow_snapshot'));
 
-  // Compute total from Cloudflare data if no pre-computed snapshot fields
-  let totalValue = snapshot.totalValue ?? null;
-  let totalGL    = snapshot.totalGL    ?? null;
-  let totalGLPct = snapshot.totalGLPct ?? null;
-  const updatedAt = snapshot.updatedAt || snapshot.savedAt || null;
+  let totalValue, totalGL, totalGLPct, updatedAt;
 
-  if (totalValue === null) { el.innerHTML = noData('Open LUKAS Flow to sync'); return; }
+  if (data && (data.cash !== undefined || data.manual_values)) {
+    // Cloudflare raw format — compute totalValue from components
+    const livrets  = (data.livret_value_A||0) + (data.livret_value_LDDS||0);
+    const fe       = (data.fe_value_PERE||0) + (data.fe_value_PERO||0) + (data.fe_value_AV||0);
+    const manuals  = Object.values(data.manual_values || {}).reduce((s, v) => s + (v.value||0), 0);
+    totalValue = (data.cash||0) + livrets + fe + manuals;
 
-  const glPositive = totalGL >= 0;
+    // G/L only available from localStorage snapshot
+    totalGL    = snapshot?.totalGL    ?? null;
+    totalGLPct = snapshot?.totalGLPct ?? null;
+
+    // Use most recent updatedAt from manual_values as timestamp
+    const timestamps = Object.values(data.manual_values || {}).map(v => v.updatedAt).filter(Boolean);
+    updatedAt = timestamps.sort().pop() || snapshot?.updatedAt || null;
+
+  } else if (snapshot?.totalValue !== undefined) {
+    // Fall back to localStorage snapshot
+    totalValue = snapshot.totalValue;
+    totalGL    = snapshot.totalGL    ?? null;
+    totalGLPct = snapshot.totalGLPct ?? null;
+    updatedAt  = snapshot.updatedAt  || null;
+  } else {
+    el.innerHTML = noData('Open LUKAS Flow to sync');
+    return;
+  }
+
+  const glPositive = (totalGL ?? 0) >= 0;
   const glSign     = glPositive ? '+' : '';
   const glColor    = glPositive ? '#00e5a0' : '#ff6b6b';
 
-  el.innerHTML =
-    statHTML('Portfolio value', fmt(totalValue), true) +
-    '<div class="stat-divider"></div>' +
-    `<div class="stat"><div class="stat-label">Unrealized G/L</div><div class="stat-value" style="color:${glColor}">${glSign}${fmt(totalGL)} (${glSign}${totalGLPct?.toFixed(1)}%)</div></div>`;
+  let html = statHTML('Portfolio value', fmt(totalValue), true) + '<div class="stat-divider"></div>';
 
+  if (totalGL !== null) {
+    html += `<div class="stat"><div class="stat-label">Unrealized G/L</div><div class="stat-value" style="color:${glColor}">${glSign}${fmt(totalGL)} (${glSign}${totalGLPct?.toFixed(1)}%)</div></div>`;
+  } else {
+    html += statHTML('G/L', 'Open widget to compute');
+  }
+
+  el.innerHTML = html;
   if (updatedAt) foot.textContent = fmtAgo(updatedAt);
 }
 
