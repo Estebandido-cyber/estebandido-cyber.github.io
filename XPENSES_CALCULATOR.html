@@ -802,7 +802,7 @@ async function cloudSave() {
       const res = await fetch(CF_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
-        body: JSON.stringify(states),
+        body: JSON.stringify({ savedAt: new Date().toISOString(), ...states }),
       });
       cfSetStatus(res.ok);
     } catch (e) {
