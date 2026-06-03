@@ -50,6 +50,52 @@
     --accent-kals-glow: rgba(234,179,8,0.25);
   }
 
+  /* ── Light mode ── */
+  body.light {
+    --bg: #f4f4f8;
+    --bg2: #eaeaf0;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.08);
+    --border-hover: rgba(0,0,0,0.18);
+    --text: #1a1a2e;
+    --muted: rgba(26,26,46,0.6);
+    --subtle: rgba(26,26,46,0.4);
+  }
+  body.light::before { opacity: 0.4; }
+  body.light::after  { opacity: 0.3; }
+
+  /* ── Shimmer loading ── */
+  @keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  .tile.loading .tile-stats {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--border-hover) 50%, var(--surface) 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.4s infinite linear;
+    border-radius: 8px;
+    min-height: 80px;
+  }
+  .tile.loading .tile-stats * { visibility: hidden; }
+
+  /* ── Theme toggle button ── */
+  .theme-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 15px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, color 0.2s;
+    flex-shrink: 0;
+  }
+  .theme-btn:hover { border-color: var(--border-hover); color: var(--text); }
+
   body {
     background: var(--bg);
     color: var(--text);
@@ -455,8 +501,9 @@
         <div class="logo-title">Life Hub</div>
       </div>
     </div>
-    <div class="header-meta">
+    <div class="header-meta" style="display:flex;align-items:flex-start;gap:10px;padding-top:6px;">
       <div class="date-display" id="date-display"></div>
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark">🌙</button>
     </div>
   </header>
 
@@ -464,7 +511,7 @@
 
   <div class="tiles">
 
-    <a class="tile tile-notes" href="notes.html">
+    <a class="tile tile-notes" href="notes.html" onclick="hap()">
       <div class="tile-header">
         <div class="tile-icon">📝</div>
         <div class="tile-name">Do it!</div>
@@ -474,7 +521,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-tracker" href="XPENSE_TRACKER.html">
+    <a class="tile tile-tracker" href="XPENSE_TRACKER.html" onclick="hap()">
       <div class="tile-header">
         <div class="tile-icon">💳</div>
         <div class="tile-name">Xpenser</div>
@@ -484,7 +531,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-workout" href="workout_dashboard.html">
+    <a class="tile tile-workout" href="workout_dashboard.html" onclick="hap()">
       <div class="tile-header">
         <div class="tile-icon">💪</div>
         <div class="tile-name">Workout</div>
@@ -494,7 +541,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-kals" href="kals_track.html">
+    <a class="tile tile-kals" href="kals_track.html" onclick="hap()">
       <div class="tile-header">
         <div class="tile-icon">⚡</div>
         <div class="tile-name">Kals</div>
@@ -504,7 +551,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-lukas" href="lukas_analyzer.html">
+    <a class="tile tile-lukas" href="lukas_analyzer.html" onclick="hap()">
       <div class="tile-header">
         <div class="tile-icon">📊</div>
         <div class="tile-name">Lukas</div>
@@ -514,7 +561,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-calc" href="XPENSES_CALCULATOR.html">
+    <a class="tile tile-calc" href="XPENSES_CALCULATOR.html" onclick="hap()">
       <div class="tile-header">
         <div class="tile-icon">🧮</div>
         <div class="tile-name">Calculator</div>
@@ -524,7 +571,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-fire" href="FIRE_SIM.html">
+    <a class="tile tile-fire" href="FIRE_SIM.html" onclick="hap()">
       <div class="tile-header">
         <div class="tile-icon">🔥</div>
         <div class="tile-name">FIRE Sim</div>
@@ -534,7 +581,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-planner" href="WEEK_PLANNER.html">
+    <a class="tile tile-planner" href="WEEK_PLANNER.html" onclick="hap()">
       <div class="tile-header">
         <div class="tile-icon">📅</div>
         <div class="tile-name">Week Plan</div>
@@ -544,7 +591,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-strat" href="FIRE_strat.html">
+    <a class="tile tile-strat" href="FIRE_strat.html" onclick="hap()">
       <div class="tile-header">
         <div class="tile-icon">♞</div>
         <div class="tile-name">Strat</div>
@@ -603,6 +650,32 @@ function fmtAgo(iso) {
     if (diffDays === 1) return 'Last logged: yesterday';
     return `Last logged: ${diffDays} days ago`;
   } catch(e) { return ''; }
+}
+
+// ── HAPTIC FEEDBACK ──────────────────────────────────────────────
+function hap() {
+  if (navigator.vibrate) navigator.vibrate(8);
+}
+
+// ── THEME TOGGLE ─────────────────────────────────────────────────
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('lifehub_theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = isLight ? '☀️' : '🌙';
+}
+
+(function initTheme() {
+  const saved = localStorage.getItem('lifehub_theme');
+  if (saved === 'light') {
+    document.body.classList.add('light');
+    const btn = document.getElementById('theme-btn');
+    if (btn) btn.textContent = '☀️';
+  }
+})();
+
+// ── SHIMMER HELPERS ───────────────────────────────────────────────
+function setLoading(on) {
+  document.querySelectorAll('.tile').forEach(t => t.classList.toggle('loading', on));
 }
 
 // ── CLOUDFLARE SYNC ──────────────────────────────────────────────
@@ -878,10 +951,12 @@ function renderLukas(data) {
 
 // ── LOAD ALL — fetch from Cloudflare, fall back to localStorage ──
 async function loadAll() {
-  // Show loading state immediately from localStorage while CF fetches
+  // Show localStorage data immediately
   loadFromLocalStorage();
 
-  // Fetch all 7 from Cloudflare in parallel
+  // Show shimmer while fetching from Cloudflare
+  setLoading(true);
+
   const [doItCF, trackerCF, calcCF, plannerCF, fireCF, workoutCF, kalsCF, lukasCF] = await Promise.allSettled([
     cfFetch('doit-lcc'),
     cfFetch('xpenser'),
@@ -892,6 +967,9 @@ async function loadAll() {
     cfFetch('kalstrack'),
     cfFetch('lukas-flow')
   ]);
+
+  // Remove shimmer
+  setLoading(false);
 
   const get = r => r.status === 'fulfilled' ? r.value : null;
 
