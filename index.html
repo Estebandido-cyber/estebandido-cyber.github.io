@@ -63,6 +63,27 @@
   }
   body.light::before { opacity: 0.4; }
   body.light::after  { opacity: 0.3; }
+  body.light .logo-title {
+    background: linear-gradient(135deg, #1a1a2e 0%, rgba(26,26,46,0.75) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Budget bar ── */
+  .budget-bar-wrap {
+    width: 100%;
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .budget-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
 
   /* ── Shimmer loading ── */
   @keyframes shimmer {
@@ -739,10 +760,21 @@ function renderTracker(data) {
     if (d >= monday && d <= sunday) weekTotal += sum;
   });
 
+  // Monthly budget from cashflow (Cloudflare or localStorage)
+  const cashflow = data?.cashflow || safeParse(safeGet('depenses_cashflow_v1')) || {};
+  const cf = cashflow[curMonth] || {};
+  const monthBudget = (parseFloat(cf.salary)||0) + (parseFloat(cf.partner)||0) +
+                      (parseFloat(cf.extra)||0)  + (parseFloat(cf.extra2)||0);
+  const budgetPct = monthBudget > 0 ? Math.min(100, Math.round((monthTotal / monthBudget) * 100)) : 0;
+  const barColor  = budgetPct < 70 ? '#00e5a0' : budgetPct < 90 ? '#ffd166' : '#ff6b6b';
+  const barHTML   = monthBudget > 0
+    ? `<div class="budget-bar-wrap"><div class="budget-bar-fill" style="width:${budgetPct}%;background:${barColor}"></div></div>`
+    : '';
+
   el.innerHTML =
     statHTML('This week',  fmt(weekTotal),  true) +
     '<div class="stat-divider"></div>' +
-    statHTML('This month', fmt(monthTotal)) +
+    `<div class="stat"><div class="stat-label">This month${monthBudget > 0 ? ' · '+budgetPct+'% of income' : ''}</div><div class="stat-value">${fmt(monthTotal)}</div>${barHTML}</div>` +
     '<div class="stat-divider"></div>' +
     statHTML('This year',  fmt(yearTotal));
   foot.textContent = fmtAgo(safeGet('depenses_last_save'));
@@ -884,12 +916,17 @@ function renderKals(data) {
 
   const consumed = Math.round((dayData.meals||[]).reduce((s,m) => s+(m.kcal||0), 0));
   const burned   = Math.round((dayData.burned||[]).reduce((s,b) => s+(b.kcal||0), 0));
-  const left     = (settings.budget + burned) - consumed;
+  const budget   = settings.budget || 2650;
+  const left     = (budget + burned) - consumed;
   const waterL   = ((dayData.waterTotal||0)/1000).toFixed(1) + 'L';
   const leftColor = left >= 0 ? 'var(--text)' : '#ff6b6b';
 
+  const kalsPct   = Math.min(100, Math.round((consumed / budget) * 100));
+  const kalsColor = kalsPct < 70 ? '#00e5a0' : kalsPct < 90 ? '#ffd166' : '#ff6b6b';
+  const kalsBar   = `<div class="budget-bar-wrap"><div class="budget-bar-fill" style="width:${kalsPct}%;background:${kalsColor}"></div></div>`;
+
   el.innerHTML =
-    statHTML('Consumed', consumed+' kcal', true) +
+    `<div class="stat"><div class="stat-label">Consumed · ${kalsPct}% of budget</div><div class="stat-value stat-value-big">${consumed} kcal</div>${kalsBar}</div>` +
     '<div class="stat-divider"></div>' +
     `<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${leftColor}">${left} kcal</div></div>` +
     '<div class="stat-divider"></div>' +
