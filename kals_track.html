@@ -992,6 +992,11 @@ function saveRecap(recap) {
 // ── Meal Library ──
 let relogMeal = null;
 
+// Compatibility wrapper — called by buildDayContext
+function getRecentMeals() {
+  return getMealLibrary('').slice(0, 8).map(r => r.meal);
+}
+
 function getMealLibrary(query) {
   const freq = new Map();
   for (let i = 0; i >= -59; i--) {
