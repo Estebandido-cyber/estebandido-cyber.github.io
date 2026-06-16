@@ -486,6 +486,21 @@ body {
 .relog-btn-log { flex: 1; background: var(--green); color: #fff; border: none; border-radius: var(--radius-md); padding: 10px 16px; font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; }
 .relog-btn-edit { background: transparent; border: 0.5px solid var(--border-med); border-radius: var(--radius-md); padding: 10px 14px; font-family: var(--font-body); font-size: 13px; color: var(--text-secondary); cursor: pointer; }
 .relog-btn-cancel { background: transparent; border: none; padding: 10px 10px; font-family: var(--font-body); font-size: 13px; color: var(--text-tertiary); cursor: pointer; }
+
+/* ── Ingredient inline edit ── */
+.ing-edit-btn {
+  background: none; border: none; cursor: pointer; font-size: 11px;
+  color: var(--text-tertiary); padding: 0 2px; font-family: var(--font-body);
+  opacity: 0.5; transition: opacity 0.15s;
+}
+.ing-edit-btn:hover { opacity: 1; color: var(--blue); }
+.ing-kcal { font-size: 11px; color: var(--text-secondary); }
+.ing-kcal-input {
+  width: 60px; font-family: var(--font-body); font-size: 12px;
+  color: var(--text-primary); background: var(--bg-primary);
+  border: 0.5px solid var(--border-med); border-radius: 4px;
+  padding: 1px 5px; outline: none; text-align: right;
+}
 /* ── Responsive ── */
 
 /* ── Tablet: 641px – 1280px ── */
@@ -992,6 +1007,7 @@ function saveRecap(recap) {
 
 // ── Meal Library ──
 let relogMeal = null;
+let libraryResults = []; // indexed store for library items — avoids fragile onclick serialisation
 
 // Compatibility wrapper — called by buildDayContext
 function getRecentMeals() {
@@ -1042,10 +1058,10 @@ function getMealLibrary(query) {
 
 function renderLibrary() {
   const query = (document.getElementById('librarySearch')||{}).value || '';
-  const results = getMealLibrary(query);
+  libraryResults = getMealLibrary(query); // store for index lookup
   const list = document.getElementById('libraryList');
   if (!list) return;
-  if (results.length === 0) {
+  if (libraryResults.length === 0) {
     list.innerHTML = query
       ? `<div class="library-empty">No meals matching "${query}".</div>`
       : '<div class="library-empty">Log some meals to build your library.</div>';
@@ -1053,7 +1069,7 @@ function renderLibrary() {
   }
   let out = '';
   let shownYesterday = false, shownOlder = false;
-  results.forEach(r => {
+  libraryResults.forEach((r, idx) => {
     const m = r.meal;
     if (!query) {
       if (r.daysAgo === 1 && !shownYesterday) { out += `<div class="library-section-label">Yesterday</div>`; shownYesterday = true; }
@@ -1061,8 +1077,7 @@ function renderLibrary() {
     }
     const ingPreview = (m.items||[]).map(it=>it.name).join(', ');
     const countLabel = r.count > 1 ? ` · ${r.count}×` : '';
-    const mealData = JSON.stringify(JSON.stringify(m));
-    out += `<div class="library-item" onclick="openRelogSheet(${mealData})">
+    out += `<div class="library-item" onclick="openRelogSheetByIndex(${idx})">
       <div class="library-item-info">
         <div class="library-item-header">${getMealTypeBadge(m.mealType)}<span class="library-item-name">${m.label}</span><span class="library-item-kcal">${Math.round(m.kcal)} kcal${countLabel}</span></div>
         ${ingPreview ? `<div class="library-item-ingredients">${ingPreview}</div>` : ''}
@@ -1073,14 +1088,26 @@ function renderLibrary() {
   list.innerHTML = out;
 }
 
-function openRelogSheet(mealStr) {
-  const meal = JSON.parse(mealStr);
+// Safe index-based entry point — no serialisation issues
+function openRelogSheetByIndex(idx) {
+  const r = libraryResults[idx];
+  if (!r) return;
+  openRelogSheet(r.meal);
+}
+
+function openRelogSheet(meal) {
   relogMeal = meal;
   document.getElementById('relogName').textContent = meal.label;
   document.getElementById('relogMacros').textContent = `${Math.round(meal.kcal)} kcal · P${Math.round(meal.protein)}g F${Math.round(meal.fat)}g C${Math.round(meal.carbs)}g`;
   const ingEl = document.getElementById('relogIngredients');
   ingEl.innerHTML = (meal.items||[]).length > 0
-    ? meal.items.map(it=>`<div class="relog-ingredient-row"><span>${it.name}</span><span>${Math.round(it.kcal)} kcal</span></div>`).join('')
+    ? meal.items.map((it,j)=>`<div class="relog-ingredient-row">
+        <span>${it.name}</span>
+        <span style="display:flex;align-items:center;gap:6px;">
+          <span class="ing-kcal" id="relog-ing-${j}">${Math.round(it.kcal)} kcal</span>
+          <button class="ing-edit-btn" onclick="editRelogIngredient(${j})" title="Correct kcal">✎</button>
+        </span>
+      </div>`).join('')
     : `<div class="relog-ingredient-row"><span style="color:var(--text-tertiary);">No ingredient details saved</span></div>`;
   const chips = document.querySelectorAll('.relog-type-chip');
   chips.forEach(c => c.classList.toggle('selected', c.dataset.type === (meal.mealType||'')));
@@ -1319,8 +1346,14 @@ function renderMealList(meals) {
     const m = entry;
     const hasItems = m.items && m.items.length > 0;
     const ingredientsHTML = hasItems
-      ? m.items.map(it => `<div class="meal-ingredient-row"><span>${it.name}</span><span>${Math.round(it.kcal)} kcal</span></div>`).join('')
-      : '<div class="meal-ingredient-row"><span style="color:var(--text-tertiary);">No ingredient details saved</span></div>';
+      ? m.items.map((it, j) => `<div class="meal-ingredient-row">
+          <span>${it.name}</span>
+          <span style="display:flex;align-items:center;gap:6px;">
+            <span class="ing-kcal" id="ing-kcal-${i}-${j}">${Math.round(it.kcal)} kcal</span>
+            <button class="ing-edit-btn" onclick="editIngredientKcal(${i},${j})" title="Correct kcal">✎</button>
+          </span>
+        </div>`).join('')
+      : '<div class="meal-ingredient-row"><span style="color:var(--text-tertiary);">No ingredients saved — use ✏ Edit to re-parse this meal.</span></div>';
     return `<div class="meal-item">
       <div class="meal-header">
         <div class="meal-name-wrap">
@@ -1347,6 +1380,65 @@ function renderMealList(meals) {
 }
 
 
+
+// ── Inline ingredient kcal editing ──
+function editIngredientKcal(mealIdx, ingIdx) {
+  const day = getCurrentDay();
+  const meal = day.meals[mealIdx];
+  if (!meal || !meal.items || !meal.items[ingIdx]) return;
+  const it = meal.items[ingIdx];
+  const spanEl = document.getElementById(`ing-kcal-${mealIdx}-${ingIdx}`);
+  if (!spanEl) return;
+
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.className = 'ing-kcal-input'; inp.value = Math.round(it.kcal);
+  spanEl.replaceWith(inp); inp.focus(); inp.select();
+
+  function commit() {
+    const newKcal = parseFloat(inp.value);
+    if (!isNaN(newKcal) && newKcal >= 0) {
+      const diff = newKcal - it.kcal;
+      it.kcal = newKcal;
+      meal.kcal = Math.round(meal.kcal + diff);
+      day.meals[mealIdx] = meal;
+      saveCurrentDay(day);
+    }
+    updateUI();
+  }
+  inp.onblur = commit;
+  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') updateUI(); };
+}
+
+function editRelogIngredient(ingIdx) {
+  if (!relogMeal || !relogMeal.items || !relogMeal.items[ingIdx]) return;
+  const it = relogMeal.items[ingIdx];
+  const spanEl = document.getElementById(`relog-ing-${ingIdx}`);
+  if (!spanEl) return;
+
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.className = 'ing-kcal-input'; inp.value = Math.round(it.kcal);
+  spanEl.replaceWith(inp); inp.focus(); inp.select();
+
+  function commit() {
+    const newKcal = parseFloat(inp.value);
+    if (!isNaN(newKcal) && newKcal >= 0) {
+      const diff = newKcal - it.kcal;
+      it.kcal = newKcal;
+      relogMeal.kcal = Math.round(relogMeal.kcal + diff);
+      // Update the totals display
+      document.getElementById('relogMacros').textContent =
+        `${Math.round(relogMeal.kcal)} kcal · P${Math.round(relogMeal.protein)}g F${Math.round(relogMeal.fat)}g C${Math.round(relogMeal.carbs)}g`;
+    }
+    // Re-render just that span
+    const newSpan = document.createElement('span');
+    newSpan.className = 'ing-kcal'; newSpan.id = `relog-ing-${ingIdx}`;
+    newSpan.textContent = Math.round(relogMeal.items[ingIdx].kcal) + ' kcal';
+    inp.replaceWith(newSpan);
+  }
+  inp.onblur = commit;
+  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { inp.replaceWith(spanEl); } };
+}
+
 function toggleIngredients(id) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -1371,16 +1463,20 @@ function openEditModal(i) {
   const input = document.getElementById('editModalInput');
 
   // Pre-fill with full ingredient list if available, otherwise the meal label
-  if (meal.items && meal.items.length > 0) {
+  const hasIngredients = meal.items && meal.items.length > 0;
+  if (hasIngredients) {
     input.value = meal.items.map(it => it.name).join(', ');
   } else {
     input.value = meal.label;
   }
 
-  // Show current meal info above the textarea
+  // Show current meal info + contextual hint
   const mealTypeLabel = meal.mealType ? meal.mealType.charAt(0).toUpperCase() + meal.mealType.slice(1) + ' · ' : '';
   document.getElementById('editModalCurrentInfo').innerHTML =
-    `<strong>${meal.label}</strong> &nbsp;·&nbsp; ${mealTypeLabel}${Math.round(meal.kcal)} kcal &nbsp;·&nbsp; P${Math.round(meal.protein)}g F${Math.round(meal.fat)}g C${Math.round(meal.carbs)}g`;
+    `<strong>${meal.label}</strong> &nbsp;·&nbsp; ${mealTypeLabel}${Math.round(meal.kcal)} kcal &nbsp;·&nbsp; P${Math.round(meal.protein)}g F${Math.round(meal.fat)}g C${Math.round(meal.carbs)}g`
+    + (hasIngredients
+      ? `<div style="margin-top:5px;font-size:11px;color:var(--text-tertiary);">Ingredients pre-filled below — edit what changed, then hit Re-parse.</div>`
+      : `<div style="margin-top:5px;font-size:11px;color:var(--amber);">⚠ No ingredients saved for this meal. Describe it fully below and hit Re-parse.</div>`);
 
   document.getElementById('editModalStatus').innerHTML = '';
   document.getElementById('editModalSaveBtn').disabled = false;
