@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Workout Insights</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -185,16 +187,28 @@ canvas{display:block;width:100%!important}
     <div style="width:1px;height:28px;background:var(--border);flex-shrink:0"></div>
     <div>
       <div class="sup">Analytics Dashboard</div>
-      <div class="title"><span class="title-workout">WORKOUT</span><span class="title-insights">Insights</span><span class="title-emoji">🏋️</span></div>
+      <div class="title"><span class="title-workout">WORKOUT</span><span class="title-insights">Insights</span><span class="title-emoji">💪</span></div>
       <div class="sub" id="headerSub">Loading…</div>
     </div>
   </div>
-  <div class="header-stats">
-    <div class="hstat"><div class="hstat-val" id="hSessions">—</div><div class="hstat-label">Sessions</div></div>
-    <div class="hstat"><div class="hstat-val" id="hPU">—</div><div class="hstat-label">Push-ups</div></div>
-    <div class="hstat"><div class="hstat-val" id="hDom">—</div><div class="hstat-label">Pull-ups</div></div>
-    <div class="hstat"><div class="hstat-val" id="hJR">—</div><div class="hstat-label">Jump Rope</div></div>
-    <div class="hstat"><div class="hstat-val" id="hRun">—</div><div class="hstat-label">Total Run</div></div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+    <div style="display:flex;gap:6px">
+      <button class="tbtn primary" data-drive onclick="saveToDrive()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Save
+      </button>
+      <button class="tbtn" data-drive onclick="loadFromDrive()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Load
+      </button>
+    </div>
+    <div class="header-stats">
+      <div class="hstat"><div class="hstat-val" id="hSessions">—</div><div class="hstat-label">Sessions</div></div>
+      <div class="hstat"><div class="hstat-val" id="hPU">—</div><div class="hstat-label">Push-ups</div></div>
+      <div class="hstat"><div class="hstat-val" id="hDom">—</div><div class="hstat-label">Pull-ups</div></div>
+      <div class="hstat"><div class="hstat-val" id="hJR">—</div><div class="hstat-label">Jump Rope</div></div>
+      <div class="hstat"><div class="hstat-val" id="hRun">—</div><div class="hstat-label">Total Run</div></div>
+    </div>
   </div>
 </div>
 
@@ -202,30 +216,12 @@ canvas{display:block;width:100%!important}
 <div class="toolbar">
   <div class="toolbar-group">
     <div class="status-dot" id="statusDot"></div>
-    <span id="statusText">Loading data…</span>
+    <span id="statusText"></span>
   </div>
   <div class="toolbar-sep"></div>
   <div class="toolbar-group">
-    <button class="tbtn primary" data-drive onclick="saveToDrive()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      Save to Drive
-    </button>
-    <button class="tbtn" data-drive onclick="loadFromDrive()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      Load from Drive
-    </button>
-  </div>
-  <div class="toolbar-sep"></div>
-  <div class="toolbar-group">
-    <button class="tbtn" onclick="exportJSON()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-      Export JSON
-    </button>
-    <button class="tbtn" onclick="document.getElementById('importFile').click()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-      Import JSON
-    </button>
-    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+    <div class="status-dot" id="cfDot"></div>
+    <span id="cfText" style="font-size:11px;color:#9a9aaa"></span>
   </div>
 </div>
 
@@ -521,6 +517,7 @@ async function decompress(b64) {
 // ══════════════════════════════════════════════════════════════
 function saveToLS() {
   try { localStorage.setItem(LS_KEY, JSON.stringify({savedAt: new Date().toISOString(), sessions, monthly, ts: Date.now()})); } catch(e){}
+  cloudSave();
 }
 function loadFromLS() {
   try {
@@ -639,29 +636,55 @@ function loadFromDrive() {
   });
 }
 
-function exportJSON() {
-  const data = {sessions, monthly, exportedAt: new Date().toISOString(), version: 1};
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `workout_insights_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  setStatus(`Exported JSON · ${fmtTime(new Date())}`,'ok');
+// ═══════════════════════════════════════════════
+// CLOUDFLARE WORKERS AUTO-SYNC
+// ═══════════════════════════════════════════════
+const CF_URL = 'https://widgets-sync.estebandido80.workers.dev/data/workout';
+const CF_SECRET = 'widget-sync-secret-2024';
+let _cfSaveTimer = null;
+
+function setCfStatus(ok, msg) {
+  const dot = document.getElementById('cfDot');
+  const txt = document.getElementById('cfText');
+  if (!dot || !txt) return;
+  dot.className = 'status-dot' + (ok ? ' ok' : ' warn');
+  txt.textContent = msg;
 }
 
-function importJSON(evt) {
-  const file = evt.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
+function cloudSave() {
+  clearTimeout(_cfSaveTimer);
+  _cfSaveTimer = setTimeout(async () => {
     try {
-      const d = JSON.parse(e.target.result);
-      if (!d.sessions || !d.monthly) throw new Error('Invalid format');
-      showModal('Import JSON',`Replace all data with ${d.sessions.length} sessions from this file?`,
-        'Import', () => { sessions=d.sessions; monthly=d.monthly; saveToLS(); rebuildAll(); setStatus(`Imported ${d.sessions.length} sessions · ${fmtTime(new Date())}`,'ok'); closeModal(); });
-    } catch(err) { showModal('Import failed','Invalid JSON file.','OK'); }
-  };
-  reader.readAsText(file);
-  evt.target.value = '';
+      await fetch(CF_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
+        body: JSON.stringify({ sessions, monthly })
+      });
+      setCfStatus(true, `Synced at ${fmtTime(new Date())}`);
+    } catch(e) {
+      console.warn('Cloud save failed', e);
+      setCfStatus(false, 'Sync failed');
+    }
+  }, 3000);
+}
+
+async function cloudLoad() {
+  try {
+    const res = await fetch(CF_URL, {
+      headers: { 'X-Secret': CF_SECRET }
+    });
+    const data = await res.json();
+    if (data && data.sessions && data.monthly) {
+      sessions = data.sessions;
+      monthly = data.monthly;
+      saveToLS();
+      rebuildAll();
+    }
+    setCfStatus(true, `Synced at ${fmtTime(new Date())}`);
+  } catch(e) {
+    console.warn('Cloud load failed', e);
+    setCfStatus(false, 'Sync failed');
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -670,9 +693,8 @@ function importJSON(evt) {
 function parseWorkoutText(text, date, loc, pastedHtml='') {
   let bulletLines = [];
 
-  // Try plain-text lines first (what the user sees and has edited —
-  // innerText reliably reflects visual line breaks even when the
-  // underlying innerHTML structure is messy after a rich paste)
+  // Try plain-text lines first (innerText — reliably reflects what the user
+  // sees and has edited, even when innerHTML is messy after a rich paste)
   const textLines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const textBulletPrefixed = textLines
     .filter(l => /^[*•\-]\s/.test(l))
@@ -719,6 +741,7 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
       bulletLines = exerciseLines;
     }
   }
+
 
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const otherLines = lines.filter(l => !/^[*•\-]\s/.test(l));
@@ -1642,23 +1665,18 @@ function closeModal(){document.getElementById('modal').classList.remove('show');
 // INIT
 // ══════════════════════════════════════════════════════════════
 async function init() {
-  setStatus('Loading…');
   initAddWorkout();
 
   // Try localStorage first
   const lsTs = loadFromLS();
   if (lsTs) {
     rebuildAll();
-    const ago = Math.round((Date.now()-lsTs)/60000);
-    setStatus(`Loaded from cache · saved ${ago<1?'just now':ago+'min ago'}`,'ok');
   } else {
     // Fall back to embedded data
-    setStatus('Decompressing embedded data…');
     try {
       [sessions, monthly] = await Promise.all([decompress(EMBEDDED_SESSIONS), decompress(EMBEDDED_MONTHLY)]);
       rebuildAll();
       saveToLS();
-      setStatus(`Loaded ${sessions.length} sessions from embedded data`,'ok');
     } catch(e) { console.error(e); setStatus('Failed to load data','warn'); }
   }
 
@@ -1667,6 +1685,9 @@ async function init() {
     const savedTab = localStorage.getItem('workout_insights_active_tab');
     if (savedTab && document.getElementById('tab-'+savedTab)) showTab(savedTab);
   } catch(e){}
+
+  // Sync from cloud (non-blocking)
+  cloudLoad();
 }
 
 init();
