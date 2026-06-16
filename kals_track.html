@@ -1597,7 +1597,7 @@ async function sendChat() {
   document.getElementById('suggestions').style.display = 'none';
 
   addChatMsg('user', text);
-  chatHistory.push({ role:'user', content: text });
+  chatHistory.push({ role:'user', content: text, _type:'chat' });
 
   const thinking = addChatMsg('thinking');
 
@@ -1633,35 +1633,53 @@ INTENT DETECTION:
 
 meal_type rules: if user says "breakfast"→breakfast, "lunch"→lunch, "dinner"→dinner, "snack"→snack, "apéro"/"aperitif"/"drink"→apero. If not stated, infer from time: before 10h→breakfast, 11-14h→lunch, 19h+→dinner, otherwise→snack.
 
-Be warm and specific. Use real numbers. No markdown. Return ONLY the JSON object.`;
+CRITICAL: Your response MUST be a single valid JSON object. No text before or after it. No markdown fences. If you are unsure what type to use, return {"type":"chat","reply":"your message here"}. Never return plain text.`;
 
   try {
-    const data = await callAPI(chatHistory, 800, system);
-    const raw = data.content[0].text.trim().replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(raw);
+    // Only send plain-text chat history (not JSON blobs) to avoid confusing Claude
+    const cleanHistory = chatHistory.filter(m => m._type === 'chat' || m.role === 'user');
+    const data = await callAPI(cleanHistory, 1000, system);
 
-    // Remove thinking bubble
+    if (!data.content || !data.content[0]) throw new Error('Empty API response');
+    const raw = data.content[0].text.trim().replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+
+    // Try to parse JSON; if it fails show the raw text as a fallback chat message
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch(parseErr) {
+      thinking.remove();
+      // Claude returned plain text instead of JSON — show it as a chat message
+      addChatMsg('assistant', raw);
+      chatHistory.push({ role:'assistant', content: raw, _type:'chat' });
+      btn.disabled = false;
+      input.focus();
+      return;
+    }
+
     thinking.remove();
 
     if (parsed.type === 'log_food') {
       handleFoodLog(parsed);
-      chatHistory.push({ role:'assistant', content: raw });
+      chatHistory.push({ role:'assistant', content: parsed.reply || 'Logged.', _type:'chat' });
     } else if (parsed.type === 'log_water') {
       handleWaterLog(parsed);
-      chatHistory.push({ role:'assistant', content: raw });
+      chatHistory.push({ role:'assistant', content: parsed.reply || 'Water logged.', _type:'chat' });
     } else if (parsed.type === 'log_burned') {
       handleBurnedLog(parsed);
-      chatHistory.push({ role:'assistant', content: raw });
+      chatHistory.push({ role:'assistant', content: parsed.reply || 'Burned calories logged.', _type:'chat' });
     } else {
-      addChatMsg('assistant', parsed.reply);
-      chatHistory.push({ role:'assistant', content: parsed.reply });
+      addChatMsg('assistant', parsed.reply || raw);
+      chatHistory.push({ role:'assistant', content: parsed.reply || raw, _type:'chat' });
     }
 
+    // Keep history lean — only last 12 exchanges
     if (chatHistory.length > 24) chatHistory = chatHistory.slice(-24);
 
   } catch(e) {
     thinking.remove();
-    addChatMsg('assistant', 'Sorry, something went wrong: ' + e.message);
+    addChatMsg('assistant', 'Something went wrong: ' + e.message + '. Please try again.');
+    console.error('[KALS sendChat]', e);
   }
 
   btn.disabled = false;
