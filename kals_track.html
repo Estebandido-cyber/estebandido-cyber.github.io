@@ -172,8 +172,7 @@ body {
 .meal-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; gap: 6px; }
 .meal-name-wrap { display: flex; align-items: baseline; gap: 4px; flex: 1; min-width: 0; }
 .meal-name { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.meal-edit-btn { background: none; border: none; cursor: pointer; padding: 0 2px; color: var(--text-tertiary); font-size: 11px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
-.meal-item:hover .meal-edit-btn { opacity: 1; }
+/* .meal-edit-btn removed — pencil rename button replaced by unified Edit button */
 .meal-fulledit-btn { background: none; border: 0.5px solid var(--border-med); border-radius: 5px; cursor: pointer; padding: 2px 7px; color: var(--blue); font-size: 11px; font-family: var(--font-body); font-weight: 500; flex-shrink: 0; transition: background 0.12s; }
 .meal-fulledit-btn:hover { background: var(--bg-secondary); }
 .meal-name-input { font-size: 13px; font-weight: 500; font-family: var(--font-body); color: var(--text-primary); background: var(--bg-secondary); border: 0.5px solid var(--border-med); border-radius: 4px; padding: 1px 6px; outline: none; flex: 1; min-width: 0; }
@@ -397,6 +396,12 @@ body {
 .edit-modal-analysing {
   display: flex; align-items: center; gap: 8px;
   font-size: 12px; color: var(--text-tertiary); padding: 8px 0;
+}
+.edit-modal-current {
+  font-size: 12px; color: var(--text-secondary);
+  background: var(--bg-secondary); border-radius: var(--radius-md);
+  padding: 7px 10px; margin-bottom: 10px; border: 0.5px solid var(--border);
+  line-height: 1.5;
 }
 .edit-note { font-size: 11px; color: var(--amber); margin-bottom: 8px; }
 
@@ -828,9 +833,10 @@ body {
 <!-- Meal edit modal -->
 <div class="edit-modal-overlay" id="editModal" style="display:none;" onclick="closeEditModal(event)">
   <div class="edit-modal">
-    <div class="edit-modal-title">Edit meal entry</div>
-    <div class="edit-modal-sub">Describe the meal again with your corrections — Claude will re-parse it.</div>
-    <textarea id="editModalInput" rows="3" placeholder="e.g. '3 eggs instead of 2, bacon, no banana this time'"></textarea>
+    <div class="edit-modal-title">Edit meal</div>
+    <div id="editModalCurrentInfo" class="edit-modal-current"></div>
+    <div class="edit-modal-sub">The ingredients are pre-filled below. Correct what changed and hit re-parse.</div>
+    <textarea id="editModalInput" rows="4" placeholder="e.g. '3 eggs, bacon, no banana this time, tablespoon olive oil'"></textarea>
     <div id="editModalStatus"></div>
     <div class="edit-modal-btns">
       <button class="btn-discard" onclick="document.getElementById('editModal').style.display='none'">Cancel</button>
@@ -1135,10 +1141,9 @@ function renderMealList(meals) {
         <div class="meal-name-wrap">
           ${getMealTypeBadge(m.mealType)}
           <span class="meal-name" id="mn-${i}">${m.label}</span>
-          <button class="meal-edit-btn" onclick="startEdit(${i})" title="Rename title only">✎</button>
         </div>
         <span class="meal-kcal">${Math.round(m.kcal)} kcal</span>
-        <button class="meal-fulledit-btn" onclick="openEditModal(${i})" title="Edit this meal">✏ Edit</button>
+        <button class="meal-fulledit-btn" onclick="openEditModal(${i})" title="Edit meal">✏ Edit</button>
         <button class="meal-delete-btn" onclick="deleteMeal(${i})" title="Delete">✕</button>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;">
@@ -1167,15 +1172,6 @@ function toggleIngredients(id) {
   if (btn) btn.textContent = isOpen ? '▾ ingredients' : '▸ ingredients';
 }
 
-function startEdit(i) {
-  const el = document.getElementById('mn-'+i);
-  const cur = el.textContent;
-  const inp = document.createElement('input');
-  inp.type='text'; inp.value=cur; inp.className='meal-name-input';
-  inp.onblur=()=>{ const day=getCurrentDay(); if(inp.value.trim()) day.meals[i].label=inp.value.trim(); saveCurrentDay(day); updateUI(); };
-  inp.onkeydown=(e)=>{ if(e.key==='Enter')inp.blur(); if(e.key==='Escape'){inp.value=cur;inp.blur();} };
-  el.replaceWith(inp); inp.focus(); inp.select();
-}
 function deleteMeal(i) {
   const day=getCurrentDay(); day.meals.splice(i,1); saveCurrentDay(day); updateUI();
 }
@@ -1187,14 +1183,26 @@ function openEditModal(i) {
   const meal = day.meals[i];
   editingMealIndex = i;
 
-  // Pre-fill with the meal label as a starting description
   const input = document.getElementById('editModalInput');
-  input.value = meal.label;
+
+  // Pre-fill with full ingredient list if available, otherwise the meal label
+  if (meal.items && meal.items.length > 0) {
+    input.value = meal.items.map(it => it.name).join(', ');
+  } else {
+    input.value = meal.label;
+  }
+
+  // Show current meal info above the textarea
+  const mealTypeLabel = meal.mealType ? meal.mealType.charAt(0).toUpperCase() + meal.mealType.slice(1) + ' · ' : '';
+  document.getElementById('editModalCurrentInfo').innerHTML =
+    `<strong>${meal.label}</strong> &nbsp;·&nbsp; ${mealTypeLabel}${Math.round(meal.kcal)} kcal &nbsp;·&nbsp; P${Math.round(meal.protein)}g F${Math.round(meal.fat)}g C${Math.round(meal.carbs)}g`;
+
   document.getElementById('editModalStatus').innerHTML = '';
   document.getElementById('editModalSaveBtn').disabled = false;
+  document.getElementById('editModalSaveBtn').textContent = 'Re-parse & save';
+  document.getElementById('editModalSaveBtn').onclick = submitEditModal;
   document.getElementById('editModal').style.display = 'flex';
 
-  // Focus and select all so user can immediately type
   setTimeout(() => { input.focus(); input.select(); }, 50);
 }
 
