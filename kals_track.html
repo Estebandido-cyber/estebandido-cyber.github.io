@@ -1641,8 +1641,8 @@ meal_type rules: if user says "breakfast"→breakfast, "lunch"→lunch, "dinner"
 CRITICAL: Your response MUST be a single valid JSON object. No text before or after it. No markdown fences. If you are unsure what type to use, return {"type":"chat","reply":"your message here"}. Never return plain text.`;
 
   try {
-    // Only send plain-text chat history (not JSON blobs) to avoid confusing Claude
-    const cleanHistory = chatHistory.filter(m => m._type === 'chat' || m.role === 'user');
+    // Only send role+content to API — strip internal _type field
+    const cleanHistory = chatHistory.map(m => ({ role: m.role, content: m.content }));
     const data = await callAPI(cleanHistory, 1000, system);
 
     if (!data.content || !data.content[0]) throw new Error('Empty API response');
