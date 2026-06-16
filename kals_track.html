@@ -429,6 +429,63 @@ body {
   text-transform: uppercase;
 }
 .meal-expand-btn:hover { color: var(--text-secondary); }
+
+/* ── Meal Library ── */
+.library-panel { display: flex; flex-direction: column; flex: 1; }
+.library-search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.library-search-row input {
+  flex: 1; font-family: var(--font-body); font-size: 13px;
+  color: var(--text-primary); background: var(--bg-secondary);
+  border: 0.5px solid var(--border); border-radius: var(--radius-md);
+  padding: 7px 10px; outline: none; transition: border-color 0.15s;
+}
+.library-search-row input:focus { border-color: var(--border-med); }
+.library-search-row input::placeholder { color: var(--text-tertiary); }
+.library-list { overflow-y: auto; max-height: 340px; display: flex; flex-direction: column; gap: 1px; }
+.library-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 8px; border-radius: var(--radius-md); cursor: pointer;
+  transition: background 0.1s; border: 0.5px solid transparent;
+}
+.library-item:hover { background: var(--bg-secondary); border-color: var(--border); }
+.library-item-info { flex: 1; min-width: 0; }
+.library-item-header { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; flex-wrap: wrap; }
+.library-item-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+.library-item-kcal { font-size: 11px; color: var(--text-tertiary); flex-shrink: 0; }
+.library-item-ingredients { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.library-item-day { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; }
+.library-empty { text-align: center; padding: 2rem 1rem; color: var(--text-tertiary); font-size: 12px; line-height: 1.6; }
+.library-section-label { font-size: 10px; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.07em; padding: 8px 8px 4px; }
+
+/* ── Re-log sheet (bottom sheet style modal) ── */
+.relog-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  z-index: 300; display: flex; align-items: flex-end; justify-content: center;
+}
+.relog-sheet {
+  background: var(--bg-primary); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 1.25rem; width: 100%; max-width: 540px;
+  box-shadow: 0 -4px 32px rgba(0,0,0,0.14);
+  max-height: 85vh; overflow-y: auto;
+}
+.relog-handle { width: 36px; height: 4px; background: var(--border-med); border-radius: 2px; margin: 0 auto 1rem; }
+.relog-meal-name { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 3px; }
+.relog-meal-macros { font-size: 12px; color: var(--text-tertiary); margin-bottom: 12px; }
+.relog-ingredients { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 8px 10px; margin-bottom: 12px; }
+.relog-ingredient-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); padding: 2px 0; border-bottom: 0.5px solid var(--border); }
+.relog-ingredient-row:last-child { border-bottom: none; }
+.relog-section-label { font-size: 10px; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+.relog-type-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.relog-type-chip {
+  font-size: 12px; font-weight: 500; padding: 5px 13px; border-radius: 20px;
+  border: 1.5px solid var(--border-med); cursor: pointer; font-family: var(--font-body);
+  background: transparent; color: var(--text-secondary); transition: all 0.12s;
+}
+.relog-type-chip.selected { border-color: var(--text-primary); background: var(--text-primary); color: var(--bg-primary); }
+.relog-btns { display: flex; gap: 8px; }
+.relog-btn-log { flex: 1; background: var(--green); color: #fff; border: none; border-radius: var(--radius-md); padding: 10px 16px; font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; }
+.relog-btn-edit { background: transparent; border: 0.5px solid var(--border-med); border-radius: var(--radius-md); padding: 10px 14px; font-family: var(--font-body); font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+.relog-btn-cancel { background: transparent; border: none; padding: 10px 10px; font-family: var(--font-body); font-size: 13px; color: var(--text-tertiary); cursor: pointer; }
 /* ── Responsive ── */
 
 /* ── Tablet: 641px – 1280px ── */
@@ -717,17 +774,12 @@ body {
     <div class="panel chat-panel">
       <div class="tab-row">
         <div class="tab active" id="tab-chat" onclick="switchTab('chat')">Log &amp; Ask</div>
+        <div class="tab" id="tab-library" onclick="switchTab('library')">📚 Library</div>
         <div class="tab" id="tab-settings" onclick="switchTab('settings')">Settings</div>
       </div>
 
       <!-- Chat tab -->
       <div id="tabChat" style="display:flex;flex-direction:column;flex:1;">
-
-        <!-- Memory chips -->
-        <div id="memorySection" style="display:none;" class="memory-section">
-          <div class="memory-label">Recent — tap to re-log</div>
-          <div class="memory-row" id="memoryChips"></div>
-        </div>
 
         <!-- Chat messages -->
         <div class="chat-messages" id="chatMessages">
@@ -766,6 +818,16 @@ body {
         <div class="settings-row"><span class="settings-label">Weight</span><span class="settings-val"><input type="number" id="setWeight" value="81"><span class="settings-unit">kg</span></span></div>
         <div class="settings-row"><span class="settings-label">API key</span><span class="settings-val key-row"><input type="password" id="keyDisplay" /><button class="btn-sm" onclick="updateKey()">Update</button></span></div>
         <div style="margin-top:12px;"><button class="btn-primary" onclick="saveSettings()">Save settings</button></div>
+      </div>
+
+      <!-- Library tab -->
+      <div id="tabLibrary" style="display:none;flex-direction:column;flex:1;" class="library-panel">
+        <div class="library-search-row">
+          <input type="text" id="librarySearch" placeholder="Search meals, ingredients…" oninput="renderLibrary()" />
+        </div>
+        <div class="library-list" id="libraryList">
+          <div class="library-empty">Log some meals to build your library.</div>
+        </div>
       </div>
     </div>
 
@@ -828,6 +890,30 @@ body {
     </div>
   </div>
 
+</div>
+
+<!-- Re-log sheet -->
+<div class="relog-overlay" id="relogSheet" style="display:none;" onclick="closeRelogSheet(event)">
+  <div class="relog-sheet">
+    <div class="relog-handle"></div>
+    <div class="relog-meal-name" id="relogName"></div>
+    <div class="relog-meal-macros" id="relogMacros"></div>
+    <div class="relog-section-label">Ingredients</div>
+    <div class="relog-ingredients" id="relogIngredients"></div>
+    <div class="relog-section-label">Meal type</div>
+    <div class="relog-type-chips" id="relogTypeChips">
+      <button class="relog-type-chip" data-type="breakfast" onclick="selectRelogType(this)">Breakfast</button>
+      <button class="relog-type-chip" data-type="lunch" onclick="selectRelogType(this)">Lunch</button>
+      <button class="relog-type-chip" data-type="dinner" onclick="selectRelogType(this)">Dinner</button>
+      <button class="relog-type-chip" data-type="snack" onclick="selectRelogType(this)">Snack</button>
+      <button class="relog-type-chip" data-type="apero" onclick="selectRelogType(this)">Apéro</button>
+    </div>
+    <div class="relog-btns">
+      <button class="relog-btn-log" onclick="confirmRelog()">✓ Log it</button>
+      <button class="relog-btn-edit" onclick="editBeforeRelog()">✏ Edit first</button>
+      <button class="relog-btn-cancel" onclick="document.getElementById('relogSheet').style.display='none'">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <!-- Meal edit modal -->
@@ -903,48 +989,139 @@ function saveRecap(recap) {
   scheduleCloudsave();
 }
 
-// ── Meal memory — frequency ranked ──
-function getRecentMeals() {
-  const freq = new Map(); // label → {meal, count}
-  for (let i = 0; i >= -29; i--) {
-    const day = loadDay(dateKey(i));
+// ── Meal Library ──
+let relogMeal = null;
+
+function getMealLibrary(query) {
+  const freq = new Map();
+  for (let i = 0; i >= -59; i--) {
+    const key = dateKey(i);
+    const day = loadDay(key);
+    (day.meals||[]).forEach(m => { freq.set(m.label, (freq.get(m.label)||0) + 1); });
+  }
+  const seen = new Map();
+  for (let i = 0; i >= -59; i--) {
+    const key = dateKey(i);
+    const day = loadDay(key);
+    const d = new Date(key + 'T12:00:00');
+    const dayLabel = i === 0 ? 'Today' : i === -1 ? 'Yesterday' : d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
     (day.meals||[]).forEach(m => {
-      if (freq.has(m.label)) freq.get(m.label).count++;
-      else freq.set(m.label, { meal: m, count: 1 });
+      if (!seen.has(m.label)) seen.set(m.label, { meal: m, dateKey: key, dayLabel, count: freq.get(m.label)||1, daysAgo: Math.abs(i) });
     });
   }
-  return [...freq.values()]
-    .sort((a,b) => b.count - a.count)
-    .slice(0, 8)
-    .map(v => v.meal);
-}
-function renderMemoryChips() {
-  const recent = getRecentMeals();
-  const section = document.getElementById('memorySection');
-  const chips = document.getElementById('memoryChips');
-  if (recent.length === 0) { section.style.display = 'none'; return; }
-  section.style.display = '';
-  chips.innerHTML = recent.map(m =>
-    `<div class="memory-chip" onclick='reuseMemory(${JSON.stringify(JSON.stringify(m))})' title="${m.label} — ${Math.round(m.kcal)} kcal">
-      <span style="font-size:10px;">↩</span>
-      <span style="overflow:hidden;text-overflow:ellipsis;">${m.label}</span>
-    </div>`
-  ).join('');
-}
-function reuseMemory(mealStr) {
-  const meal = JSON.parse(mealStr);
-  const input = document.getElementById('chatInput');
-  // Pre-fill with full ingredient list if available, otherwise label + macros
-  if (meal.items && meal.items.length > 0) {
-    const ingredientList = meal.items.map(it => it.name).join(', ');
-    input.value = ingredientList;
+  let results = [...seen.values()];
+  if (query && query.trim()) {
+    const q = query.toLowerCase();
+    results = results.filter(r => {
+      const inLabel = r.meal.label.toLowerCase().includes(q);
+      const inIngredients = (r.meal.items||[]).some(it => it.name.toLowerCase().includes(q));
+      return inLabel || inIngredients;
+    });
+    results.sort((a, b) => {
+      const aL = a.meal.label.toLowerCase().includes(q) ? 1 : 0;
+      const bL = b.meal.label.toLowerCase().includes(q) ? 1 : 0;
+      return bL - aL;
+    });
   } else {
-    const macros = `${Math.round(meal.kcal)} kcal, P${Math.round(meal.protein)}g F${Math.round(meal.fat)}g C${Math.round(meal.carbs)}g`;
-    input.value = meal.label + ' (' + macros + ')';
+    results.sort((a, b) => {
+      if (a.daysAgo === 1 && b.daysAgo !== 1) return -1;
+      if (b.daysAgo === 1 && a.daysAgo !== 1) return 1;
+      const scoreA = a.count * 2 + Math.max(0, 30 - a.daysAgo);
+      const scoreB = b.count * 2 + Math.max(0, 30 - b.daysAgo);
+      return scoreB - scoreA;
+    });
   }
+  return results;
+}
+
+function renderLibrary() {
+  const query = (document.getElementById('librarySearch')||{}).value || '';
+  const results = getMealLibrary(query);
+  const list = document.getElementById('libraryList');
+  if (!list) return;
+  if (results.length === 0) {
+    list.innerHTML = query
+      ? `<div class="library-empty">No meals matching "${query}".</div>`
+      : '<div class="library-empty">Log some meals to build your library.</div>';
+    return;
+  }
+  let out = '';
+  let shownYesterday = false, shownOlder = false;
+  results.forEach(r => {
+    const m = r.meal;
+    if (!query) {
+      if (r.daysAgo === 1 && !shownYesterday) { out += `<div class="library-section-label">Yesterday</div>`; shownYesterday = true; }
+      else if (r.daysAgo !== 1 && !shownOlder) { out += `<div class="library-section-label">Recent &amp; frequent</div>`; shownOlder = true; }
+    }
+    const ingPreview = (m.items||[]).map(it=>it.name).join(', ');
+    const countLabel = r.count > 1 ? ` · ${r.count}×` : '';
+    const mealData = JSON.stringify(JSON.stringify(m));
+    out += `<div class="library-item" onclick="openRelogSheet(${mealData})">
+      <div class="library-item-info">
+        <div class="library-item-header">${getMealTypeBadge(m.mealType)}<span class="library-item-name">${m.label}</span><span class="library-item-kcal">${Math.round(m.kcal)} kcal${countLabel}</span></div>
+        ${ingPreview ? `<div class="library-item-ingredients">${ingPreview}</div>` : ''}
+        <div class="library-item-day">${r.dayLabel} · P${Math.round(m.protein)}g F${Math.round(m.fat)}g C${Math.round(m.carbs)}g</div>
+      </div>
+    </div>`;
+  });
+  list.innerHTML = out;
+}
+
+function openRelogSheet(mealStr) {
+  const meal = JSON.parse(mealStr);
+  relogMeal = meal;
+  document.getElementById('relogName').textContent = meal.label;
+  document.getElementById('relogMacros').textContent = `${Math.round(meal.kcal)} kcal · P${Math.round(meal.protein)}g F${Math.round(meal.fat)}g C${Math.round(meal.carbs)}g`;
+  const ingEl = document.getElementById('relogIngredients');
+  ingEl.innerHTML = (meal.items||[]).length > 0
+    ? meal.items.map(it=>`<div class="relog-ingredient-row"><span>${it.name}</span><span>${Math.round(it.kcal)} kcal</span></div>`).join('')
+    : `<div class="relog-ingredient-row"><span style="color:var(--text-tertiary);">No ingredient details saved</span></div>`;
+  const chips = document.querySelectorAll('.relog-type-chip');
+  chips.forEach(c => c.classList.toggle('selected', c.dataset.type === (meal.mealType||'')));
+  const anySelected = [...chips].some(c => c.classList.contains('selected'));
+  if (!anySelected) {
+    const h = new Date().getHours();
+    const inferred = h < 10 ? 'breakfast' : h < 15 ? 'lunch' : h >= 19 ? 'dinner' : 'snack';
+    chips.forEach(c => { if (c.dataset.type === inferred) c.classList.add('selected'); });
+  }
+  document.getElementById('relogSheet').style.display = 'flex';
+}
+
+function closeRelogSheet(e) {
+  if (e.target.id === 'relogSheet') document.getElementById('relogSheet').style.display = 'none';
+}
+
+function selectRelogType(btn) {
+  document.querySelectorAll('.relog-type-chip').forEach(c => c.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function confirmRelog() {
+  if (!relogMeal) return;
+  const mealType = (document.querySelector('.relog-type-chip.selected')||{}).dataset?.type || relogMeal.mealType;
+  const day = getCurrentDay();
+  day.meals.push({ ...relogMeal, mealType, time: getTime() });
+  saveCurrentDay(day);
+  document.getElementById('relogSheet').style.display = 'none';
+  updateUI();
+  addChatMsg('system', `↩ Re-logged: ${relogMeal.label} (${Math.round(relogMeal.kcal)} kcal)`);
+  switchTab('chat');
+  relogMeal = null;
+}
+
+function editBeforeRelog() {
+  if (!relogMeal) return;
+  const mealType = (document.querySelector('.relog-type-chip.selected')||{}).dataset?.type || relogMeal.mealType;
+  document.getElementById('relogSheet').style.display = 'none';
+  const input = document.getElementById('chatInput');
+  input.value = (relogMeal.items||[]).length > 0 ? relogMeal.items.map(it=>it.name).join(', ') : relogMeal.label;
+  switchTab('chat');
   input.focus();
   input.setSelectionRange(0, input.value.length);
+  relogMeal = null;
 }
+
+
 
 // ── Navigation ──
 function navigateDay(dir) {
@@ -1006,8 +1183,11 @@ function loadSettings() {
 function switchTab(tab) {
   document.getElementById('tabChat').style.display = tab === 'chat' ? 'flex' : 'none';
   document.getElementById('tabSettings').style.display = tab === 'settings' ? '' : 'none';
+  document.getElementById('tabLibrary').style.display = tab === 'library' ? 'flex' : 'none';
   document.getElementById('tab-chat').classList.toggle('active', tab === 'chat');
   document.getElementById('tab-settings').classList.toggle('active', tab === 'settings');
+  document.getElementById('tab-library').classList.toggle('active', tab === 'library');
+  if (tab === 'library') renderLibrary();
 }
 function switchLogTab(tab) {
   document.getElementById('logTabMeals').style.display = tab === 'meals' ? '' : 'none';
@@ -1076,7 +1256,6 @@ function updateUI() {
   renderMealList(meals);
   renderWaterLog(day.water || [], waterTotal);
   renderWeek();
-  renderMemoryChips();
 }
 
 function getWeekAlcohol() {
