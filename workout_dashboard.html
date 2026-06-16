@@ -1066,11 +1066,14 @@ function parsePreview() {
   if(session.dbc) variants.push(`BIC:${session.dbc}`);
   exDiv.textContent = variants.length ? '↳ ' + variants.join(' · ') : '';
 
-  // Debug: show extracted bullet lines count
+  // Debug: show extracted bullet lines count + JR detail
   const debugEl = document.getElementById('previewDebug');
   if (debugEl) {
     const bl = parseWorkoutTextDebug(html, text);
-    debugEl.textContent = `📝 ${bl.count} bullet lines found · path: ${bl.path}`;
+    const textLines2 = text.split('\n').map(l=>l.trim()).filter(Boolean);
+    const textBullets2 = textLines2.filter(l=>/^[*•\-]\s/.test(l));
+    const jrLines = textBullets2.filter(l=>/jr/i.test(l));
+    debugEl.textContent = `📝 ${bl.count} html-bullets · ${textBullets2.length} text-bullets · ${jrLines.length} JR lines (text) · path: ${bl.path}`;
   }
 
   // Warnings — duplicate date and/or unrecognized exercises
