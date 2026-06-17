@@ -693,43 +693,42 @@ async function cloudLoad() {
 function parseWorkoutText(text, date, loc, pastedHtml='') {
   let bulletLines = [];
 
-  // text is pre-cleaned (line breaks normalised from innerHTML in parsePreview).
-  // Always try plain-text bullet lines first — this is the reliable path.
-  const textLines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  const textBulletPrefixed = textLines
+  // Get all candidate lines from HTML (split on line-ending tags)
+  let rawLines = [];
+  if (pastedHtml && pastedHtml.length > 10) {
+    rawLines = pastedHtml
+      .split(/<br\s*\/?>|<\/div>|<\/li>|<\/p>/i)
+      .map(l => l.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim())
+      .filter(Boolean);
+  }
+  if (rawLines.length === 0) {
+    rawLines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  }
+
+  // Try bullet-prefixed lines first (* • -)
+  const bulletPrefixed = rawLines
     .filter(l => /^[*•\-]\s/.test(l))
     .map(l => l.replace(/^[*•\-]\s*/,'').trim());
 
-  if (textBulletPrefixed.length > 0) {
-    bulletLines = textBulletPrefixed;
+  if (bulletPrefixed.length > 0) {
+    bulletLines = bulletPrefixed;
   } else {
-    // No bullet chars found — fall back to HTML-derived lines then exercise heuristic
-    let rawLines = [];
-    if (pastedHtml && pastedHtml.length > 10) {
-      rawLines = pastedHtml
-        .split(/<br\s*\/?>|<\/div>|<\/li>|<\/p>/i)
-        .map(l => l.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim())
-        .filter(Boolean);
+    // GCal stripped bullet chars — use all lines that look like exercises
+    // Stop at the stats/summary line (contains FITBIT, MiBand, or "kcal/kal")
+    // Also skip header lines (time pattern like "5h42", dates, location names)
+    const exerciseLines = [];
+    for (const l of rawLines) {
+      // Stop at stats line
+      if (/fitbit|miband|kcal|k?al\b/i.test(l)) break;
+      // Skip header line (starts with time like "5h42" or is just a date/location)
+      if (/^\d+h\d+/.test(l)) continue;
+      if (/^\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(l)) continue;
+      // Skip pure time/warm-up/stretch lines with no reps
+      if (/^[\dms]+\s+(warm|stretch|rest|min|sec)/i.test(l)) continue;
+      // Include lines that start with a number (reps) or a time (Xm JR, Xs hold)
+      if (/^\d/.test(l)) exerciseLines.push(l);
     }
-    if (rawLines.length === 0) rawLines = textLines;
-
-    const bulletPrefixed = rawLines
-      .filter(l => /^[*•\-]\s/.test(l))
-      .map(l => l.replace(/^[*•\-]\s*/,'').trim());
-
-    if (bulletPrefixed.length > 0) {
-      bulletLines = bulletPrefixed;
-    } else {
-      const exerciseLines = [];
-      for (const l of rawLines) {
-        if (/fitbit|miband|kcal|k?al\b/i.test(l)) break;
-        if (/^\d+h\d+/.test(l)) continue;
-        if (/^\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(l)) continue;
-        if (/^[\dms]+\s+(warm|stretch|rest|min|sec)/i.test(l)) continue;
-        if (/^\d/.test(l)) exerciseLines.push(l);
-      }
-      bulletLines = exerciseLines;
-    }
+    bulletLines = exerciseLines;
   }
 
 
@@ -1012,21 +1011,8 @@ function parseWorkoutTextDebug(pastedHtml, text) {
 
 function parsePreview() {
   const el = document.getElementById('addText');
+  const text = el.innerText.trim();     // plain text for header/stats parsing
   const html = el.innerHTML.trim();     // HTML for LI extraction
-  // Derive clean text from HTML — more reliable than innerText on mobile/Android
-  // where contenteditable innerText can silently merge lines after a rich paste
-  const text = html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/div>/gi, '\n')
-    .replace(/<\/li>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .split('\n').map(l => l.trim()).filter(Boolean).join('\n')
-    .trim();
   const date = document.getElementById('addDate').value;
   const loc  = document.getElementById('addLoc').value;
   if (!text) { showModal('No text','Please paste your workout text first.','OK'); return; }
@@ -1069,14 +1055,11 @@ function parsePreview() {
   if(session.dbc) variants.push(`BIC:${session.dbc}`);
   exDiv.textContent = variants.length ? '↳ ' + variants.join(' · ') : '';
 
-  // Debug: show extracted bullet lines count + JR detail
+  // Debug: show extracted bullet lines count
   const debugEl = document.getElementById('previewDebug');
   if (debugEl) {
     const bl = parseWorkoutTextDebug(html, text);
-    const textLines2 = text.split('\n').map(l=>l.trim()).filter(Boolean);
-    const textBullets2 = textLines2.filter(l=>/^[*•\-]\s/.test(l));
-    const jrLines = textBullets2.filter(l=>/jr/i.test(l));
-    debugEl.textContent = `📝 ${bl.count} html-bullets · ${textBullets2.length} text-bullets · ${jrLines.length} JR lines (text) · path: ${bl.path}`;
+    debugEl.textContent = `📝 ${bl.count} bullet lines found · path: ${bl.path}`;
   }
 
   // Warnings — duplicate date and/or unrecognized exercises
