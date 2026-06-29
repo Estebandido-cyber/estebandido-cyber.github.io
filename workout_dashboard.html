@@ -670,9 +670,7 @@ function cloudSave() {
 
 async function cloudLoad() {
   try {
-    const res = await fetch(CF_URL, {
-      headers: { 'X-Secret': CF_SECRET }
-    });
+    const res = await fetch(CF_URL, { headers: { 'X-Secret': CF_SECRET } });
     const data = await res.json();
     if (data && data.sessions && data.monthly) {
       sessions = data.sessions;
@@ -693,26 +691,33 @@ async function cloudLoad() {
 function parseWorkoutText(text, date, loc, pastedHtml='') {
   let bulletLines = [];
 
-  // Get all candidate lines from HTML (split on line-ending tags)
-  let rawLines = [];
-  if (pastedHtml && pastedHtml.length > 10) {
-    rawLines = pastedHtml
-      .split(/<br\s*\/?>|<\/div>|<\/li>|<\/p>/i)
-      .map(l => l.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim())
-      .filter(Boolean);
-  }
-  if (rawLines.length === 0) {
-    rawLines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  }
-
-  // Try bullet-prefixed lines first (* • -)
-  const bulletPrefixed = rawLines
+  // Try plain-text bullet lines first — innerText is reliable for line boundaries
+  // even when innerHTML is messy after a rich paste from Google Calendar
+  const textLines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const textBullets = textLines
     .filter(l => /^[*•\-]\s/.test(l))
     .map(l => l.replace(/^[*•\-]\s*/,'').trim());
 
-  if (bulletPrefixed.length > 0) {
-    bulletLines = bulletPrefixed;
+  if (textBullets.length > 0) {
+    bulletLines = textBullets;
   } else {
+    // No plain-text bullets — fall back to HTML-derived lines
+    let rawLines = [];
+    if (pastedHtml && pastedHtml.length > 10) {
+      rawLines = pastedHtml
+        .split(/<br\s*\/?>|<\/div>|<\/li>|<\/p>/i)
+        .map(l => l.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim())
+        .filter(Boolean);
+    }
+    if (rawLines.length === 0) rawLines = textLines;
+
+    const bulletPrefixed = rawLines
+      .filter(l => /^[*•\-]\s/.test(l))
+      .map(l => l.replace(/^[*•\-]\s*/,'').trim());
+
+    if (bulletPrefixed.length > 0) {
+      bulletLines = bulletPrefixed;
+    } else {
     // GCal stripped bullet chars — use all lines that look like exercises
     // Stop at the stats/summary line (contains FITBIT, MiBand, or "kcal/kal")
     // Also skip header lines (time pattern like "5h42", dates, location names)
@@ -729,6 +734,7 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
       if (/^\d/.test(l)) exerciseLines.push(l);
     }
     bulletLines = exerciseLines;
+  }
   }
 
 
