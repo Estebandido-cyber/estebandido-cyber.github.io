@@ -1017,20 +1017,8 @@ function parseWorkoutTextDebug(pastedHtml, text) {
 
 function parsePreview() {
   const el = document.getElementById('addText');
-  const html = el.innerHTML.trim();
-  // Derive text from HTML — reliable on all devices after a rich paste.
-  // el.innerText collapses line breaks on mobile Chrome contenteditable.
-  const text = html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/div>/gi, '\n')
-    .replace(/<\/li>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .split('\n').map(l => l.trim()).filter(Boolean).join('\n');
+  const text = el.innerText.trim();     // plain text for header/stats parsing
+  const html = el.innerHTML.trim();     // HTML for LI extraction
   const date = document.getElementById('addDate').value;
   const loc  = document.getElementById('addLoc').value;
   if (!text) { showModal('No text','Please paste your workout text first.','OK'); return; }
@@ -1038,6 +1026,11 @@ function parsePreview() {
 
   // Check for duplicate
   const existing = sessions.find(s => s.d === date);
+
+  // DEBUG - remove after diagnosis
+  const jrLinesInnerText = text.split('\n').filter(l => /jr/i.test(l));
+  const jrLinesFromHTML = html.replace(/<br\s*\/?>/gi,'\n').replace(/<\/div>/gi,'\n').replace(/<[^>]+>/g,'').split('\n').filter(l => /jr/i.test(l));
+  alert('innerText JR lines: ' + jrLinesInnerText.length + '\n' + JSON.stringify(jrLinesInnerText) + '\n\nHTML-derived JR lines: ' + jrLinesFromHTML.length + '\n' + JSON.stringify(jrLinesFromHTML));
 
   const {session, unrecognized: unknowns} = parseWorkoutText(text, date, loc, html);
   pendingWorkout = {session, isEdit: !!existing, existingDate: date};
