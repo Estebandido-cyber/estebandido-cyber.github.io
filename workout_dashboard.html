@@ -723,6 +723,8 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
       const exerciseLines = [];
       for (const l of textLines) {
         if (/fitbit|miband|kcal|k?al\b/i.test(l)) break;
+        // Stop at summary line: starts with time/distance and contains multiple stats
+        if (/^\d+m\d+s\s+Run/i.test(l)) break;
         if (/^\d+h\d+/.test(l)) continue;
         if (/^\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(l)) continue;
         if (/^[\dms]+\s+(warm|stretch|rest|min|sec)/i.test(l)) continue;
