@@ -698,6 +698,8 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
     .filter(l => /^[*•\-]\s/.test(l))
     .map(l => l.replace(/^[*•\-]\s*/,'').trim());
 
+  // DEBUG
+  alert('textBullets count: ' + textBullets.length + '\nFirst 3: ' + JSON.stringify(textBullets.slice(0,3)) + '\n\nRaw text first 200 chars: ' + JSON.stringify(text.slice(0,200)));
   if (textBullets.length > 0) {
     bulletLines = textBullets;
   } else {
