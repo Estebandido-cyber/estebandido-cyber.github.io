@@ -1042,7 +1042,7 @@ function parsePreview() {
     {val: session.dip||'—', label: 'Dips'},
     {val: session.kcal ? session.kcal+'kcal' : '—', label: 'Calories'},
     {val: session.mhr ? session.mhr+' bpm' : '—', label: 'Max HR'},
-    {val: session.jr ? Math.round(session.jr/60)+'min' : '—', label: 'Jump Rope'},
+    {val: session.jr ? (()=>{const s=session.jr,m=Math.floor(s/60),sec=s%60;return m+'m'+(sec?sec+'s':'');})() : '—', label: 'Jump Rope'},
     {val: session.run ? (()=>{const s=session.run,m=Math.floor(s/60),sec=s%60;return m+'m'+(sec?sec+'s':'');})() : '—', label: 'Run'},
     {val: session.dur ? session.dur+'min' : '—', label: 'Duration'},
   ];
