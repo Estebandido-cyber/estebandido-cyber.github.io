@@ -501,6 +501,277 @@ body {
   border: 0.5px solid var(--border-med); border-radius: 4px;
   padding: 1px 5px; outline: none; text-align: right;
 }
+
+/* ══════════════════════════════════════════════
+   UNIFIED LOG BLOCK
+   ══════════════════════════════════════════════ */
+
+/* Outer panel — full width, replaces layout-main */
+.log-block {
+  background: var(--bg-primary);
+  border: 1.5px solid rgba(55,138,221,0.3);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+/* ── Header bar: LOG button + meal slot pills + water pills ── */
+.log-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--border);
+  flex-wrap: wrap;
+}
+.log-trigger-btn {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 8px 18px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.log-trigger-btn:hover { opacity: 0.78; }
+.log-trigger-btn.active {
+  background: var(--blue);
+}
+
+/* Meal slot pills */
+.slot-pills {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.slot-pill {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border-med);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.slot-pill:hover { background: var(--bg-secondary); color: var(--text-primary); }
+.slot-pill.selected {
+  border-color: transparent;
+  color: var(--bg-primary);
+  font-weight: 600;
+}
+/* Slot colours */
+.slot-pill[data-slot="pre-workout"].selected  { background: #E24B4A; }
+.slot-pill[data-slot="breakfast"].selected    { background: #EF9F27; }
+.slot-pill[data-slot="morning-snack"].selected{ background: #B07D2E; }
+.slot-pill[data-slot="lunch"].selected        { background: #378ADD; }
+.slot-pill[data-slot="afternoon-snack"].selected{ background: #5DCAA5; }
+.slot-pill[data-slot="apero"].selected        { background: #F4845F; }
+.slot-pill[data-slot="dinner"].selected       { background: #8B5CF6; }
+.slot-pill[data-slot="post-workout"].selected { background: #E24B4A; }
+.slot-pill[data-slot="teuf"].selected         { background: #1a1a18; }
+
+/* ── Input area (shown when LOG is active) ── */
+.log-input-area {
+  display: none;
+  flex-direction: column;
+  padding: 12px 14px;
+  border-bottom: 0.5px solid var(--border);
+  background: rgba(55,138,221,0.03);
+  gap: 8px;
+}
+.log-input-area.open { display: flex; }
+.log-input-row { display: flex; gap: 8px; align-items: flex-end; }
+.log-textarea {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 0.5px solid var(--border-med);
+  border-radius: var(--radius-md);
+  padding: 9px 11px;
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+  max-height: 100px;
+  overflow-y: auto;
+}
+.log-textarea:focus { border-color: var(--blue); }
+.log-textarea::placeholder { color: var(--text-tertiary); }
+.btn-analyse {
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 9px 16px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  height: 38px;
+  transition: opacity 0.15s;
+}
+.btn-analyse:hover { opacity: 0.82; }
+.btn-analyse:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Autocomplete dropdown ── */
+.autocomplete-list {
+  background: var(--bg-primary);
+  border: 0.5px solid var(--border-med);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: none;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+.autocomplete-list.open { display: flex; }
+.ac-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  border-bottom: 0.5px solid var(--border);
+  transition: background 0.1s;
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover { background: var(--bg-secondary); }
+.ac-item-name { color: var(--text-primary); flex: 1; }
+.ac-item-kcal { color: var(--text-tertiary); font-size: 11px; flex-shrink: 0; }
+.ac-item-context { color: var(--text-tertiary); font-size: 11px; font-style: italic; }
+.ac-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 6px 12px 2px;
+  background: var(--bg-secondary);
+}
+
+/* ── Pending log bubble (inside block) ── */
+.log-pending-area {
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--border);
+  display: none;
+}
+.log-pending-area.open { display: block; }
+
+/* ── Water quick pills inside block ── */
+.log-water-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-bottom: 0.5px solid var(--border);
+  flex-wrap: wrap;
+  background: rgba(93,202,165,0.03);
+}
+.log-water-label { font-size: 10px; color: var(--teal); text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0; }
+
+/* ── Slots area: grouped logged meals ── */
+.log-slots-area { padding: 0 0 8px; }
+
+.log-slot-group { }
+.log-slot-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.log-slot-header:hover .log-slot-name { color: var(--text-primary); }
+.log-slot-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.log-slot-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.07em; flex: 1; }
+.log-slot-kcal { font-size: 11px; color: var(--text-tertiary); }
+.log-slot-toggle { font-size: 10px; color: var(--text-tertiary); }
+
+.log-slot-items { padding: 0 14px 6px; display: flex; flex-direction: column; gap: 1px; }
+.log-slot-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 7px 8px;
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border);
+  margin-bottom: 3px;
+}
+.log-slot-item-left { flex: 1; min-width: 0; }
+.log-slot-item-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+.log-slot-item-macros { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
+.log-slot-item-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.log-slot-item-kcal { font-size: 12px; font-weight: 500; color: var(--text-primary); }
+
+/* Ingredient expand inside slot */
+.slot-item-ingredients { display: none; padding: 4px 8px 0; }
+.slot-item-ingredients.open { display: block; }
+.slot-ing-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: var(--text-secondary);
+  padding: 2px 0; border-bottom: 0.5px solid var(--border);
+}
+.slot-ing-row:last-child { border-bottom: none; }
+.slot-expand-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 10px; color: var(--text-tertiary);
+  font-family: var(--font-body); padding: 0;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+
+/* Slot dot colours */
+.dot-pre-workout, .dot-post-workout { background: #E24B4A; }
+.dot-breakfast   { background: #EF9F27; }
+.dot-morning-snack { background: #B07D2E; }
+.dot-lunch       { background: #378ADD; }
+.dot-afternoon-snack { background: #5DCAA5; }
+.dot-apero       { background: #F4845F; }
+.dot-dinner      { background: #8B5CF6; }
+.dot-teuf        { background: #1a1a18; }
+.dot-other       { background: var(--text-tertiary); }
+
+/* Day total row inside block */
+.log-block-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-top: 0.5px solid var(--border-med);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Settings panel still lives here */
+.log-settings { padding: 12px 14px; }
+
+/* Header right: settings gear */
+.log-header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.btn-gear {
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; color: var(--text-tertiary);
+  padding: 4px; border-radius: var(--radius-md);
+  transition: color 0.15s;
+}
+.btn-gear:hover { color: var(--text-primary); }
 /* ── Responsive ── */
 
 /* ── Tablet: 641px – 1280px ── */
@@ -782,94 +1053,86 @@ body {
     </div>
   </div>
 
-  <!-- Main: unified chat + log -->
-  <div class="layout-main">
+  <!-- UNIFIED LOG BLOCK -->
+  <div class="log-block" id="logBlock">
 
-    <!-- LEFT: unified chat -->
-    <div class="panel chat-panel">
-      <div class="tab-row">
-        <div class="tab active" id="tab-chat" onclick="switchTab('chat')">Log &amp; Ask</div>
-        <div class="tab" id="tab-library" onclick="switchTab('library')">📚 Library</div>
-        <div class="tab" id="tab-settings" onclick="switchTab('settings')">Settings</div>
+    <!-- Header: LOG button + slot pills + gear -->
+    <div class="log-header">
+      <button class="log-trigger-btn" id="logTriggerBtn" onclick="toggleLogInput()">+ LOG</button>
+      <div class="slot-pills" id="slotPills">
+        <button class="slot-pill" data-slot="pre-workout"     onclick="selectSlot(this)">Pre Workout</button>
+        <button class="slot-pill" data-slot="breakfast"       onclick="selectSlot(this)">Breakfast</button>
+        <button class="slot-pill" data-slot="morning-snack"   onclick="selectSlot(this)">Morning Snack</button>
+        <button class="slot-pill" data-slot="lunch"           onclick="selectSlot(this)">Lunch</button>
+        <button class="slot-pill" data-slot="afternoon-snack" onclick="selectSlot(this)">Afternoon Snack</button>
+        <button class="slot-pill" data-slot="apero"           onclick="selectSlot(this)">Apéro</button>
+        <button class="slot-pill" data-slot="dinner"          onclick="selectSlot(this)">Dinner</button>
+        <button class="slot-pill" data-slot="post-workout"    onclick="selectSlot(this)">Post Workout</button>
+        <button class="slot-pill" data-slot="teuf"            onclick="selectSlot(this)">Teuf</button>
       </div>
-
-      <!-- Chat tab -->
-      <div id="tabChat" style="display:flex;flex-direction:column;flex:1;">
-
-        <!-- Chat messages -->
-        <div class="chat-messages" id="chatMessages">
-          <div class="msg msg-assistant">Hi! Tell me what you ate or drank and I'll log it. Ask me anything about nutrition too. Use the water buttons below for quick water entries.</div>
-        </div>
-
-        <!-- Input -->
-        <div class="chat-input-wrap">
-          <div class="chat-input-row">
-            <textarea class="chat-textarea" id="chatInput" rows="2" placeholder="'Had a pavé de saumon with rice and a glass of Bordeaux' or 'How am I doing on protein today?'" onkeydown="handleKey(event)"></textarea>
-            <button class="btn-send" id="sendBtn" onclick="sendChat()">Send</button>
-          </div>
-          <!-- Water quick pills -->
-          <div class="water-pills">
-            <span style="font-size:10px;color:var(--text-tertiary);align-self:center;margin-right:2px;">💧</span>
-            <button class="water-pill" onclick="quickWater(250)">+250ml</button>
-            <button class="water-pill" onclick="quickWater(330)">+330ml</button>
-            <button class="water-pill" onclick="quickWater(500)">+500ml</button>
-            <button class="water-pill" onclick="quickWater(750)">+750ml</button>
-            <button class="water-pill" onclick="quickWater(1000)">+1L</button>
-          </div>
-          <!-- Suggestion chips (hidden after first use) -->
-          <div class="suggestion-row" id="suggestions">
-            <span class="suggestion-chip" onclick="useSuggestion(this)">What should I eat for dinner?</span>
-            <span class="suggestion-chip" onclick="useSuggestion(this)">Am I hitting protein today?</span>
-            <span class="suggestion-chip" onclick="useSuggestion(this)">High protein snack ideas?</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Settings tab -->
-      <div id="tabSettings" style="display:none;">
-        <div class="settings-row"><span class="settings-label">Calorie budget</span><span class="settings-val"><input type="number" id="setBudget" value="2650"><span class="settings-unit">kcal</span></span></div>
-        <div class="settings-row"><span class="settings-label">Protein goal</span><span class="settings-val"><input type="number" id="setProt" value="120"><span class="settings-unit">g</span></span></div>
-        <div class="settings-row"><span class="settings-label">Water goal</span><span class="settings-val"><input type="number" id="setWater" value="3000"><span class="settings-unit">ml</span></span></div>
-        <div class="settings-row"><span class="settings-label">Weight</span><span class="settings-val"><input type="number" id="setWeight" value="81"><span class="settings-unit">kg</span></span></div>
-        <div class="settings-row"><span class="settings-label">API key</span><span class="settings-val key-row"><input type="password" id="keyDisplay" /><button class="btn-sm" onclick="updateKey()">Update</button></span></div>
-        <div style="margin-top:12px;"><button class="btn-primary" onclick="saveSettings()">Save settings</button></div>
-      </div>
-
-      <!-- Library tab -->
-      <div id="tabLibrary" style="display:none;flex-direction:column;flex:1;" class="library-panel">
-        <div class="library-search-row">
-          <input type="text" id="librarySearch" placeholder="Search meals, ingredients…" oninput="renderLibrary()" />
-        </div>
-        <div class="library-list" id="libraryList">
-          <div class="library-empty">Log some meals to build your library.</div>
-        </div>
+      <div class="log-header-right">
+        <button class="btn-gear" onclick="toggleSettings()" title="Settings">⚙</button>
       </div>
     </div>
 
-    <!-- RIGHT: today's log -->
-    <div class="panel log-panel">
-      <div class="tab-row">
-        <div class="tab active" id="tab-meals" onclick="switchLogTab('meals')">Meals</div>
-        <div class="tab" id="tab-water" onclick="switchLogTab('water')">Water</div>
-      </div>
-
-      <div id="logTabMeals">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.07em;" id="mealCount">0 entries</span>
-        </div>
-        <div class="meal-list" id="mealList">
-          <div class="empty-state">Nothing logged yet.<br>Tell me what you ate on the left.</div>
-        </div>
-        <div id="dayTotal" style="display:none;" class="day-total-row">
-          <span>Total</span><span id="dayTotalVal">0 kcal</span>
-        </div>
-      </div>
-
-      <div id="logTabWater" style="display:none;">
-        <div style="margin-bottom:8px;font-size:11px;color:var(--text-tertiary);" id="waterSummary">No water logged yet</div>
-        <div id="waterLogList"></div>
+    <!-- Settings panel (hidden by default) -->
+    <div id="logSettings" style="display:none;" class="log-settings">
+      <div class="settings-row"><span class="settings-label">Calorie budget</span><span class="settings-val"><input type="number" id="setBudget" value="2650"><span class="settings-unit">kcal</span></span></div>
+      <div class="settings-row"><span class="settings-label">Protein goal</span><span class="settings-val"><input type="number" id="setProt" value="120"><span class="settings-unit">g</span></span></div>
+      <div class="settings-row"><span class="settings-label">Water goal</span><span class="settings-val"><input type="number" id="setWater" value="3000"><span class="settings-unit">ml</span></span></div>
+      <div class="settings-row"><span class="settings-label">Weight</span><span class="settings-val"><input type="number" id="setWeight" value="81"><span class="settings-unit">kg</span></span></div>
+      <div class="settings-row"><span class="settings-label">API key</span><span class="settings-val key-row"><input type="password" id="keyDisplay" /><button class="btn-sm" onclick="updateKey()">Update</button></span></div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="btn-primary" onclick="saveSettings()">Save settings</button>
+        <button class="btn-sm" onclick="toggleSettings()">Close</button>
       </div>
     </div>
+
+    <!-- Input area (shown when LOG active) -->
+    <div class="log-input-area" id="logInputArea">
+      <div class="log-input-row">
+        <textarea class="log-textarea" id="chatInput" rows="2"
+          placeholder="Describe what you ate or drank… e.g. '60g rice, pavé de saumon, fried egg'"
+          oninput="onLogInput()" onkeydown="handleKey(event)"></textarea>
+        <button class="btn-analyse" id="sendBtn" onclick="sendChat()">Analyse ↗</button>
+      </div>
+      <!-- Autocomplete suggestions -->
+      <div class="autocomplete-list" id="autocompleteList"></div>
+    </div>
+
+    <!-- Pending log bubble area -->
+    <div class="log-pending-area" id="logPendingArea">
+      <div id="chatMessages" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+
+    <!-- Water row -->
+    <div class="log-water-row">
+      <span class="log-water-label">💧 Water</span>
+      <button class="water-pill" onclick="quickWater(250)">+250ml</button>
+      <button class="water-pill" onclick="quickWater(330)">+330ml</button>
+      <button class="water-pill" onclick="quickWater(500)">+500ml</button>
+      <button class="water-pill" onclick="quickWater(750)">+750ml</button>
+      <button class="water-pill" onclick="quickWater(1000)">+1L</button>
+      <span id="waterTodayInline" style="margin-left:auto;font-size:11px;color:var(--teal);"></span>
+    </div>
+
+    <!-- Slots area: logged meals grouped by meal slot -->
+    <div class="log-slots-area" id="logSlotsArea">
+      <div class="empty-state" id="logEmptyState" style="padding:1.5rem 1rem;">
+        Tap <strong>+ LOG</strong>, pick a meal slot, and describe what you ate.
+      </div>
+    </div>
+
+    <!-- Day total -->
+    <div class="log-block-total" id="logBlockTotal" style="display:none;">
+      <span>Total today</span><span id="dayTotalVal">0 kcal</span>
+    </div>
+
+    <!-- Hidden compat elements for old renderMealList refs -->
+    <div id="mealList" style="display:none;"></div>
+    <div id="dayTotal" style="display:none;"></div>
+    <div id="mealCount" style="display:none;"></div>
+
   </div>
 
   <!-- Bottom: week + recap -->
@@ -964,6 +1227,25 @@ let settings = { ...DEFAULT_SETTINGS };
 let API_KEY = '';
 let viewOffset = 0;
 let chatHistory = [];
+let activeSlot = null; // currently selected meal slot key
+const SLOT_LABELS = {
+  'pre-workout':     'Pre Workout',
+  'breakfast':       'Breakfast',
+  'morning-snack':   'Morning Snack',
+  'lunch':           'Lunch',
+  'afternoon-snack': 'Afternoon Snack',
+  'apero':           'Apéro',
+  'dinner':          'Dinner',
+  'post-workout':    'Post Workout',
+  'teuf':            'Teuf',
+};
+const SLOT_ORDER = Object.keys(SLOT_LABELS);
+// Map meal_type string → slot key
+const MEAL_TYPE_TO_SLOT = {
+  breakfast: 'breakfast', lunch: 'lunch', dinner: 'dinner',
+  snack: 'afternoon-snack', apero: 'apero', drink: 'apero',
+  'pre-workout': 'pre-workout', 'post-workout': 'post-workout',
+};
 let pendingLogBubble = null; // { el, data } — the currently visible log confirmation bubble
 let pendingEntry = null; // { type:'food'|'water', data:{...}, confirmMsgEl }
 
@@ -1131,14 +1413,13 @@ function selectRelogType(btn) {
 
 function confirmRelog() {
   if (!relogMeal) return;
-  const mealType = (document.querySelector('.relog-type-chip.selected')||{}).dataset?.type || relogMeal.mealType;
+  const sheetType = (document.querySelector('.relog-type-chip.selected')||{}).dataset?.type;
+  const mealType = sheetType || activeSlot || relogMeal.mealType;
   const day = getCurrentDay();
   day.meals.push({ ...relogMeal, mealType, time: getTime() });
   saveCurrentDay(day);
   document.getElementById('relogSheet').style.display = 'none';
   updateUI();
-  addChatMsg('system', `↩ Re-logged: ${relogMeal.label} (${Math.round(relogMeal.kcal)} kcal)`);
-  switchTab('chat');
   relogMeal = null;
 }
 
@@ -1155,6 +1436,313 @@ function editBeforeRelog() {
 }
 
 
+
+
+// ── Unified log block UI ──
+function toggleLogInput() {
+  const area = document.getElementById('logInputArea');
+  const btn = document.getElementById('logTriggerBtn');
+  const isOpen = area.classList.toggle('open');
+  btn.classList.toggle('active', isOpen);
+  if (isOpen) {
+    document.getElementById('chatInput').focus();
+    // Auto-select slot based on time of day if none selected
+    if (!activeSlot) autoSelectSlot();
+  }
+}
+
+function autoSelectSlot() {
+  const h = new Date().getHours();
+  let slot = 'lunch';
+  if (h < 9) slot = 'breakfast';
+  else if (h < 11) slot = 'morning-snack';
+  else if (h < 14) slot = 'lunch';
+  else if (h < 17) slot = 'afternoon-snack';
+  else if (h < 19) slot = 'apero';
+  else slot = 'dinner';
+  const btn = document.querySelector(`.slot-pill[data-slot="${slot}"]`);
+  if (btn) selectSlot(btn);
+}
+
+function selectSlot(btn) {
+  document.querySelectorAll('.slot-pill').forEach(p => p.classList.remove('selected'));
+  btn.classList.add('selected');
+  activeSlot = btn.dataset.slot;
+  // Open input if not already open
+  const area = document.getElementById('logInputArea');
+  if (!area.classList.contains('open')) {
+    area.classList.add('open');
+    document.getElementById('logTriggerBtn').classList.add('active');
+    document.getElementById('chatInput').focus();
+  }
+  updatePlaceholder();
+}
+
+function updatePlaceholder() {
+  const ta = document.getElementById('chatInput');
+  const label = activeSlot ? SLOT_LABELS[activeSlot] : 'meal';
+  ta.placeholder = `Describe your ${label.toLowerCase()}… e.g. "60g rice, pavé de saumon, fried egg"`;
+}
+
+function toggleSettings() {
+  const s = document.getElementById('logSettings');
+  s.style.display = s.style.display === 'none' ? '' : 'none';
+}
+
+// ── Autocomplete ──
+let acIndex = []; // [{name, kcal, type:'ingredient'|'meal', mealLabel, date}]
+
+function buildAutocompleteIndex() {
+  acIndex = [];
+  const seen = new Set();
+  for (let i = 0; i >= -59; i--) {
+    const day = loadDay(dateKey(i));
+    const d = new Date(dateKey(i) + 'T12:00:00');
+    const dateLabel = i === 0 ? 'today' : i === -1 ? 'yesterday' : d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    (day.meals||[]).forEach(m => {
+      // Whole meal entry
+      const mealKey = m.label.toLowerCase();
+      if (!seen.has('meal:'+mealKey)) {
+        seen.add('meal:'+mealKey);
+        acIndex.push({ name: m.label, kcal: Math.round(m.kcal), type: 'meal', date: dateLabel, meal: m });
+      }
+      // Individual ingredients
+      (m.items||[]).forEach(it => {
+        const ingKey = it.name.toLowerCase() + ':' + m.label.toLowerCase();
+        if (!seen.has(ingKey)) {
+          seen.add(ingKey);
+          acIndex.push({ name: it.name, kcal: Math.round(it.kcal), type: 'ingredient', mealLabel: m.label, date: dateLabel, meal: m });
+        }
+      });
+    });
+  }
+}
+
+function onLogInput() {
+  const q = (document.getElementById('chatInput').value || '').trim().toLowerCase();
+  const list = document.getElementById('autocompleteList');
+  if (q.length < 2) { list.classList.remove('open'); list.innerHTML = ''; return; }
+
+  buildAutocompleteIndex();
+  const matches = acIndex.filter(e => e.name.toLowerCase().includes(q)).slice(0, 10);
+  if (matches.length === 0) { list.classList.remove('open'); list.innerHTML = ''; return; }
+
+  let html = '';
+  let shownIngredients = false, shownMeals = false;
+  matches.forEach((e, idx) => {
+    if (e.type === 'ingredient' && !shownIngredients) { html += `<div class="ac-section-label">Ingredients</div>`; shownIngredients = true; }
+    if (e.type === 'meal' && !shownMeals) { html += `<div class="ac-section-label">Full meals</div>`; shownMeals = true; }
+    const context = e.type === 'ingredient' ? ` in ${e.mealLabel} · ${e.date}` : ` · ${e.date}`;
+    html += `<div class="ac-item" onclick="selectAutocomplete(${idx})">
+      <span class="ac-item-name">${e.name}</span>
+      <span class="ac-item-kcal">${e.kcal} kcal</span>
+      <span class="ac-item-context">${context}</span>
+    </div>`;
+  });
+  list.innerHTML = html;
+  list.classList.add('open');
+}
+
+// Store last ac results for index lookup
+let lastAcResults = [];
+function onLogInput() {
+  const q = (document.getElementById('chatInput').value || '').trim().toLowerCase();
+  const list = document.getElementById('autocompleteList');
+  if (q.length < 2) { list.classList.remove('open'); list.innerHTML = ''; lastAcResults = []; return; }
+
+  buildAutocompleteIndex();
+  lastAcResults = acIndex.filter(e => e.name.toLowerCase().includes(q)).slice(0, 10);
+  if (lastAcResults.length === 0) { list.classList.remove('open'); list.innerHTML = ''; return; }
+
+  let out = '';
+  let shownIng = false, shownMeal = false;
+  lastAcResults.forEach((e, idx) => {
+    if (e.type === 'ingredient' && !shownIng) { out += `<div class="ac-section-label">Ingredients from past meals</div>`; shownIng = true; }
+    if (e.type === 'meal' && !shownMeal) { out += `<div class="ac-section-label">Full meals</div>`; shownMeal = true; }
+    const context = e.type === 'ingredient' ? `in ${e.mealLabel}, ${e.date}` : e.date;
+    out += `<div class="ac-item" onclick="selectAutocomplete(${idx})">
+      <span class="ac-item-name">${e.name}</span>
+      <span class="ac-item-kcal">${e.kcal} kcal</span>
+      <span class="ac-item-context">${context}</span>
+    </div>`;
+  });
+  list.innerHTML = out;
+  list.classList.add('open');
+}
+
+function selectAutocomplete(idx) {
+  const e = lastAcResults[idx];
+  if (!e) return;
+  document.getElementById('autocompleteList').classList.remove('open');
+
+  if (e.type === 'meal') {
+    // Open re-log sheet for the full meal
+    openRelogSheet(e.meal);
+  } else {
+    // Pre-fill the textarea with the ingredient name so user can adjust quantity
+    document.getElementById('chatInput').value = e.name;
+    document.getElementById('chatInput').focus();
+  }
+}
+
+// Close autocomplete when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#logInputArea')) {
+    const list = document.getElementById('autocompleteList');
+    if (list) list.classList.remove('open');
+  }
+});
+
+// ── Slot-grouped meal log rendering ──
+function renderLogSlots(meals, waterTotal, waterEntries, burnedEntries) {
+  const area = document.getElementById('logSlotsArea');
+  const emptyState = document.getElementById('logEmptyState');
+  const totalEl = document.getElementById('logBlockTotal');
+  const totalValEl = document.getElementById('dayTotalVal');
+
+  // Group meals by slot
+  const groups = {};
+  SLOT_ORDER.forEach(s => { groups[s] = []; });
+  groups['other'] = [];
+
+  meals.forEach((m, i) => {
+    const slot = m.mealType && (MEAL_TYPE_TO_SLOT[m.mealType] || m.mealType);
+    const key = (slot && groups[slot] !== undefined) ? slot : 'other';
+    groups[key].push({ ...m, _idx: i });
+  });
+
+  // Burned entries as special items
+  const burnedTotal = (burnedEntries||[]).reduce((s,b)=>s+b.kcal,0);
+  const totalIn = meals.reduce((s,m)=>s+m.kcal,0);
+  const hasAnything = meals.length > 0 || (burnedEntries||[]).length > 0;
+
+  if (!hasAnything) {
+    emptyState.style.display = '';
+    totalEl.style.display = 'none';
+    return;
+  }
+  emptyState.style.display = 'none';
+  totalEl.style.display = 'flex';
+  totalValEl.textContent = Math.round(totalIn) + ' kcal' + (burnedTotal > 0 ? ' (+' + burnedTotal + ' burned)' : '');
+
+  let out = '';
+
+  // Render each slot that has items
+  SLOT_ORDER.forEach(slot => {
+    const items = groups[slot];
+    if (items.length === 0) return;
+    const slotKcal = Math.round(items.reduce((s,m)=>s+m.kcal,0));
+    const label = SLOT_LABELS[slot] || slot;
+    out += `<div class="log-slot-group">
+      <div class="log-slot-header" onclick="toggleSlotGroup('slot-items-${slot}', this)">
+        <span class="log-slot-dot dot-${slot}"></span>
+        <span class="log-slot-name">${label}</span>
+        <span class="log-slot-kcal">${slotKcal} kcal</span>
+        <span class="log-slot-toggle">▾</span>
+      </div>
+      <div class="log-slot-items" id="slot-items-${slot}">`;
+    items.forEach(m => {
+      const i = m._idx;
+      const hasItems = m.items && m.items.length > 0;
+      const ingHTML = hasItems
+        ? m.items.map((it,j) => `<div class="slot-ing-row">
+            <span>${it.name}</span>
+            <span style="display:flex;align-items:center;gap:5px;">
+              <span class="ing-kcal" id="ing-kcal-${i}-${j}">${Math.round(it.kcal)} kcal</span>
+              <button class="ing-edit-btn" onclick="editIngredientKcal(${i},${j})" title="Edit kcal">✎</button>
+            </span>
+          </div>`).join('')
+        : `<div class="slot-ing-row" style="color:var(--text-tertiary);">No ingredients saved</div>`;
+      out += `<div class="log-slot-item">
+        <div class="log-slot-item-left">
+          <div class="log-slot-item-name">${m.label}</div>
+          <div class="log-slot-item-macros">P${Math.round(m.protein)}g F${Math.round(m.fat)}g C${Math.round(m.carbs)}g${m.alcohol>0?' · '+m.alcohol.toFixed(1)+'u':''} · ${m.time||''}</div>
+          <div class="slot-item-ingredients" id="slot-ing-${i}">${ingHTML}</div>
+        </div>
+        <div class="log-slot-item-right">
+          <span class="log-slot-item-kcal">${Math.round(m.kcal)} kcal</span>
+          <button class="slot-expand-btn" onclick="toggleSlotIng('slot-ing-${i}',this)">▸</button>
+          <button class="meal-fulledit-btn" onclick="openEditModal(${i})" title="Edit">✏</button>
+          <button class="meal-delete-btn" onclick="deleteMeal(${i})" title="Delete">✕</button>
+        </div>
+      </div>`;
+    });
+    out += `</div></div>`;
+  });
+
+  // Other (unclassified)
+  if (groups['other'].length > 0) {
+    const items = groups['other'];
+    const slotKcal = Math.round(items.reduce((s,m)=>s+m.kcal,0));
+    out += `<div class="log-slot-group">
+      <div class="log-slot-header" onclick="toggleSlotGroup('slot-items-other',this)">
+        <span class="log-slot-dot dot-other"></span>
+        <span class="log-slot-name">Other</span>
+        <span class="log-slot-kcal">${slotKcal} kcal</span>
+        <span class="log-slot-toggle">▾</span>
+      </div>
+      <div class="log-slot-items" id="slot-items-other">`;
+    items.forEach(m => {
+      const i = m._idx;
+      out += `<div class="log-slot-item">
+        <div class="log-slot-item-left">
+          <div class="log-slot-item-name">${m.label}</div>
+          <div class="log-slot-item-macros">P${Math.round(m.protein)}g F${Math.round(m.fat)}g C${Math.round(m.carbs)}g · ${m.time||''}</div>
+        </div>
+        <div class="log-slot-item-right">
+          <span class="log-slot-item-kcal">${Math.round(m.kcal)} kcal</span>
+          <button class="meal-fulledit-btn" onclick="openEditModal(${i})" title="Edit">✏</button>
+          <button class="meal-delete-btn" onclick="deleteMeal(${i})" title="Delete">✕</button>
+        </div>
+      </div>`;
+    });
+    out += `</div></div>`;
+  }
+
+  // Burned entries
+  (burnedEntries||[]).forEach(b => {
+    out += `<div class="log-slot-group">
+      <div class="log-slot-header">
+        <span class="log-slot-dot" style="background:var(--red);"></span>
+        <span class="log-slot-name" style="color:var(--red);">🔥 ${b.label}</span>
+        <span class="log-slot-kcal" style="color:var(--red);">+${b.kcal} kcal to budget · ${b.time||''}</span>
+      </div>
+    </div>`;
+  });
+
+  area.innerHTML = out;
+}
+
+function toggleSlotGroup(id, headerEl) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : '';
+  const toggle = headerEl.querySelector('.log-slot-toggle');
+  if (toggle) toggle.textContent = isOpen ? '▸' : '▾';
+}
+
+function toggleSlotIng(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isOpen = el.classList.toggle('open');
+  btn.textContent = isOpen ? '▾' : '▸';
+}
+
+// Inline water summary
+function updateWaterInline(waterTotal) {
+  const el = document.getElementById('waterTodayInline');
+  if (!el) return;
+  el.textContent = waterTotal > 0
+    ? (waterTotal >= 1000 ? (waterTotal/1000).toFixed(1)+'L' : waterTotal+'ml') + ' today'
+    : '';
+}
+
+// Show/hide pending area
+function showPendingArea(show) {
+  const el = document.getElementById('logPendingArea');
+  if (el) el.classList.toggle('open', show);
+}
 
 // ── Navigation ──
 function navigateDay(dir) {
@@ -1214,13 +1802,12 @@ function loadSettings() {
   } catch(e) {}
 }
 function switchTab(tab) {
-  document.getElementById('tabChat').style.display = tab === 'chat' ? 'flex' : 'none';
-  document.getElementById('tabSettings').style.display = tab === 'settings' ? '' : 'none';
-  document.getElementById('tabLibrary').style.display = tab === 'library' ? 'flex' : 'none';
-  document.getElementById('tab-chat').classList.toggle('active', tab === 'chat');
-  document.getElementById('tab-settings').classList.toggle('active', tab === 'settings');
-  document.getElementById('tab-library').classList.toggle('active', tab === 'library');
+  // Legacy compat — tabs replaced by unified block
   if (tab === 'library') renderLibrary();
+  if (tab === 'chat') {
+    const area = document.getElementById('logInputArea');
+    if (area && !area.classList.contains('open')) toggleLogInput();
+  }
 }
 function switchLogTab(tab) {
   document.getElementById('logTabMeals').style.display = tab === 'meals' ? '' : 'none';
@@ -1286,8 +1873,9 @@ function updateUI() {
   document.getElementById('carbsBar').style.width = Math.min(100, Math.round((totalCarbs/300)*100)) + '%';
   document.getElementById('sugarBar').style.width = Math.min(100, Math.round((totalSugar/50)*100)) + '%';
 
-  renderMealList(meals);
+  renderLogSlots(meals, waterTotal, day.water||[], day.burned||[]);
   renderWaterLog(day.water || [], waterTotal);
+  updateWaterInline(waterTotal);
   renderWeek();
 }
 
@@ -1737,6 +2325,8 @@ meal_type rules: if user says "breakfast"→breakfast, "lunch"→lunch, "dinner"
 
 CRITICAL: Your response MUST be a single valid JSON object. No text before or after it. No markdown fences. If you are unsure what type to use, return {"type":"chat","reply":"your message here"}. Never return plain text.
 
+${activeSlot ? `The user has selected the meal slot: "${SLOT_LABELS[activeSlot]||activeSlot}". Set meal_type accordingly in your log_food response.` : ''}
+
 ${pendingLogBubble ? `IMPORTANT — PENDING MEAL AWAITING CONFIRMATION:
 The user has a meal confirmation bubble currently visible with this data:
 ${JSON.stringify(pendingLogBubble.data, null, 2)}
@@ -1828,6 +2418,10 @@ function handleFoodLog(p) {
   msgEl.innerHTML = buildLogBubbleHTML(p);
   msgEl._foodData = p;
   pendingLogBubble = { el: msgEl, data: p };
+  showPendingArea(true);
+  // Also open the input area if not already open
+  const inputArea = document.getElementById('logInputArea');
+  if (!inputArea.classList.contains('open')) toggleLogInput();
 }
 
 function replaceFoodLogBubble(p) {
@@ -1848,12 +2442,19 @@ function confirmFood(btn) {
   msgEl.className = 'msg msg-system';
   msgEl.innerHTML = `✓ Added: ${p.label} (${Math.round(p.kcal)} kcal)`;
   pendingLogBubble = null;
+  showPendingArea(false);
+  // Close input after confirming
+  const inputArea = document.getElementById('logInputArea');
+  inputArea.classList.remove('open');
+  document.getElementById('logTriggerBtn').classList.remove('active');
+  document.getElementById('chatInput').value = '';
   updateUI();
 }
 
 function skipFood(btn) {
   btn.closest('.msg').remove();
   pendingLogBubble = null;
+  showPendingArea(false);
 }
 
 function handleWaterLog(p) {
@@ -1863,6 +2464,7 @@ function handleWaterLog(p) {
   day.water.push({ label: p.label + ' (' + p.ml + 'ml)', ml: p.ml, time: getTime() });
   saveCurrentDay(day);
   addChatMsg('water', `💧 ${p.label} — ${p.ml}ml logged. ${p.reply}`);
+  showPendingArea(true);
   updateUI();
 }
 
@@ -1883,6 +2485,7 @@ function quickWater(ml) {
   day.water.push({ label, ml, time: getTime() });
   saveCurrentDay(day);
   addChatMsg('water', `💧 +${label} water logged.`);
+  showPendingArea(true);
   updateUI();
 }
 
