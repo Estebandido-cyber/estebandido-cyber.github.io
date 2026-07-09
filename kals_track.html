@@ -2280,11 +2280,14 @@ async function sendChat() {
   if (!text) return;
   const btn = document.getElementById('sendBtn');
   btn.disabled = true;
+  btn.textContent = '…';
   input.value = '';
 
   addChatMsg('user', text);
   chatHistory.push({ role:'user', content: text, _type:'chat' });
 
+  // Show pending area immediately so spinner is visible
+  showPendingArea(true);
   const thinking = addChatMsg('thinking');
 
   const system = `You are KALS, an intelligent nutrition assistant inside the KALS Track app. You handle THREE things:
@@ -2381,8 +2384,10 @@ If the user is logging something completely different or asking a question, resp
   }
 
   btn.disabled = false;
+  btn.textContent = 'Analyse ↗';
   input.focus();
-  document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+  const cm = document.getElementById('chatMessages');
+  if (cm) cm.scrollTop = cm.scrollHeight;
 }
 
 function buildLogBubbleHTML(p) {
@@ -2423,27 +2428,46 @@ function handleFoodLog(p) {
 function replaceFoodLogBubble(p) {
   if (!pendingLogBubble) { handleFoodLog(p); return; }
   pendingLogBubble.el.innerHTML = buildLogBubbleHTML(p);
+  // Critical: re-set _foodData after innerHTML replacement
   pendingLogBubble.el._foodData = p;
   pendingLogBubble.data = p;
-  // Scroll to the updated bubble
-  pendingLogBubble.el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function confirmFood(btn) {
   const msgEl = btn.closest('.msg');
-  const p = msgEl._foodData;
+  const p = msgEl._foodData || (pendingLogBubble && pendingLogBubble.data);
+  if (!p) { console.error('[KALS] confirmFood: no food data found'); return; }
+
+  // Resolve meal type: Claude's detection > active slot > fallback
+  const mealType = p.meal_type || activeSlot || null;
+
   const day = getCurrentDay();
-  day.meals.push({ label:p.label, kcal:p.kcal, protein:p.protein, fat:p.fat, carbs:p.carbs, sugar:p.sugar||0, alcohol:p.alcohol_units||0, uncertain:p.uncertain||null, mealType:p.meal_type||null, items:p.items||[], time:getTime() });
+  day.meals.push({
+    label: p.label, kcal: p.kcal, protein: p.protein,
+    fat: p.fat, carbs: p.carbs, sugar: p.sugar||0,
+    alcohol: p.alcohol_units||0, uncertain: p.uncertain||null,
+    mealType, items: p.items||[], time: getTime()
+  });
   saveCurrentDay(day);
+
+  // Replace bubble with confirmation line
   msgEl.className = 'msg msg-system';
-  msgEl.innerHTML = `✓ Added: ${p.label} (${Math.round(p.kcal)} kcal)`;
+  msgEl.innerHTML = `✓ ${p.label} logged (${Math.round(p.kcal)} kcal)`;
+  msgEl._foodData = null;
+
   pendingLogBubble = null;
+  activeSlot = null; // reset slot after logging
+
+  // Reset slot pill selection
+  document.querySelectorAll('.slot-pill').forEach(p => p.classList.remove('selected'));
+
   showPendingArea(false);
-  // Close input after confirming
   const inputArea = document.getElementById('logInputArea');
-  inputArea.classList.remove('open');
-  document.getElementById('logTriggerBtn').classList.remove('active');
-  document.getElementById('chatInput').value = '';
+  if (inputArea) { inputArea.classList.remove('open'); }
+  const triggerBtn = document.getElementById('logTriggerBtn');
+  if (triggerBtn) triggerBtn.classList.remove('active');
+  const chatInput = document.getElementById('chatInput');
+  if (chatInput) chatInput.value = '';
   updateUI();
 }
 
