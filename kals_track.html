@@ -1810,10 +1810,7 @@ function switchTab(tab) {
   }
 }
 function switchLogTab(tab) {
-  document.getElementById('logTabMeals').style.display = tab === 'meals' ? '' : 'none';
-  document.getElementById('logTabWater').style.display = tab === 'water' ? '' : 'none';
-  document.getElementById('tab-meals').classList.toggle('active', tab === 'meals');
-  document.getElementById('tab-water').classList.toggle('active', tab === 'water');
+  // Legacy — tabs removed in unified block, no-op
 }
 function saveSettings() {
   settings.budget = parseInt(document.getElementById('setBudget').value) || DEFAULT_SETTINGS.budget;
@@ -2166,11 +2163,12 @@ function renderWaterLog(entries, total) {
   const summary = document.getElementById('waterSummary');
   const logList = document.getElementById('waterLogList');
   if (!entries || entries.length===0) {
-    summary.textContent = 'No water logged yet';
-    logList.innerHTML = ''; return;
+    if (summary) summary.textContent = 'No water logged yet';
+    if (logList) logList.innerHTML = '';
+    return;
   }
-  summary.textContent = (total>=1000?(total/1000).toFixed(1)+'L':total+'ml') + ' logged today';
-  logList.innerHTML = entries.slice().reverse().map(e =>
+  if (summary) summary.textContent = (total>=1000?(total/1000).toFixed(1)+'L':total+'ml') + ' logged today';
+  if (logList) logList.innerHTML = entries.slice().reverse().map(e =>
     `<div class="water-entry-item"><span class="water-label">💧 ${e.label}</span><span class="water-time">${e.time}</span></div>`
   ).join('');
 }
@@ -2253,7 +2251,6 @@ function handleKey(e) {
 
 function useSuggestion(el) {
   document.getElementById('chatInput').value = el.textContent;
-  document.getElementById('suggestions').style.display = 'none';
   sendChat();
 }
 
@@ -2284,7 +2281,6 @@ async function sendChat() {
   const btn = document.getElementById('sendBtn');
   btn.disabled = true;
   input.value = '';
-  document.getElementById('suggestions').style.display = 'none';
 
   addChatMsg('user', text);
   chatHistory.push({ role:'user', content: text, _type:'chat' });
