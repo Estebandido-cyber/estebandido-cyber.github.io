@@ -3,1331 +3,1147 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LUKAS Flow</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<title>Life Hub</title>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Life Hub">
+<meta name="theme-color" content="#0a0a0f">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
   :root {
-    --bg: #0a0c0f;
-    --surface: #111418;
-    --surface2: #181c22;
-    --border: #22272f;
-    --text: #e8eaed;
-    --muted: #9ca3af;
-    --chart-label: #d1d5db;
-    --accent: #00d4aa;
-    --accent2: #f59e0b;
-    --gain: #22c55e;
-    --loss: #ef4444;
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --surface: #1e1e28;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.15);
+    --text: #f0f0f5;
+    --muted: rgba(240,240,245,0.75);
+    --subtle: rgba(240,240,245,0.6);
+    --accent-tracker: #ffd166;
+    --accent-tracker-dim: rgba(255,209,102,0.12);
+    --accent-tracker-glow: rgba(255,209,102,0.25);
+    --accent-calc: #00e5a0;
+    --accent-calc-dim: rgba(0,229,160,0.12);
+    --accent-calc-glow: rgba(0,229,160,0.25);
+    --accent-planner: #a78bfa;
+    --accent-planner-dim: rgba(167,139,250,0.12);
+    --accent-planner-glow: rgba(167,139,250,0.25);
+    --accent-fire: #7dd3fc;
+    --accent-fire-dim: rgba(125,211,252,0.12);
+    --accent-fire-glow: rgba(125,211,252,0.25);
+    --accent-workout: #c8f135;
+    --accent-workout-dim: rgba(200,241,53,0.12);
+    --accent-workout-glow: rgba(200,241,53,0.25);
+    --accent-notes: #818cf8;
+    --accent-notes-dim: rgba(129,140,248,0.12);
+    --accent-notes-glow: rgba(129,140,248,0.25);
+    --accent-kals: #eab308;
+    --accent-kals-dim: rgba(234,179,8,0.12);
+    --accent-kals-glow: rgba(234,179,8,0.25);
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; min-height: 100vh; }
-  .noise {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none; z-index: 0; opacity: 0.4;
+
+  /* ── Light mode ── */
+  body.light {
+    --bg: #f4f4f8;
+    --bg2: #eaeaf0;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.08);
+    --border-hover: rgba(0,0,0,0.18);
+    --text: #1a1a2e;
+    --muted: rgba(26,26,46,0.6);
+    --subtle: rgba(26,26,46,0.4);
   }
-  .app { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 24px; padding-top: 0; }
-
-  /* ── STICKY HEADER ── */
-  #site-header {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(10,12,15,0.92); backdrop-filter: blur(14px);
-    border-bottom: 1px solid var(--border);
-    display: grid; grid-template-columns: 1fr auto 1fr;
-    align-items: center; gap: 12px;
-    padding: 10px 24px; margin: 0 -24px 28px -24px;
+  body.light::before { opacity: 0.4; }
+  body.light::after  { opacity: 0.3; }
+  body.light .logo-title {
+    background: linear-gradient(135deg, #1a1a2e 0%, rgba(26,26,46,0.75) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
-  #head-left { display: flex; align-items: center; gap: 8px; justify-self: start; }
-  #head-center { display: flex; align-items: center; gap: 10px; justify-self: center; }
-  #head-right { display: flex; align-items: center; gap: 6px; justify-self: end; }
 
-  /* Atom home link */
-  #home-link { display: flex; align-items: center; opacity: .85; transition: opacity .2s, transform .2s; flex-shrink: 0; text-decoration: none; }
-  #home-link:hover { opacity: 1; transform: scale(1.1); }
+  /* ── Budget bar ── */
+  .budget-bar-wrap {
+    width: 100%;
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .budget-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
 
-  /* Separators */
-  .head-sep { display: inline-block; width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+  /* ── Shimmer loading ── */
+  @keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  .tile.loading .tile-stats {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--border-hover) 50%, var(--surface) 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.4s infinite linear;
+    border-radius: 8px;
+    min-height: 80px;
+  }
+  .tile.loading .tile-stats * { visibility: hidden; }
 
-  /* Title */
-  #head-title-lukas {
-    font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  /* ── Theme toggle button ── */
+  .theme-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 15px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, color 0.2s;
+    flex-shrink: 0;
+  }
+  .theme-btn:hover { border-color: var(--border-hover); color: var(--text); }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding: 0 0 60px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 10%, rgba(123,143,255,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 35% at 80% 80%, rgba(255,107,107,0.05) 0%, transparent 55%),
+      radial-gradient(ellipse 40% 30% at 60% 30%, rgba(0,229,160,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  header {
+    padding: 52px 0 36px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    animation: fadeUp 0.4s both;
+  }
+
+  .logo-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--subtle);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .logo-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon {
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 6px rgba(167,139,250,0.4));
+  }
+  .logo-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
     line-height: 1;
-  }
-  #head-title-flow {
-    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 400; letter-spacing: 3px;
-    color: #6b7280; text-transform: uppercase; line-height: 1; margin-left: 2px;
-  }
-  #head-title-wrap { display: flex; align-items: baseline; gap: 6px; }
-
-  /* Money icon */
-  #wm-icon { display: flex; align-items: center; flex-shrink: 0; }
-
-  /* Status dot + text */
-  .last-updated { color: var(--muted); font-size: 11px; display: flex; align-items: center; white-space: nowrap; }
-
-  /* Refresh button */
-  .refresh-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--accent); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 12px; transition: all 0.2s; letter-spacing: 1px; text-transform: uppercase; }
-  .refresh-btn:hover { background: var(--accent); color: var(--bg); }
-  .refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  /* Mobile: 3-row stack */
-  @media (max-width: 700px) {
-    #site-header { grid-template-columns: 1fr; grid-template-rows: auto auto auto; gap: 8px; padding: 10px 14px; margin: 0 -14px 20px -14px; }
-    #head-left   { justify-self: start; }
-    #head-center { justify-self: center; order: 3; }
-    #head-right  { justify-self: center; order: 2; flex-wrap: wrap; justify-content: center; }
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #f0f0f5 0%, rgba(240,240,245,0.6) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  .section-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--chart-label); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 14px; }
-
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
-  .kpi-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
-  .kpi-value { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; }
-  .kpi-sub { color: var(--muted); font-size: 11px; margin-top: 4px; }
-  .kpi-value.gain { color: var(--gain); } .kpi-value.loss { color: var(--loss); } .kpi-value.accent { color: var(--accent); }
-
-  .accounts-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin-bottom: 20px; }
-  .account-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
-  .account-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
-  .account-value { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
-  .account-gl { font-size: 11px; margin-top: 4px; }
-
-  .charts-row { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 12px; margin-bottom: 12px; }
-  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
-  .chart-wrap { position: relative; height: 210px; }
-
-  /* TAX + INCOME + BENCHMARK */
-  .bottom-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
-
-  .tax-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
-  .tax-bracket-select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; padding: 4px 8px; border-radius: 6px; outline: none; cursor: pointer; }
-  .tax-total-badge { margin-left: auto; font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: #fca5a5; }
-  .tax-table { width: 100%; border-collapse: collapse; }
-  .tax-table th { text-align: left; color: var(--chart-label); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 5px 8px; border-bottom: 1px solid var(--border); }
-  .tax-table th:not(:first-child) { text-align: right; }
-  .tax-table td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 12px; }
-  .tax-table td:not(:first-child) { text-align: right; }
-  .tax-table tr:last-child td { border-bottom: none; }
-  .tax-table tr:hover td { background: rgba(255,255,255,0.02); }
-  .tax-note { font-size: 10px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
-  .tax-rate-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: 600; background: rgba(239,68,68,0.15); color: #fca5a5; }
-
-  .income-total { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--gain); margin-bottom: 14px; }
-  .income-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 12px; }
-  .income-row:last-child { border-bottom: none; }
-  .income-name { color: var(--chart-label); }
-  .income-rate-line { color: var(--muted); font-size: 10px; }
-  .income-amount { color: var(--gain); font-family: 'Syne', sans-serif; font-weight: 600; }
-  .income-edit { background: transparent; border: none; border-bottom: 1px dashed var(--border); color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; width: 36px; text-align: right; outline: none; cursor: pointer; }
-  .income-edit:focus { border-color: var(--accent); color: var(--text); }
-
-  .bench-filter { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
-  .bench-tab { padding: 3px 10px; border-radius: 20px; font-size: 10px; border: 1px solid var(--border); cursor: pointer; background: transparent; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 1px; transition: all 0.15s; }
-  .bench-tab.active { background: var(--accent2); color: var(--bg); border-color: var(--accent2); }
-  .bench-chart-wrap { position: relative; height: 155px; }
-
-  .heatmap-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-  .heatmap-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
-  .heatmap-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-  .heatmap-label { font-size: 12px; color: var(--chart-label); min-width: 130px; }
-  .heatmap-track { flex: 1; height: 10px; background: var(--surface2); border-radius: 5px; overflow: hidden; }
-  .heatmap-fill { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
-  .heatmap-pct { font-size: 12px; color: var(--muted); min-width: 40px; text-align: right; }
-
-  .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
-  .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
-  .filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-  .filter-tab { padding: 4px 12px; border-radius: 20px; font-size: 10px; border: 1px solid var(--border); cursor: pointer; background: transparent; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 1px; transition: all 0.15s; }
-  .filter-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; color: var(--chart-label); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; padding: 6px 10px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
-  th:hover { color: var(--text); }
-  td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; font-size: 12px; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(255,255,255,0.02); }
-
-  .ticker { font-weight: 500; color: var(--text); font-size: 13px; }
-  .name-cell { color: var(--muted); font-size: 11px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
-  .type-etf { background: rgba(56,189,248,0.15); color: #38bdf8; }
-  .type-stock { background: rgba(244,114,182,0.15); color: #f472b6; }
-  .type-fund { background: rgba(251,191,36,0.15); color: #fbbf24; }
-  .type-cash { background: rgba(148,163,184,0.15); color: #94a3b8; }
-  .type-livret { background: rgba(52,211,153,0.15); color: #34d399; }
-
-  .gain-cell { color: var(--gain); } .loss-cell { color: var(--loss); } .neutral-cell { color: var(--muted); }
-  .sparkbar { display: inline-block; height: 3px; border-radius: 2px; vertical-align: middle; min-width: 4px; max-width: 80px; }
-  .price-loading { color: var(--muted); animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
-
-  .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
-  .dot-live { background: var(--gain); animation: blink 2s infinite; }
-  .dot-loading { background: var(--accent2); animation: blink 1s infinite; }
-  .dot-error { background: var(--loss); }
-  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-  .cash-input { background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; width: 100px; outline: none; padding-bottom: 2px; }
-  .cash-input:focus { border-color: var(--accent); }
-
-  @media (max-width: 1100px) {
-    .kpis { grid-template-columns: repeat(2,1fr); }
-    .bottom-row { grid-template-columns: 1fr; }
-    .heatmap-row { grid-template-columns: 1fr; }
-    .accounts-row { grid-template-columns: repeat(4,1fr); }
-  }
-  /* Charts stay 3-wide down to tablet — only stack on small phones */
-  @media (max-width: 600px) {
-    .charts-row { grid-template-columns: 1fr; }
-    .accounts-row { grid-template-columns: repeat(2,1fr); }
-    .kpis { grid-template-columns: 1fr 1fr; }
-    .app { padding: 14px; }
+  .header-meta { text-align: right; padding-top: 6px; }
+  .date-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
   }
 
-  /* Horizontal scroll for positions table */
-  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .table-scroll table { min-width: 900px; }
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--subtle);
+    text-transform: uppercase;
+    margin: 0 0 14px;
+  }
 
-  /* MANUAL UPDATE MODAL */
-  .update-modal { background:#181c22; border:1px solid var(--border); border-radius:14px; padding:28px; width:620px; max-width:96vw; max-height:85vh; display:flex; flex-direction:column; }
-  .update-modal-body { overflow-y:auto; flex:1; margin-top:16px; }
-  .update-section-head { font-family:'Syne',sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:var(--muted); padding:10px 0 6px; border-bottom:1px solid var(--border); margin-bottom:4px; }
-  .update-row { display:grid; grid-template-columns:1fr auto auto auto; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid rgba(255,255,255,0.04); }
-  .update-row:last-child { border-bottom:none; }
-  .update-name { font-size:12px; color:var(--chart-label); }
-  .update-account { font-size:10px; color:var(--muted); }
-  .update-staleness { font-size:10px; padding:2px 7px; border-radius:10px; white-space:nowrap; }
-  .stale-fresh  { background:rgba(34,197,94,0.12);  color:#22c55e; }
-  .stale-warn   { background:rgba(245,158,11,0.12); color:#f59e0b; }
-  .stale-old    { background:rgba(239,68,68,0.12);  color:#ef4444; }
-  .stale-never  { background:rgba(107,114,128,0.12);color:#6b7280; }
-  .update-input { background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'DM Mono',monospace; font-size:13px; font-weight:500; padding:5px 10px; border-radius:6px; width:110px; text-align:right; outline:none; transition:border-color 0.2s; }
-  .update-input:focus { border-color:var(--accent); }
-  .update-input.changed { border-color:var(--accent2); background:rgba(245,158,11,0.06); }
-  .update-footer { display:flex; align-items:center; justify-content:space-between; margin-top:18px; padding-top:14px; border-top:1px solid var(--border); flex-wrap:wrap; gap:8px; }
-  .update-last-sync { font-size:10px; color:var(--muted); }
-  .btn-update { background:rgba(0,212,170,0.12); border:1px solid var(--accent); color:var(--accent); padding:6px 18px; border-radius:6px; cursor:pointer; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; transition:all 0.2s; }
-  .btn-update:hover { background:var(--accent); color:var(--bg); }
-  .btn-mark-reviewed { background:transparent; border:1px solid var(--border); color:var(--muted); padding:6px 14px; border-radius:6px; cursor:pointer; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; transition:all 0.2s; }
-  .btn-mark-reviewed:hover { border-color:var(--muted); color:var(--text); }
+  .tiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
 
-  /* DRIVE / EXPORT / IMPORT BUTTONS */
-  .btn { padding: 6px 14px; border-radius: 6px; border: 1px solid; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s; }
-  .btn-drive { background:#1a73e8; border-color:#1a73e8; color:#fff; }
-  .btn-drive:hover { background:#1557b0; border-color:#1557b0; }
-  .btn-drive:disabled { opacity:0.5; cursor:not-allowed; }
-  .btn-ghost { background:transparent; border-color:var(--border); color:var(--muted); }
-  .btn-ghost:hover { border-color:var(--muted); color:var(--text); }
-  .btn-danger { background:rgba(239,68,68,0.12); border-color:#ef4444; color:#ef4444; }
-  .btn-danger:hover { background:rgba(239,68,68,0.22); }
-  .drive-status-bar { text-align:center; font-size:10px; color:#5c6370; padding:4px 8px; letter-spacing:0.5px; transition:color 0.3s; min-height:20px; }
-  .drive-status-bar.ok { color:#5cb88a; }
-  .drive-status-bar.err { color:#e06060; }
-  .drive-status-bar.working { color:#f0c060; }
+  .tile {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 22px 20px 18px;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+    overflow: hidden;
+    transition: border-color 0.25s, transform 0.2s;
+    animation: fadeUp 0.5s both;
+  }
+  .tile:nth-child(1) { animation-delay: 0.05s; }
+  .tile:nth-child(2) { animation-delay: 0.1s; }
+  .tile:nth-child(3) { animation-delay: 0.15s; }
+  .tile:nth-child(4) { animation-delay: 0.2s; }
+  .tile:nth-child(5) { animation-delay: 0.25s; }
+  .tile:nth-child(6) { animation-delay: 0.3s; }
+  .tile:nth-child(7) { animation-delay: 0.35s; }
+  .tile:nth-child(8) { animation-delay: 0.4s; }
+  .tile:nth-child(9) { animation-delay: 0.45s; }
 
-  .cf-status-bar { display:flex; align-items:center; justify-content:center; gap:7px; font-size:12px; font-family:'DM Mono',monospace; color:#4b5563; padding:3px 8px 6px; letter-spacing:0.5px; transition:color 0.3s; min-height:22px; }
-  .cf-status-bar.ok   { color:#34d399; }
-  .cf-status-bar.err  { color:#f87171; }
-  .cf-status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-  .cf-status-bar.ok  .cf-status-dot { background:#34d399; box-shadow:0 0 6px #34d39988; }
-  .cf-status-bar.err .cf-status-dot { background:#f87171; box-shadow:0 0 6px #f8717188; }
+  .tile::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .tile:hover { transform: translateY(-2px); }
+  .tile:hover::before { opacity: 1; }
+  .tile:active { transform: translateY(0) scale(0.98); }
 
-  /* MODALS */
-  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center; }
-  .modal-overlay.open { display:flex; }
-  .modal { background:#181c22; border:1px solid var(--border); border-radius:14px; padding:28px; width:420px; max-width:95vw; }
-  .modal-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--text); margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; }
-  .modal-close { background:transparent; border:none; color:var(--muted); font-size:20px; cursor:pointer; padding:0 4px; line-height:1; }
-  .modal-close:hover { color:var(--text); }
+  .tile-tracker { border-color: rgba(255,209,102,0.3); }
+  .tile-tracker::before { background: radial-gradient(ellipse at top left, var(--accent-tracker-dim), transparent 70%); }
+  .tile-tracker:hover { border-color: var(--accent-tracker-glow); }
+  .tile-calc { border-color: rgba(0,229,160,0.3); }
+  .tile-calc::before { background: radial-gradient(ellipse at top left, var(--accent-calc-dim), transparent 70%); }
+  .tile-calc:hover { border-color: var(--accent-calc-glow); }
+  .tile-planner { border-color: rgba(167,139,250,0.3); }
+  .tile-planner::before { background: radial-gradient(ellipse at top left, var(--accent-planner-dim), transparent 70%); }
+  .tile-planner:hover { border-color: var(--accent-planner-glow); }
+  .tile-fire { border-color: rgba(125,211,252,0.3); }
+  .tile-fire::before { background: radial-gradient(ellipse at top left, var(--accent-fire-dim), transparent 70%); }
+  .tile-fire:hover { border-color: var(--accent-fire-glow); }
+  .tile-workout { border-color: rgba(200,241,53,0.3); }
+  .tile-workout::before { background: radial-gradient(ellipse at top left, var(--accent-workout-dim), transparent 70%); }
+  .tile-workout:hover { border-color: var(--accent-workout-glow); }
+  .tile-workout .tile-icon { background: var(--accent-workout-dim); }
+  .tile-workout .tile-name { color: var(--accent-workout); }
+  .tile-kals { border-color: rgba(234,179,8,0.3); }
+  .tile-kals::before { background: radial-gradient(ellipse at top left, var(--accent-kals-dim), transparent 70%); }
+  .tile-kals:hover { border-color: var(--accent-kals-glow); }
+  .tile-kals .tile-icon { background: rgba(251,146,60,0.15); }
+  .tile-kals .tile-name { color: var(--accent-kals); }
+  .tile-strat { border-color: rgba(251,113,133,0.3); }
+  .tile-strat::before { background: radial-gradient(ellipse at top left, rgba(251,113,133,0.1), transparent 70%); }
+  .tile-strat:hover { border-color: rgba(251,113,133,0.5); }
+  .tile-strat .tile-icon { background: rgba(251,113,133,0.1); color: #e8c97a; font-size: 20px; }
+  .tile-strat .tile-name { color: #fb7185; }
+  .tile-notes { border-color: rgba(129,140,248,0.3); grid-column: span 2; }
+  .tile-notes::before { background: radial-gradient(ellipse at top left, var(--accent-notes-dim), transparent 70%); }
+  .tile-notes:hover { border-color: var(--accent-notes-glow); }
+  .tile-notes .tile-icon { background: var(--accent-notes-dim); }
+  .tile-notes .tile-name { color: var(--accent-notes); }
+  .tile-notes .tile-stats { flex-direction: row; gap: 0; align-items: stretch; }
+  .doit-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 0 10px; border-right: 1px solid var(--border); }
+  .doit-col:first-child { padding-left: 0; }
+  .doit-col:last-child { border-right: none; padding-right: 0; }
+  .doit-col-title { font-family: 'DM Mono', monospace; font-size: 9.5px; letter-spacing: 0.1em; color: var(--subtle); text-transform: uppercase; margin-bottom: 4px; flex-shrink: 0; }
+  .tile-lukas { border-color: rgba(239,68,68,0.3); }
+  .tile-lukas::before { background: radial-gradient(ellipse at top left, rgba(239,68,68,0.1), transparent 70%); }
+  .tile-lukas:hover { border-color: rgba(239,68,68,0.5); }
+  .tile-lukas .tile-icon { background-color: rgba(239,68,68,0.1); }
+  .tile-lukas .tile-name { color: #ef4444; }
+  .tile-icon-lukas {
+    background-color: rgba(0,212,170,0.1);
+    background-image: url("data:image/svg+xml,%3Csvg width='22' height='22' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='5' y1='3' x2='5' y2='6' stroke='%2300d4aa' stroke-width='1.2' stroke-linecap='round'/%3E%3Crect x='3.5' y='6' width='3' height='6' rx='0.5' fill='%2300d4aa' opacity='0.9'/%3E%3Cline x1='5' y1='12' x2='5' y2='15' stroke='%2300d4aa' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='12' y1='5' x2='12' y2='8' stroke='%23ef4444' stroke-width='1.2' stroke-linecap='round'/%3E%3Crect x='10.5' y='8' width='3' height='8' rx='0.5' fill='%23ef4444' opacity='0.9'/%3E%3Cline x1='12' y1='16' x2='12' y2='19' stroke='%23ef4444' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='19' y1='4' x2='19' y2='7' stroke='%2300d4aa' stroke-width='1.2' stroke-linecap='round'/%3E%3Crect x='17.5' y='7' width='3' height='7' rx='0.5' fill='%2300d4aa' opacity='0.9'/%3E%3Cline x1='19' y1='14' x2='19' y2='17' stroke='%2300d4aa' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 22px 22px;
+  }
 
+  .tile-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .tile-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+  .tile-tracker .tile-icon { background: var(--accent-tracker-dim); }
+  .tile-calc .tile-icon    { background: var(--accent-calc-dim); }
+  .tile-planner .tile-icon { background: var(--accent-planner-dim); }
+  .tile-fire .tile-icon    { background: var(--accent-fire-dim); }
+
+  .tile-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    position: relative;
+    z-index: 1;
+  }
+  .tile-tracker .tile-name { color: var(--accent-tracker); }
+  .tile-calc .tile-name    { color: var(--accent-calc); }
+  .tile-planner .tile-name { color: var(--accent-planner); }
+  .tile-fire .tile-name    { color: var(--accent-fire); }
+
+  .tile-stats {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .stat { display: flex; flex-direction: column; gap: 1px; }
+  .stat-label {
+    font-size: 9.5px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.1em;
+    color: var(--subtle);
+    text-transform: uppercase;
+  }
+  .stat-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.15;
+  }
+  .stat-value.big { font-size: 20px; }
+
+  .stat-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+    margin: 2px 0;
+  }
+
+  .tile-arrow {
+    position: absolute;
+    bottom: 16px;
+    right: 18px;
+    font-size: 14px;
+    color: var(--subtle);
+    transition: color 0.2s, transform 0.2s;
+    z-index: 1;
+  }
+  .tile:hover .tile-arrow { color: var(--muted); transform: translate(2px, -2px); }
+
+  .tile-footer {
+    margin-top: auto;
+    padding-top: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--subtle);
+    letter-spacing: 0.05em;
+    z-index: 1;
+    position: relative;
+  }
+
+  .no-data {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--subtle);
+    font-style: italic;
+  }
+  .doit-item {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11.5px;
+    color: var(--text);
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 1px 0;
+  }
+
+  .live-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    margin-right: 5px;
+    animation: pulse 2s infinite;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  .bottom-bar {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    animation: fadeUp 0.5s 0.25s both;
+  }
+  .bottom-label { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .refresh-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    white-space: nowrap;
+  }
+  .refresh-btn:hover { border-color: var(--border-hover); color: var(--text); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 380px) {
+    .tiles { grid-template-columns: 1fr 1fr; }
+    .tile { min-height: auto; }
+    .logo-title { font-size: 28px; }
+    .doit-item { font-size: 10px; }
+  }
+
+  /* Tablet landscape: 3-column grid */
+  @media (min-width: 700px) and (orientation: landscape) {
+    .wrap { max-width: 900px; }
+    .tiles { grid-template-columns: 1fr 1fr 1fr; }
+  }
+
+  /* Large landscape (desktop / large tablet) */
+  @media (min-width: 1000px) {
+    .wrap { max-width: 1100px; }
+    .tiles { grid-template-columns: 1fr 1fr 1fr; }
+    .tile { min-height: 210px; }
+  }
 </style>
 </head>
 <body>
-<div class="noise"></div>
-<div class="app">
+<div class="wrap">
 
-  <header id="site-header">
-
-    <!-- LEFT: atom → sep → title → money icon → sep -->
-    <div id="head-left">
-      <a id="home-link" href="https://estebandido-cyber.github.io/" title="Back to Life Hub">
-        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="16" cy="16" r="13.5" stroke="url(#hl-g1)" stroke-width="1.2" fill="none" opacity="0.7"/>
-          <ellipse cx="16" cy="16" rx="13.5" ry="5.5" stroke="url(#hl-g2)" stroke-width="1" fill="none" opacity="0.55" transform="rotate(-35 16 16)"/>
-          <ellipse cx="16" cy="16" rx="13.5" ry="5.5" stroke="url(#hl-g3)" stroke-width="1" fill="none" opacity="0.45" transform="rotate(35 16 16)"/>
-          <circle cx="16" cy="16" r="2.5" fill="url(#hl-g4)"/>
+  <header>
+    <div class="logo-block">
+      <div class="logo-eyebrow">personal dashboard</div>
+      <div class="logo-title-row">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon">
+          <!-- outer ring -->
+          <circle cx="16" cy="16" r="13.5" stroke="url(#g1)" stroke-width="1.2" fill="none" opacity="0.7"/>
+          <!-- middle orbit, tilted -->
+          <ellipse cx="16" cy="16" rx="13.5" ry="5.5" stroke="url(#g2)" stroke-width="1" fill="none" opacity="0.55" transform="rotate(-35 16 16)"/>
+          <!-- inner orbit, tilted other way -->
+          <ellipse cx="16" cy="16" rx="13.5" ry="5.5" stroke="url(#g3)" stroke-width="1" fill="none" opacity="0.45" transform="rotate(35 16 16)"/>
+          <!-- center dot -->
+          <circle cx="16" cy="16" r="2.5" fill="url(#g4)"/>
+          <!-- small orbiting dot on outer ring -->
           <circle cx="16" cy="2.5" r="1.5" fill="white" opacity="0.9"/>
           <defs>
-            <linearGradient id="hl-g1" x1="2.5" y1="2.5" x2="29.5" y2="29.5" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7dd3fc"/></linearGradient>
-            <linearGradient id="hl-g2" x1="2.5" y1="2.5" x2="29.5" y2="29.5" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#00e5a0"/></linearGradient>
-            <linearGradient id="hl-g3" x1="2.5" y1="29.5" x2="29.5" y2="2.5" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#ffd166"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient>
-            <radialGradient id="hl-g4" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#a78bfa"/></radialGradient>
+            <linearGradient id="g1" x1="2.5" y1="2.5" x2="29.5" y2="29.5" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#a78bfa"/>
+              <stop offset="100%" stop-color="#7dd3fc"/>
+            </linearGradient>
+            <linearGradient id="g2" x1="2.5" y1="2.5" x2="29.5" y2="29.5" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#7dd3fc"/>
+              <stop offset="100%" stop-color="#00e5a0"/>
+            </linearGradient>
+            <linearGradient id="g3" x1="2.5" y1="29.5" x2="29.5" y2="2.5" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#ffd166"/>
+              <stop offset="100%" stop-color="#a78bfa"/>
+            </linearGradient>
+            <radialGradient id="g4" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="100%" stop-color="#a78bfa"/>
+            </radialGradient>
           </defs>
         </svg>
-      </a>
-      <span class="head-sep"></span>
-      <div id="head-title-wrap">
-        <span id="head-title-lukas">LUKAS</span>
-        <span id="head-title-flow">Flow</span>
-      </div>
-      <span id="wm-icon" style="font-size:20px;line-height:1;">📊</span>
-      <span class="head-sep"></span>
-    </div>
-
-    <!-- CENTER: refresh + status -->
-    <div id="head-center">
-      <button class="refresh-btn" id="refreshBtn" onclick="fetchAllPrices()">↻ Refresh</button>
-      <div class="last-updated" id="lastUpdated">
-        <span class="status-dot dot-loading" id="statusDot"></span>
-        <span id="statusText">Loading prices…</span>
+        <div class="logo-title">Life Hub</div>
       </div>
     </div>
-
-    <!-- RIGHT: action buttons -->
-    <div id="head-right">
-      <button class="btn btn-update" onclick="openUpdateModal()" title="Manually update fund positions">✎ Update</button>
-      <button class="btn btn-drive" id="drive-save-btn" onclick="gdriveSave()" title="Save to Google Drive">☁ Save</button>
-      <button class="btn btn-drive" id="drive-load-btn" onclick="gdriveLoad()" title="Load from Google Drive">☁ Load</button>
-      <button id="debugBtn" class="btn" onclick="toggleDebug()" title="Toggle debug logging in browser console" style="background:transparent;border-color:var(--border);color:var(--muted);font-size:10px">⚙ Debug</button>
+    <div class="header-meta" style="display:flex;align-items:flex-start;gap:10px;padding-top:6px;">
+      <div class="date-display" id="date-display"></div>
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark">🌙</button>
     </div>
-
   </header>
-  <div class="drive-status-bar" id="drive-status-bar"></div>
-  <div class="cf-status-bar" id="cf-status-bar"></div>
 
-  <!-- MANUAL UPDATE MODAL -->
-  <div class="modal-overlay" id="update-modal">
-    <div class="update-modal">
-      <div class="modal-title">
-        ✎ Update Positions
-        <button class="modal-close" onclick="closeUpdateModal()">×</button>
+  <div class="section-label">my apps</div>
+
+  <div class="tiles">
+
+    <a class="tile tile-notes" href="notes.html" onclick="hap()">
+      <div class="tile-header">
+        <div class="tile-icon">📝</div>
+        <div class="tile-name">Do it!</div>
       </div>
-      <p style="color:#9aa0ad;font-size:12px;line-height:1.6;">Enter current market values for manually-tracked positions. Live tickers (AAPL, AMD, etc.) update automatically and are shown for reference only.</p>
-      <div class="update-modal-body" id="updateModalBody"></div>
-      <div class="update-footer">
-        <div class="update-last-sync" id="updateLastSync"></div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn-mark-reviewed" onclick="markAllReviewed()">✓ Mark all reviewed</button>
-          <button class="btn-update" onclick="saveManualUpdates()">Save changes</button>
-        </div>
+      <div class="tile-stats" id="stats-notes"><div class="no-data">Loading…</div></div>
+      <div class="tile-footer" id="footer-notes"></div>
+      <div class="tile-arrow">↗</div>
+    </a>
+
+    <a class="tile tile-tracker" href="XPENSE_TRACKER.html" onclick="hap()">
+      <div class="tile-header">
+        <div class="tile-icon">💳</div>
+        <div class="tile-name">Xpenser</div>
       </div>
-    </div>
-  </div>
+      <div class="tile-stats" id="stats-tracker"><div class="no-data">Loading…</div></div>
+      <div class="tile-footer" id="footer-tracker"></div>
+      <div class="tile-arrow">↗</div>
+    </a>
 
-
-  <div class="kpis">
-    <div class="kpi">
-      <div class="kpi-label">Total Portfolio Value</div>
-      <div class="kpi-value accent" id="kpiTotal">—</div>
-      <div class="kpi-sub" id="kpiTotalSub">cost basis: —</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Total Unrealized G/L</div>
-      <div class="kpi-value" id="kpiGL">—</div>
-      <div class="kpi-sub" id="kpiGLSub">—</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">ETFs &amp; Stocks (PEA + CTO)</div>
-      <div class="kpi-value" id="kpiInvest">—</div>
-      <div class="kpi-sub">Market-traded positions</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Savings / Reserves</div>
-      <div class="kpi-value" id="kpiSavings">—</div>
-      <div class="kpi-sub">Livrets + Cash + Fonds €</div>
-    </div>
-  </div>
-
-  <div class="accounts-row" id="accountsRow"></div>
-
-  <div class="charts-row">
-    <div class="chart-card">
-      <div class="section-title">By Account</div>
-      <div class="chart-wrap"><canvas id="chartAccount"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="section-title">By Asset Type</div>
-      <div class="chart-wrap"><canvas id="chartType"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="section-title">Unrealized G/L by Position</div>
-      <div class="chart-wrap"><canvas id="chartGL"></canvas></div>
-    </div>
-  </div>
-
-  <div class="bottom-row">
-
-    <div class="panel">
-      <div class="section-title">Estimated Tax Liability</div>
-      <div class="tax-meta">
-        <span style="color:var(--muted);font-size:11px">IR bracket:</span>
-        <select class="tax-bracket-select" id="taxBracket" onchange="render()">
-          <option value="11">11%</option>
-          <option value="30" selected>30%</option>
-          <option value="41">41%</option>
-          <option value="45">45%</option>
-        </select>
-        <span style="color:var(--muted);font-size:11px">Total estimated:</span>
-        <span class="tax-total-badge" id="taxTotal">—</span>
+    <a class="tile tile-workout" href="workout_dashboard.html" onclick="hap()">
+      <div class="tile-header">
+        <div class="tile-icon">💪</div>
+        <div class="tile-name">Workout</div>
       </div>
-      <table class="tax-table">
-        <thead><tr><th>Account / Position</th><th>Gain €</th><th>Rate</th><th>Tax €</th></tr></thead>
-        <tbody id="taxTableBody"></tbody>
-      </table>
-      <div class="tax-note" id="taxNote"></div>
-    </div>
+      <div class="tile-stats" id="stats-workout"><div class="no-data">Loading…</div></div>
+      <div class="tile-footer" id="footer-workout"></div>
+      <div class="tile-arrow">↗</div>
+    </a>
 
-    <div class="panel">
-      <div class="section-title">Projected Annual Income</div>
-      <div class="income-total" id="incomeTotal">—</div>
-      <div id="incomeRows"></div>
-      <div style="font-size:10px;color:var(--muted);margin-top:12px">Rates are editable inline. Fonds € rate is an estimate — check your contract.</div>
-    </div>
-
-    <div class="panel">
-      <div class="section-title">vs MSCI World Benchmark</div>
-      <div class="bench-filter">
-        <button class="bench-tab active" onclick="setBenchScope('ALL',this)">All</button>
-        <button class="bench-tab" onclick="setBenchScope('PEA',this)">PEA</button>
-        <button class="bench-tab" onclick="setBenchScope('CTO',this)">CTO</button>
-        <button class="bench-tab" onclick="setBenchScope('PEE',this)">PEE</button>
+    <a class="tile tile-kals" href="kals_track.html" onclick="hap()">
+      <div class="tile-header">
+        <div class="tile-icon">⚡</div>
+        <div class="tile-name">Kals</div>
       </div>
-      <div class="bench-chart-wrap"><canvas id="chartBench"></canvas></div>
-      <div style="font-size:10px;color:var(--muted);margin-top:8px" id="benchNote"></div>
-    </div>
+      <div class="tile-stats" id="stats-kals"><div class="no-data">Coming soon…</div></div>
+      <div class="tile-footer" id="footer-kals"></div>
+      <div class="tile-arrow">↗</div>
+    </a>
+
+    <a class="tile tile-lukas" href="lukas_analyzer.html" onclick="hap()">
+      <div class="tile-header">
+        <div class="tile-icon">📊</div>
+        <div class="tile-name">Lukas</div>
+      </div>
+      <div class="tile-stats" id="stats-lukas"><div class="no-data">Loading…</div></div>
+      <div class="tile-footer" id="footer-lukas"></div>
+      <div class="tile-arrow">↗</div>
+    </a>
+
+    <a class="tile tile-calc" href="XPENSES_CALCULATOR.html" onclick="hap()">
+      <div class="tile-header">
+        <div class="tile-icon">🧮</div>
+        <div class="tile-name">Calculator</div>
+      </div>
+      <div class="tile-stats" id="stats-calc"><div class="no-data">Loading…</div></div>
+      <div class="tile-footer" id="footer-calc"></div>
+      <div class="tile-arrow">↗</div>
+    </a>
+
+    <a class="tile tile-fire" href="FIRE_SIM.html" onclick="hap()">
+      <div class="tile-header">
+        <div class="tile-icon">🔥</div>
+        <div class="tile-name">FIRE Sim</div>
+      </div>
+      <div class="tile-stats" id="stats-fire"><div class="no-data">Loading…</div></div>
+      <div class="tile-footer" id="footer-fire"></div>
+      <div class="tile-arrow">↗</div>
+    </a>
+
+    <a class="tile tile-planner" href="WEEK_PLANNER.html" onclick="hap()">
+      <div class="tile-header">
+        <div class="tile-icon">📅</div>
+        <div class="tile-name">Week Plan</div>
+      </div>
+      <div class="tile-stats" id="stats-planner"><div class="no-data">Loading…</div></div>
+      <div class="tile-footer" id="footer-planner"></div>
+      <div class="tile-arrow">↗</div>
+    </a>
+
+    <a class="tile tile-strat" href="FIRE_strat.html" onclick="hap()">
+      <div class="tile-header">
+        <div class="tile-icon">♞</div>
+        <div class="tile-name">Strat</div>
+      </div>
+      <div class="tile-stats">
+        <div class="stat"><div class="stat-value" style="font-size:13px;line-height:1.3">Personal FIRE Roadmap</div></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><div class="stat-label">Current Phase</div><div class="stat-value">Phase 0 · Accumulation Sprint</div></div>
+      </div>
+      <div class="tile-footer" id="footer-strat"></div>
+      <div class="tile-arrow">↗</div>
+    </a>
 
   </div>
 
-  <div class="heatmap-row">
-    <div class="heatmap-card">
-      <div class="section-title">Geographic Exposure</div>
-      <div id="geoHeatmap"></div>
-    </div>
-    <div class="heatmap-card">
-      <div class="section-title">Sector / Asset Class</div>
-      <div id="sectorHeatmap"></div>
-    </div>
-  </div>
-
-  <div class="table-card">
-    <div class="table-header">
-      <div class="section-title" style="margin-bottom:0">All Positions</div>
-      <div class="filter-tabs">
-        <button class="filter-tab active" onclick="setFilter('ALL',this)">All</button>
-        <button class="filter-tab" onclick="setFilter('PEA',this)">PEA</button>
-        <button class="filter-tab" onclick="setFilter('CTO',this)">CTO</button>
-        <button class="filter-tab" onclick="setFilter('PEE',this)">PEE</button>
-        <button class="filter-tab" onclick="setFilter('PERE',this)">PERE</button>
-        <button class="filter-tab" onclick="setFilter('PERO',this)">PERO</button>
-        <button class="filter-tab" onclick="setFilter('AV',this)">AV</button>
-        <button class="filter-tab" onclick="setFilter('Livret',this)">Livrets</button>
-      </div>
-    </div>
-    <div class="table-scroll">
-      <table>
-        <thead><tr>
-          <th onclick="sortBy('ticker')">Ticker ↕</th>
-          <th>Name</th><th>Account</th><th>Type</th>
-          <th onclick="sortBy('shares')" style="text-align:right">Shares ↕</th>
-          <th onclick="sortBy('avgPrice')" style="text-align:right">Avg Price ↕</th>
-          <th onclick="sortBy('livePrice')" style="text-align:right">Live Price ↕</th>
-          <th onclick="sortBy('value')" style="text-align:right">Value ↕</th>
-          <th onclick="sortBy('glEur')" style="text-align:right">G/L € ↕</th>
-          <th onclick="sortBy('glPct')" style="text-align:right">G/L % ↕</th>
-          <th style="text-align:right">Weight</th>
-        </tr></thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
+  <div class="bottom-bar">
+    <span class="bottom-label"><span class="live-dot" style="color:#00e5a0;"></span>live from local storage</span>
+    <button class="refresh-btn" onclick="loadAll()">↺ Refresh</button>
   </div>
 
 </div>
 <script>
-// ─── DATA ─────────────────────────────────────────────────────────────────────
-const STATIC_POSITIONS = [
-  { ticker:'WPEA.PA',          name:'Amundi PEA Monde',           account:'PEA',  type:'ETF',   shares:7706,    avgPrice:6.15 },
-  { ticker:'EUNL.DE',          name:'iShares Core MSCI World',    account:'CTO',  type:'ETF',   shares:213,     avgPrice:76.74 },
-  { ticker:'VUSA.AS',          name:'Vanguard S&P 500 UCITS',     account:'CTO',  type:'ETF',   shares:106,     avgPrice:71.57 },
-  { ticker:'AAPL',             name:'Apple Inc.',                  account:'CTO',  type:'Stock', shares:38,      avgPrice:131.20 },
-  { ticker:'AMD',              name:'Advanced Micro Devices',     account:'CTO',  type:'Stock', shares:20,      avgPrice:88.28 },
-  { ticker:'SAP.DE',           name:'SAP SE',                     account:'PEE',  type:'Stock', shares:212,     avgPrice:112 },
-  { ticker:'0P0000VQ1S.F',     name:'Avenir Actions Durables I',  account:'PEE',  type:'Fund',  shares:164,     avgPrice:60 },
-  { ticker:'0P0000VQ4Q.F',     name:'Avenir Actions Monde I',     account:'PEE',  type:'Fund',  shares:441,     avgPrice:74 },
-  { ticker:'0P00000PM8.F',     name:'Multipar Oblig Court Terme', account:'PERE', type:'Fund',  shares:3.298,   avgPrice:218 },
-  { ticker:'0P00000WLG.F',     name:'Vanguard Global Stock Idx',  account:'PERE', type:'Fund',  shares:15.93,   avgPrice:56.26 },
-  { ticker:'FGV4.F',           name:'Jupiter Global – European',  account:'PERE', type:'Fund',  shares:16.845,  avgPrice:52.71 },
-  { ticker:'0P00000FUS.F',     name:'Multipar Monétaire',         account:'PERE', type:'Fund',  shares:9.7479,  avgPrice:466.27 },
-  { ticker:'0P00000PM8.F_PERO',name:'Multipar Oblig Court Terme', account:'PERO', type:'Fund',  shares:1.937,   avgPrice:240.3, realTicker:'0P00000PM8.F' },
-  { ticker:'0P0001I2K9.F',     name:'Multipar Actions Durables',  account:'PERO', type:'Fund',  shares:4.753,   avgPrice:142.18 },
-  { ticker:'0P0001IRGI.F',     name:'Multipar Actions Zone Euro', account:'PERO', type:'Fund',  shares:1.3502,  avgPrice:104.42 },
-  { ticker:'0P00016FY4.F',     name:'Multipar Oblig Euro HY',     account:'PERO', type:'Fund',  shares:9.103,   avgPrice:22.38 },
-  { ticker:'0P00011HBM.F',     name:'Multipar Actions Emergents', account:'PERO', type:'Fund',  shares:0.97,    avgPrice:364.20 },
-  { ticker:'0P00000BFT.F',     name:'Multipar Actions Monde',     account:'PERO', type:'Fund',  shares:2.0723,  avgPrice:936.89 },
-  { ticker:'0P0001JHK1.F',     name:'Multipar ISR Actions Monde', account:'PERO', type:'Fund',  shares:17.5826, avgPrice:110.65 },
-];
+// ── date ─────────────────────────────────────────────────────────
+(function() {
+  const d = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('date-display').innerHTML =
+    days[d.getDay()] + '<br>' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+})();
 
-let CASH = parseFloat(localStorage.getItem('portfolio_cash') || '10');
-const FONDS_EUROS = [
-  { name:'Fonds Euros PERE', account:'PERE', value: parseFloat(localStorage.getItem('fe_value_PERE')||'8650'),  rate: parseFloat(localStorage.getItem('fe_rate_PERE')||'2.5') },
-  { name:'Fonds Euros PERO', account:'PERO', value: parseFloat(localStorage.getItem('fe_value_PERO')||'500'),   rate: parseFloat(localStorage.getItem('fe_rate_PERO')||'2.5') },
-  { name:'Fonds Euros AV',   account:'AV',   value: parseFloat(localStorage.getItem('fe_value_AV')  ||'1000'), rate: parseFloat(localStorage.getItem('fe_rate_AV')  ||'2.5') },
-];
-const LIVRETS = [
-  { name:'Livret A',    account:'Livret', value: parseFloat(localStorage.getItem('liv_value_A')   ||'23182'), rate: parseFloat(localStorage.getItem('liv_rate_A')   ||'1.7') },
-  { name:'Livret LDDS', account:'Livret', value: parseFloat(localStorage.getItem('liv_value_LDDS')||'12133'), rate: parseFloat(localStorage.getItem('liv_rate_LDDS')||'1.7') },
-];
-
-// French tax rules per account
-const TAX_RULES = {
-  PEA:    { label:'PS 17.2% (>5y)',       rate: (_)   => 0.172,                base:'gains' },
-  CTO:    { label:'PFU 30%',              rate: (_)   => 0.30,                 base:'gains' },
-  PEE:    { label:'PS 17.2% (>5y lock)',  rate: (_)   => 0.172,                base:'gains' },
-  PERE:   { label:'IR + PS at withdrawal',rate: (ir)  => (ir/100) + 0.172,     base:'gains' },
-  PERO:   { label:'IR + PS at withdrawal',rate: (ir)  => (ir/100) + 0.172,     base:'gains' },
-  AV:     { label:'7.5% IR + PS (>8y)',   rate: (_)   => 0.075 + 0.172,        base:'gains' },
-  Livret: { label:'Exonéré',              rate: (_)   => 0,                     base:'none'  },
-  Cash:   { label:'N/A',                  rate: (_)   => 0,                     base:'none'  },
-};
-
-// Approximate geographic breakdown per ticker (% of that position's value)
-const GEO_WEIGHTS = {
-  'WPEA.PA':           { 'North America':65, 'Europe':20, 'Asia-Pacific':10, 'Emerging':5 },
-  'EUNL.DE':           { 'North America':67, 'Europe':16, 'Asia-Pacific':12, 'Emerging':5 },
-  'VUSA.AS':           { 'North America':100 },
-  'AAPL':              { 'North America':100 },
-  'AMD':               { 'North America':100 },
-  'SAP.DE':            { 'Europe':100 },
-  '0P0000VQ1S.F':      { 'North America':55, 'Europe':25, 'Asia-Pacific':15, 'Emerging':5 },
-  '0P0000VQ4Q.F':      { 'North America':60, 'Europe':20, 'Asia-Pacific':15, 'Emerging':5 },
-  '0P00000PM8.F':      { 'Europe':80, 'North America':20 },
-  '0P00000WLG.F':      { 'North America':63, 'Europe':18, 'Asia-Pacific':13, 'Emerging':6 },
-  'FGV4.F':            { 'Europe':85, 'North America':10, 'Other':5 },
-  '0P00000FUS.F':      { 'Europe':100 },
-  '0P00000PM8.F_PERO': { 'Europe':80, 'North America':20 },
-  '0P0001I2K9.F':      { 'North America':55, 'Europe':25, 'Asia-Pacific':15, 'Emerging':5 },
-  '0P0001IRGI.F':      { 'Europe':100 },
-  '0P00016FY4.F':      { 'Europe':80, 'North America':15, 'Other':5 },
-  '0P00011HBM.F':      { 'Emerging':90, 'Asia-Pacific':10 },
-  '0P00000BFT.F':      { 'North America':60, 'Europe':25, 'Asia-Pacific':10, 'Other':5 },
-  '0P0001JHK1.F':      { 'North America':60, 'Europe':20, 'Asia-Pacific':15, 'Emerging':5 },
-};
-const SECTOR_WEIGHTS = {
-  'WPEA.PA':           { 'Technology':25, 'Financials':15, 'Healthcare':12, 'Consumer':12, 'Industrials':10, 'Other':26 },
-  'EUNL.DE':           { 'Technology':25, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':27 },
-  'VUSA.AS':           { 'Technology':32, 'Financials':13, 'Healthcare':11, 'Consumer':10, 'Industrials':8,  'Other':26 },
-  'AAPL':              { 'Technology':100 },
-  'AMD':               { 'Technology':100 },
-  'SAP.DE':            { 'Technology':100 },
-  '0P0000VQ1S.F':      { 'Technology':22, 'Financials':16, 'Healthcare':13, 'Consumer':12, 'Industrials':11, 'Other':26 },
-  '0P0000VQ4Q.F':      { 'Technology':24, 'Financials':14, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':29 },
-  '0P00000PM8.F':      { 'Bonds':100 },
-  '0P00000WLG.F':      { 'Technology':24, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':28 },
-  'FGV4.F':            { 'Financials':22, 'Healthcare':16, 'Consumer':15, 'Industrials':14, 'Technology':12, 'Other':21 },
-  '0P00000FUS.F':      { 'Money Market':100 },
-  '0P00000PM8.F_PERO': { 'Bonds':100 },
-  '0P0001I2K9.F':      { 'Technology':22, 'Financials':16, 'Healthcare':13, 'Consumer':12, 'Industrials':11, 'Other':26 },
-  '0P0001IRGI.F':      { 'Financials':25, 'Consumer':18, 'Industrials':15, 'Healthcare':14, 'Technology':12, 'Other':16 },
-  '0P00016FY4.F':      { 'Bonds':100 },
-  '0P00011HBM.F':      { 'Technology':20, 'Financials':18, 'Consumer':16, 'Materials':12, 'Energy':10, 'Other':24 },
-  '0P00000BFT.F':      { 'Technology':25, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':27 },
-  '0P0001JHK1.F':      { 'Technology':24, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':28 },
-};
-
-const MSCI_WORLD_ANNUAL = 0.12; // ~12%/y benchmark (5y avg)
-
-const ACCOUNT_COLORS = {
-  PEA:'#818cf8', CTO:'#38bdf8', PEE:'#f472b6',
-  PERE:'#fb923c', PERO:'#a78bfa', AV:'#34d399',
-  Livret:'#fbbf24', Cash:'#94a3b8'
-};
-
-const REFERENCE_VALUES = {
-  'WPEA.PA':           7706*6.15*(1+0.0625),
-  'EUNL.DE':           213*76.74*(1+0.5549),
-  'VUSA.AS':           106*71.57*(1+0.6502),
-  'AAPL':              38*131.20*(1+1.2463),
-  'AMD':               20*88.28*(1+3.768),
-  'SAP.DE':            212*112*(1+0.4343),
-  '0P0000VQ1S.F':      164*60*(1+0.603),
-  '0P0000VQ4Q.F':      441*74*(1+0.5966),
-  '0P00000PM8.F':      3.298*218*(1+0.0076),
-  '0P00000WLG.F':      15.93*56.26*(1+0.04),
-  'FGV4.F':            16.845*52.71*(1+0.072),
-  '0P00000FUS.F':      9.7479*466.27*(1+0.0056),
-  '0P00000PM8.F_PERO': 1.937*240.3*(1-0.089),
-  '0P0001I2K9.F':      4.753*142.18*(1+0.04),
-  '0P0001IRGI.F':      1.3502*104.42*(1+0.002),
-  '0P00016FY4.F':      9.103*22.38*(1+0.1506),
-  '0P00011HBM.F':      0.97*364.20*(1+0.14),
-  '0P00000BFT.F':      2.0723*936.89*(1+0.0188),
-  '0P0001JHK1.F':      17.5826*110.65*(1+0.0198),
-};
-
-let prices = {};
-let currentFilter = 'ALL';
-let sortKey = 'value';
-let sortDir = -1;
-let benchScope = 'ALL';
-
-// ─── MANUAL POSITION VALUES ───────────────────────────────────────────────────
-// Tickers that get live prices — never manually edited
-const LIVE_TICKERS = new Set(['WPEA.PA','EUNL.DE','VUSA.AS','AAPL','AMD','SAP.DE']);
-
-// Load manual values from localStorage (keyed by ticker)
-function loadManualValues() {
-  try { return JSON.parse(localStorage.getItem('lukas_manual_values') || '{}'); } catch { return {}; }
+// ── helpers ──────────────────────────────────────────────────────
+function fmt(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return new Intl.NumberFormat('fr-FR', {style:'currency', currency:'EUR', maximumFractionDigits:0}).format(n);
 }
-function saveManualValuesToStorage(mv) {
-  localStorage.setItem('lukas_manual_values', JSON.stringify(mv));
+function safeGet(key) { try { return localStorage.getItem(key); } catch(e) { return null; } }
+function safeParse(v) { try { return v ? JSON.parse(v) : null; } catch(e) { return null; } }
+function statHTML(label, value, big) {
+  return `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value${big?' big':''}">${value}</div></div>`;
 }
-
-// ─── DEBUG MODE ───────────────────────────────────────────────────────────────
-let DEBUG = false;
-function toggleDebug() {
-  DEBUG = !DEBUG;
-  const btn = document.getElementById('debugBtn');
-  if (DEBUG) {
-    btn.style.background = 'rgba(245,158,11,0.3)';
-    btn.style.color = '#f59e0b';
-    console.clear();
-    console.log('%c[LUKAS Flow] DEBUG MODE ON', 'color:#f59e0b;font-weight:bold;font-size:14px');
-    console.log('%cManual values in localStorage:', 'color:#9ca3af');
-    console.log(loadManualValues());
-    console.log('%cFonds Euros values:', 'color:#9ca3af');
-    FONDS_EUROS.forEach(f => console.log(` ${f.name}: ${f.value} € (rate ${f.rate}%)`));
-    console.log('%cLivrets values:', 'color:#9ca3af');
-    LIVRETS.forEach(l => console.log(` ${l.name}: ${l.value} € (rate ${l.rate}%)`));
-    console.log('%cCash:', 'color:#9ca3af', CASH);
-    render();
-  } else {
-    btn.style.background = '';
-    btn.style.color = '';
-    console.log('%c[LUKAS Flow] Debug mode off', 'color:#6b7280');
-  }
-}
-
-// Returns current value for a position: live price for known-good tickers, manual if set, reference as last resort
-function getPositionValue(pos) {
-  const key = pos.realTicker || pos.ticker;
-  // Only trust live prices for tickers we know Yahoo serves reliably
-  if (LIVE_TICKERS.has(pos.ticker)) {
-    const live = getLivePrice(pos);
-    if (live !== null) {
-      if (DEBUG) console.log(`%c[LIVE]   ${pos.ticker}: ${(live * pos.shares).toFixed(2)} € (price: ${live.toFixed(4)})`, 'color:#22c55e');
-      return live * pos.shares;
-    }
-  }
-  // For everything else: manual value takes priority
-  const mv = loadManualValues();
-  if (mv[key] && mv[key].value !== undefined) {
-    if (DEBUG) console.log(`%c[MANUAL] ${pos.ticker}: ${mv[key].value.toFixed(2)} € (saved: ${mv[key].updatedAt?.slice(0,10)||'?'})`, 'color:#00d4aa');
-    return mv[key].value;
-  }
-  // Last resort: reference value
-  const ref = REFERENCE_VALUES[pos.ticker] || pos.avgPrice * pos.shares;
-  if (DEBUG) console.log(`%c[REF]    ${pos.ticker}: ${ref.toFixed(2)} € (hardcoded fallback)`, 'color:#ef4444');
-  return ref;
-}
-
-function getStaleness(ticker) {
-  const mv = loadManualValues();
-  if (!mv[ticker] || !mv[ticker].updatedAt) return 'never';
-  const days = (Date.now() - new Date(mv[ticker].updatedAt)) / (1000*60*60*24);
-  if (days < 7)  return 'fresh';
-  if (days < 30) return 'warn';
-  return 'old';
-}
-
-function getStalenessLabel(ticker) {
-  const mv = loadManualValues();
-  if (!mv[ticker] || !mv[ticker].updatedAt) return { cls:'stale-never', label:'Never updated' };
-  const days = Math.floor((Date.now() - new Date(mv[ticker].updatedAt)) / (1000*60*60*24));
-  if (days === 0) return { cls:'stale-fresh', label:'Updated today' };
-  if (days < 7)  return { cls:'stale-fresh', label:`${days}d ago` };
-  if (days < 30) return { cls:'stale-warn',  label:`${days}d ago` };
-  return { cls:'stale-old', label:`${days}d ago ⚠` };
-}
-
-// ─── UPDATE MODAL ─────────────────────────────────────────────────────────────
-let pendingManualChanges = {};
-
-function openUpdateModal() {
-  pendingManualChanges = {};
-  const mv = loadManualValues();
-
-  // Group manual positions by account
-  const manualPositions = STATIC_POSITIONS.filter(p => !LIVE_TICKERS.has(p.ticker));
-  const livePositions   = STATIC_POSITIONS.filter(p =>  LIVE_TICKERS.has(p.ticker));
-
-  // Also include Fonds Euros, Livrets, Cash as manually editable
-  const extraManual = [
-    ...FONDS_EUROS.map(f => ({ ticker: 'FE_'+f.account, name: f.name, account: f.account, type:'Fonds €', _isFondsEuros: true, _ref: f })),
-    ...LIVRETS.map(l    => ({ ticker: 'LV_'+l.name.replace(/ /g,''), name: l.name, account: l.account, type:'Livret', _isLivret: true, _ref: l })),
-    { ticker:'CASH', name:'Cash', account:'Cash', type:'Cash', _isCash:true },
-  ];
-
-  // Section: Manual funds grouped by account
-  const byAccount = {};
-  [...manualPositions, ...extraManual].forEach(p => {
-    if (!byAccount[p.account]) byAccount[p.account] = [];
-    byAccount[p.account].push(p);
-  });
-
-  let html = '';
-
-  // Manual positions section
-  html += `<div class="update-section-head">Fund Positions (Manual)</div>`;
-  Object.entries(byAccount).forEach(([acc, positions]) => {
-    const color = {'PEE':'#f472b6','PERE':'#fb923c','PERO':'#a78bfa','AV':'#34d399','Livret':'#fbbf24','Cash':'#94a3b8'}[acc]||'#888';
-    positions.forEach(p => {
-      const key = p.realTicker || p.ticker;  // consistent with getPositionValue lookup
-      let currentVal;
-      if (p._isCash) currentVal = CASH;
-      else if (p._isFondsEuros) currentVal = p._ref.value;
-      else if (p._isLivret) currentVal = p._ref.value;
-      else {
-        const stored = mv[key];
-        currentVal = stored ? stored.value : (REFERENCE_VALUES[p.realTicker||p.ticker] || p.avgPrice * p.shares);
-      }
-      const sl = (p._isCash || p._isFondsEuros || p._isLivret) ? { cls:'stale-fresh', label:'Auto-tracked' } : getStalenessLabel(key);
-      html += `<div class="update-row" data-ticker="${key}">
-        <div>
-          <div class="update-name">${p.name}</div>
-          <div class="update-account" style="color:${color}">${acc} · ${p.type}</div>
-        </div>
-        <span class="update-staleness ${sl.cls}">${sl.label}</span>
-        <input class="update-input" type="number" step="0.01" value="${currentVal.toFixed(2)}"
-          data-ticker="${key}" data-original="${currentVal.toFixed(2)}"
-          data-special="${p._isCash?'cash':p._isFondsEuros?'fonds'+FONDS_EUROS.indexOf(p._ref):p._isLivret?'livret'+LIVRETS.indexOf(p._ref):''}"
-          oninput="onUpdateInput(this)">
-        <span style="color:var(--muted);font-size:11px">€</span>
-      </div>`;
-    });
-  });
-
-  // Live tickers section (read-only reference)
-  html += `<div class="update-section-head" style="margin-top:16px">Live Tickers (Auto-updated — read only)</div>`;
-  livePositions.forEach(p => {
-    const live = getLivePrice(p);
-    const val = live !== null ? live * p.shares : REFERENCE_VALUES[p.ticker];
-    const liveStr = live !== null ? `<span style="color:var(--gain)">● Live</span>` : `<span style="color:var(--muted)">● Fallback</span>`;
-    html += `<div class="update-row">
-      <div>
-        <div class="update-name">${p.name}</div>
-        <div class="update-account" style="color:${ACCOUNT_COLORS[p.account]}">${p.account} · ${p.type}</div>
-      </div>
-      ${liveStr}
-      <input class="update-input" type="number" value="${val.toFixed(2)}" disabled style="opacity:0.4;cursor:not-allowed">
-      <span style="color:var(--muted);font-size:11px">€</span>
-    </div>`;
-  });
-
-  document.getElementById('updateModalBody').innerHTML = html;
-
-  // Last sync info
-  const allUpdates = Object.values(mv).map(v => v.updatedAt).filter(Boolean).sort().reverse();
-  document.getElementById('updateLastSync').textContent = allUpdates.length
-    ? `Last manual update: ${new Date(allUpdates[0]).toLocaleDateString('fr-FR')} at ${new Date(allUpdates[0]).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`
-    : 'No manual updates recorded yet';
-
-  document.getElementById('update-modal').classList.add('open');
-}
-
-function closeUpdateModal() {
-  document.getElementById('update-modal').classList.remove('open');
-  pendingManualChanges = {};
-}
-
-function onUpdateInput(el) {
-  const original = parseFloat(el.dataset.original);
-  const current  = parseFloat(el.value);
-  el.classList.toggle('changed', Math.abs(current - original) > 0.001);
-  pendingManualChanges[el.dataset.ticker] = { value: current, special: el.dataset.special };
-}
-
-function saveManualUpdates() {
-  const mv = loadManualValues();
-  const now = new Date().toISOString();
-
-  Object.entries(pendingManualChanges).forEach(([ticker, change]) => {
-    const val = change.value;
-    const special = change.special;
-
-    if (special === 'cash') {
-      CASH = val;
-      localStorage.setItem('portfolio_cash', val);
-    } else if (special.startsWith('fonds')) {
-      const idx = parseInt(special.replace('fonds',''));
-      FONDS_EUROS[idx].value = val;
-      localStorage.setItem(['fe_value_PERE','fe_value_PERO','fe_value_AV'][idx], val);
-    } else if (special.startsWith('livret')) {
-      const idx = parseInt(special.replace('livret',''));
-      LIVRETS[idx].value = val;
-      localStorage.setItem(['liv_value_A','liv_value_LDDS'][idx], val);
-    } else {
-      mv[ticker] = { value: val, updatedAt: now };
-    }
-  });
-
-  saveManualValuesToStorage(mv);
-  pendingManualChanges = {};
-  closeUpdateModal();
-  render();
-  debouncedCloudSave();
-}
-
-function markAllReviewed() {
-  const mv = loadManualValues();
-  const now = new Date().toISOString();
-  STATIC_POSITIONS.filter(p => !LIVE_TICKERS.has(p.ticker)).forEach(p => {
-    const key = p.realTicker || p.ticker;
-    if (!mv[key]) mv[key] = { value: REFERENCE_VALUES[p.ticker] || p.avgPrice * p.shares, updatedAt: now };
-    else mv[key].updatedAt = now;
-  });
-  saveManualValuesToStorage(mv);
-  // Refresh staleness badges without closing
-  openUpdateModal();
-}
-
-// ─── YAHOO FINANCE ────────────────────────────────────────────────────────────
-async function fetchPrice(ticker) {
-  const t = ticker.endsWith('_PERO') ? ticker.replace('_PERO','') : ticker;
+function noData(msg) { return `<div class="no-data">${msg||'No data yet'}</div>`; }
+function fmtAgo(iso) {
+  if (!iso) return '';
   try {
-    const res = await fetch(`https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=1d`, { headers:{'Accept':'application/json'} });
-    if (!res.ok) throw new Error();
-    const json = await res.json();
-    const meta = json?.chart?.result?.[0]?.meta;
-    if (!meta) throw new Error();
-    return { price: meta.regularMarketPrice || meta.previousClose, currency: meta.currency || 'EUR' };
-  } catch { return null; }
-}
-
-async function fetchAllPrices() {
-  document.getElementById('refreshBtn').disabled = true;
-  setStatus('loading','Fetching live prices…');
-  // Only fetch for tickers we actually trust live prices for
-  const tickers = [...new Set(STATIC_POSITIONS
-    .filter(p => LIVE_TICKERS.has(p.ticker))
-    .map(p => p.realTicker || p.ticker))];
-  let errors = 0;
-  for (let i = 0; i < tickers.length; i += 4) {
-    const batch = tickers.slice(i,i+4);
-    const results = await Promise.all(batch.map(fetchPrice));
-    batch.forEach((t,idx) => { if (results[idx]) prices[t]=results[idx]; else errors++; });
-    if (i+4 < tickers.length) await new Promise(r=>setTimeout(r,300));
-  }
-  const eur = await fetchPrice('EURUSD=X');
-  if (eur) prices['EUR_USD'] = eur;
-  document.getElementById('refreshBtn').disabled = false;
-  const now = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-  setStatus(errors>0?'error':'live', errors>0?`Updated ${now} — ${errors} failed`:`Live — ${now}`);
-  if (DEBUG) {
-    console.log('%c[LUKAS Flow] Prices after fetch:', 'color:#f59e0b;font-weight:bold');
-    console.log(prices);
-  }
-  render();
-}
-
-function setStatus(s,t) {
-  document.getElementById('statusDot').className = `status-dot dot-${s==='live'?'live':s==='loading'?'loading':'error'}`;
-  document.getElementById('statusText').textContent = t;
-}
-
-function getLivePrice(pos) {
-  const data = prices[pos.realTicker||pos.ticker];
-  if (!data) return null;
-  let p = data.price;
-  if (data.currency==='USD' && prices['EUR_USD']) p /= prices['EUR_USD'].price;
-  return p;
-}
-
-function fmt(n,d=0) {
-  if (n==null||isNaN(n)) return '—';
-  return new Intl.NumberFormat('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d}).format(n)+' €';
-}
-function fmtPct(n) { return n==null||isNaN(n)?'—':(n>=0?'+':'')+n.toFixed(2)+'%'; }
-
-// ─── MAIN RENDER ──────────────────────────────────────────────────────────────
-function render() {
-  const irBracket = parseInt(document.getElementById('taxBracket').value);
-
-  const rows = STATIC_POSITIONS.map(pos => {
-    const live = LIVE_TICKERS.has(pos.ticker) ? getLivePrice(pos) : null;
-    const value = getPositionValue(pos);
-    const cost = pos.avgPrice*pos.shares;
-    const glEur = value-cost;
-    const isManual = !LIVE_TICKERS.has(pos.ticker);
-    const staleness = isManual ? getStaleness(pos.realTicker||pos.ticker) : 'live';
-    return { ...pos, livePrice:live, value, cost, glEur, glPct:(glEur/cost)*100, isManual, staleness };
-  });
-
-  const fondsRows = FONDS_EUROS.map(f => ({
-    ticker:f.name.replace(/ /g,'_'), name:f.name, account:f.account, type:'Fonds €',
-    shares:1, avgPrice:f.value, livePrice:f.value, value:f.value, cost:f.value, glEur:0, glPct:0, rate:f.rate
-  }));
-  const livretRows = LIVRETS.map(l => ({
-    ticker:l.name.replace(/ /g,'_'), name:l.name, account:l.account, type:'Livret',
-    shares:1, avgPrice:l.value, livePrice:l.value, value:l.value, cost:l.value, glEur:0, glPct:0, rate:l.rate
-  }));
-  const cashRow = [{ ticker:'CASH', name:'Cash', account:'Cash', type:'Cash', shares:1, avgPrice:CASH, livePrice:CASH, value:CASH, cost:CASH, glEur:0, glPct:0 }];
-  const allRows = [...rows, ...fondsRows, ...livretRows, ...cashRow];
-
-  const totalValue = allRows.reduce((s,r)=>s+r.value,0);
-  const totalCost  = allRows.reduce((s,r)=>s+r.cost,0);
-  const totalGL    = rows.reduce((s,r)=>s+r.glEur,0);
-  const totalGLPct = (totalGL/totalCost)*100;
-
-  // KPIs
-  document.getElementById('kpiTotal').textContent = fmt(totalValue);
-  document.getElementById('kpiTotalSub').textContent = `cost basis: ${fmt(totalCost)}`;
-  const glEl = document.getElementById('kpiGL');
-  glEl.textContent = (totalGL>=0?'+':'')+fmt(totalGL);
-  glEl.className = `kpi-value ${totalGL>=0?'gain':'loss'}`;
-  document.getElementById('kpiGLSub').textContent = `${fmtPct(totalGLPct)} on invested capital`;
-  document.getElementById('kpiInvest').textContent = fmt(rows.filter(r=>['PEA','CTO'].includes(r.account)).reduce((s,r)=>s+r.value,0));
-  document.getElementById('kpiSavings').textContent = fmt([...fondsRows,...livretRows,...cashRow].reduce((s,r)=>s+r.value,0));
-
-  // Account cards
-  const accounts = ['PEA','CTO','PEE','PERE','PERO','AV','Livret','Cash'];
-  document.getElementById('accountsRow').innerHTML = accounts.map(acc => {
-    const ar = allRows.filter(r=>r.account===acc);
-    const val=ar.reduce((s,r)=>s+r.value,0), gl=ar.reduce((s,r)=>s+r.glEur,0), cost=ar.reduce((s,r)=>s+r.cost,0);
-    const color=ACCOUNT_COLORS[acc], glClass=gl>0?'gain-cell':gl<0?'loss-cell':'neutral-cell';
-    if (acc==='Cash') return `<div class="account-card"><div class="account-label" style="color:${color}">Cash</div><input class="cash-input" type="number" value="${CASH}" onchange="updateCash(this.value)"><div class="account-gl neutral-cell">manual</div></div>`;
-    return `<div class="account-card"><div class="account-label" style="color:${color}">${acc}</div><div class="account-value">${fmt(val)}</div><div class="account-gl ${glClass}">${gl!==0?(gl>=0?'+':'')+fmt(gl,0)+' ('+fmtPct(gl/cost*100)+')':'stable'}</div></div>`;
-  }).join('');
-
-  // Donuts
-  const acctTotals = {}; accounts.forEach(a=>{ acctTotals[a]=allRows.filter(r=>r.account===a).reduce((s,r)=>s+r.value,0); });
-  const typeTotals = {}; allRows.forEach(r=>{ typeTotals[r.type]=(typeTotals[r.type]||0)+r.value; });
-  renderDonut('chartAccount', accounts.map(a=>acctTotals[a]||0), accounts, accounts.map(a=>ACCOUNT_COLORS[a]));
-  renderDonut('chartType', Object.values(typeTotals), Object.keys(typeTotals), ['#38bdf8','#f472b6','#fbbf24','#94a3b8','#34d399','#818cf8','#fb923c']);
-
-  // G/L bar
-  renderBarGL('chartGL', [...rows].sort((a,b)=>Math.abs(b.glEur)-Math.abs(a.glEur)).slice(0,12));
-
-  // New panels
-  renderTax(rows, fondsRows, irBracket);
-  renderIncome(fondsRows, livretRows);
-  renderBenchmark(rows);
-  renderHeatmaps(rows);
-  renderTable(allRows, totalValue);
-
-  // Snapshot for Life Hub tile
-  localStorage.setItem('lukas_flow_snapshot', JSON.stringify({
-    totalValue, totalGL, totalGLPct,
-    updatedAt: new Date().toISOString()
-  }));
-}
-
-// ─── TAX PANEL ────────────────────────────────────────────────────────────────
-function renderTax(rows, fondsRows, ir) {
-  const accounts = ['PEA','CTO','PEE','PERE','PERO','AV'];
-  let totalTax=0, html='';
-  accounts.forEach(acc => {
-    const rule = TAX_RULES[acc];
-    const rate = rule.rate(ir);
-    const accRows = [...rows,...fondsRows].filter(r=>r.account===acc);
-    const totalGain = accRows.reduce((s,r)=>s+Math.max(0,r.glEur),0);
-    if (totalGain<=0) return;
-    const tax = totalGain*rate;
-    totalTax += tax;
-    html += `<tr>
-      <td style="color:${ACCOUNT_COLORS[acc]};font-weight:600">${acc}</td>
-      <td class="gain-cell">${fmt(totalGain)}</td>
-      <td><span class="tax-rate-badge">${(rate*100).toFixed(1)}%</span> <span style="color:var(--muted);font-size:10px">${rule.label}</span></td>
-      <td style="color:#fca5a5;font-weight:600">${fmt(tax)}</td></tr>`;
-    if (acc==='CTO') {
-      rows.filter(r=>r.account==='CTO'&&r.glEur>0).forEach(r=>{
-        html+=`<tr style="background:rgba(255,255,255,0.01)"><td style="padding-left:22px;color:var(--muted);font-size:11px">↳ ${r.ticker.replace('.DE','').replace('.AS','')}</td><td class="gain-cell" style="font-size:11px">${fmt(r.glEur)}</td><td style="font-size:10px;color:var(--muted)">PFU 30%</td><td style="color:#fca5a5;font-size:11px">${fmt(r.glEur*0.30)}</td></tr>`;
-      });
+    const saved = new Date(iso);
+    const now = new Date();
+    const savedDay = new Date(saved.getFullYear(), saved.getMonth(), saved.getDate());
+    const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((todayDay - savedDay) / 86400000);
+    if (diffDays === 0) {
+      const hh = String(saved.getHours()).padStart(2,'0');
+      const mm = String(saved.getMinutes()).padStart(2,'0');
+      return `Last logged: today ${hh}:${mm}`;
     }
-  });
-  html+=`<tr style="border-top:1px solid var(--border)"><td colspan="2" style="color:var(--muted);font-size:11px;padding-top:8px">Livrets A/LDDS + Cash</td><td><span class="tax-rate-badge">0%</span> <span style="color:var(--muted);font-size:10px">Exonéré</span></td><td style="color:var(--muted);font-size:11px">—</td></tr>`;
-  document.getElementById('taxTableBody').innerHTML = html;
-  document.getElementById('taxTotal').textContent = fmt(totalTax);
-  document.getElementById('taxNote').innerHTML =
-    `<strong style="color:var(--chart-label)">Notes:</strong> PEA tax if withdrawn (>5y assumed). PEE assumes >5y lock (IR exempt). PERE/PERO: gain portion only — full contributions also taxed at IR ${ir}% on withdrawal. AV: >8y, €4,600 abatement applied. Estimates only.`;
+    if (diffDays === 1) return 'Last logged: yesterday';
+    return `Last logged: ${diffDays} days ago`;
+  } catch(e) { return ''; }
 }
 
-// ─── INCOME PANEL ─────────────────────────────────────────────────────────────
-function renderIncome(fondsRows, livretRows) {
-  let total=0, html='';
-  livretRows.forEach((l,i) => {
-    const key=i===0?'liv_rate_A':'liv_rate_LDDS';
-    const income=l.value*(l.rate/100);
-    total+=income;
-    html+=`<div class="income-row"><div><div class="income-name">${l.name}</div><div class="income-rate-line"><input class="income-edit" type="number" step="0.1" value="${l.rate}" onchange="updateRate('${key}',this.value,${i},'livret')">% / an</div></div><div class="income-amount">${fmt(income)}</div></div>`;
-  });
-  fondsRows.forEach((f,i) => {
-    const keys=['fe_rate_PERE','fe_rate_PERO','fe_rate_AV'];
-    const income=f.value*(f.rate/100);
-    total+=income;
-    html+=`<div class="income-row"><div><div class="income-name">${f.name}</div><div class="income-rate-line"><input class="income-edit" type="number" step="0.1" value="${f.rate}" onchange="updateRate('${keys[i]}',this.value,${i},'fonds')">% / an (est.)</div></div><div class="income-amount">${fmt(income)}</div></div>`;
-  });
-  html+=`<div class="income-row" style="opacity:0.5"><div><div class="income-name">Dividendes (AAPL, SAP…)</div><div class="income-rate-line">Négligeable / réinvesti</div></div><div class="income-amount" style="color:var(--muted)">~0 €</div></div>`;
-  document.getElementById('incomeTotal').textContent = fmt(total)+' / an';
-  document.getElementById('incomeRows').innerHTML = html;
+// ── HAPTIC FEEDBACK ──────────────────────────────────────────────
+function hap() {
+  if (navigator.vibrate) navigator.vibrate(8);
 }
 
-function updateRate(key,val,idx,type) {
-  const rate=parseFloat(val)||0;
-  localStorage.setItem(key,rate);
-  if (type==='livret') LIVRETS[idx].rate=rate;
-  else FONDS_EUROS[idx].rate=rate;
-  render();
-  debouncedCloudSave();
+// ── THEME TOGGLE ─────────────────────────────────────────────────
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('lifehub_theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = isLight ? '☀️' : '🌙';
 }
 
-// ─── BENCHMARK ────────────────────────────────────────────────────────────────
-function setBenchScope(scope,el) {
-  benchScope=scope;
-  document.querySelectorAll('.bench-tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  render();
-}
-
-function renderBenchmark(rows) {
-  const scopeRows = benchScope==='ALL' ? rows : rows.filter(r=>r.account===benchScope);
-  if (!scopeRows.length) return;
-  const labels = scopeRows.map(r=>r.ticker.replace(/\.(PA|DE|AS|F)$/,'').replace('_PERO',''));
-  const posR = scopeRows.map(r=>r.glPct);
-  const msciR = scopeRows.map(r=>{
-    if (r.glPct<=0) return 0;
-    const yrs=Math.log(1+r.glPct/100)/Math.log(1+MSCI_WORLD_ANNUAL);
-    return (Math.pow(1+MSCI_WORLD_ANNUAL,yrs)-1)*100;
-  });
-  const ctx=document.getElementById('chartBench').getContext('2d');
-  if (window._cBench) window._cBench.destroy();
-  window._cBench=new Chart(ctx,{
-    type:'bar',
-    data:{ labels, datasets:[
-      { label:'Your return %', data:posR, backgroundColor:posR.map((v,i)=>v>=msciR[i]?'rgba(34,197,94,0.75)':'rgba(239,68,68,0.75)'), borderRadius:4 },
-      { label:'MSCI World est.', data:msciR, backgroundColor:'rgba(245,158,11,0.4)', borderRadius:4 }
-    ]},
-    options:{
-      plugins:{
-        legend:{ labels:{ color:'#d1d5db', font:{ family:'DM Mono', size:12 }, boxWidth:10 }},
-        tooltip:{ callbacks:{ label:c=>` ${c.dataset.label}: ${c.raw.toFixed(1)}%` }}
-      },
-      scales:{
-        x:{ ticks:{ color:'#d1d5db', font:{ family:'DM Mono', size:11 }}, grid:{ color:'#22272f' }},
-        y:{ ticks:{ color:'#d1d5db', font:{ family:'DM Mono', size:11 }, callback:v=>v.toFixed(0)+'%'}, grid:{ color:'#22272f' }}
-      }
-    }
-  });
-  const beaters=scopeRows.filter((r,i)=>r.glPct>=msciR[i]).length;
-  const scopeReturn=scopeRows.reduce((s,r)=>s+r.glEur,0)/scopeRows.reduce((s,r)=>s+r.cost,0)*100;
-  document.getElementById('benchNote').textContent=`${beaters}/${scopeRows.length} positions beat MSCI World (same implied period). Scope return: ${scopeReturn.toFixed(1)}%. MSCI ≈ 12%/y used.`;
-}
-
-// ─── HEATMAPS ─────────────────────────────────────────────────────────────────
-function renderHeatmaps(rows) {
-  const geoT={}, secT={};
-  rows.forEach(r=>{
-    const key=r.realTicker||r.ticker;
-    const geo=GEO_WEIGHTS[key], sec=SECTOR_WEIGHTS[key];
-    if (geo) Object.entries(geo).forEach(([k,p])=>{ geoT[k]=(geoT[k]||0)+r.value*p/100; });
-    if (sec) Object.entries(sec).forEach(([k,p])=>{ secT[k]=(secT[k]||0)+r.value*p/100; });
-  });
-  const invTotal=rows.reduce((s,r)=>s+r.value,0);
-  const GC={'North America':'#38bdf8','Europe':'#818cf8','Asia-Pacific':'#34d399','Emerging':'#fb923c','Other':'#94a3b8'};
-  const SC={'Technology':'#38bdf8','Financials':'#818cf8','Healthcare':'#34d399','Consumer':'#f472b6','Industrials':'#fb923c','Bonds':'#fbbf24','Money Market':'#94a3b8','Energy':'#f59e0b','Materials':'#a78bfa','Other':'#6b7280'};
-  function mkBar(totals,colors) {
-    const sorted=Object.entries(totals).sort((a,b)=>b[1]-a[1]);
-    const max=sorted[0]?.[1]||1;
-    return sorted.map(([lbl,val])=>{
-      const pct=(val/invTotal*100).toFixed(1), bw=(val/max*100).toFixed(1), col=colors[lbl]||'#6b7280';
-      return `<div class="heatmap-bar-row"><div class="heatmap-label" style="color:${col}">${lbl}</div><div class="heatmap-track"><div class="heatmap-fill" style="width:${bw}%;background:${col}"></div></div><div class="heatmap-pct">${pct}%</div></div>`;
-    }).join('');
+(function initTheme() {
+  const saved = localStorage.getItem('lifehub_theme');
+  if (saved === 'light') {
+    document.body.classList.add('light');
+    const btn = document.getElementById('theme-btn');
+    if (btn) btn.textContent = '☀️';
   }
-  document.getElementById('geoHeatmap').innerHTML=mkBar(geoT,GC);
-  document.getElementById('sectorHeatmap').innerHTML=mkBar(secT,SC);
+})();
+
+// ── SHIMMER HELPERS ───────────────────────────────────────────────
+function setLoading(on) {
+  document.querySelectorAll('.tile').forEach(t => t.classList.toggle('loading', on));
 }
 
-// ─── DONUTS & BAR ────────────────────────────────────────────────────────────
-function renderDonut(id,data,labels,colors) {
-  const ctx=document.getElementById(id).getContext('2d');
-  if (window['_c'+id]) window['_c'+id].destroy();
-  window['_c'+id]=new Chart(ctx,{
-    type:'doughnut',
-    data:{labels,datasets:[{data,backgroundColor:colors,borderColor:'#111418',borderWidth:2}]},
-    options:{ cutout:'68%', plugins:{
-      legend:{position:'right',labels:{color:'#d1d5db',font:{family:'DM Mono',size:12},boxWidth:10,padding:8}},
-      tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)} (${(c.raw/c.dataset.data.reduce((a,b)=>a+b,0)*100).toFixed(1)}%)`}}
-    }}
-  });
-}
-
-function renderBarGL(id,rows) {
-  const ctx=document.getElementById(id).getContext('2d');
-  if (window['_c'+id]) window['_c'+id].destroy();
-  const labels=rows.map(r=>r.ticker.replace(/\.(PA|DE|AS|F)$/,''));
-  const data=rows.map(r=>r.glEur);
-  window['_c'+id]=new Chart(ctx,{
-    type:'bar',
-    data:{labels,datasets:[{data,backgroundColor:data.map(v=>v>=0?'rgba(34,197,94,0.75)':'rgba(239,68,68,0.75)'),borderRadius:4}]},
-    options:{
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` G/L: ${fmt(c.raw)}`}}},
-      scales:{
-        x:{ticks:{color:'#d1d5db',font:{family:'DM Mono',size:11}},grid:{color:'#22272f'}},
-        y:{ticks:{color:'#d1d5db',font:{family:'DM Mono',size:11},callback:v=>fmt(v)},grid:{color:'#22272f'}}
-      }
-    }
-  });
-}
-
-// ─── TABLE ────────────────────────────────────────────────────────────────────
-function renderTable(allRows,totalValue) {
-  const filtered=currentFilter==='ALL'?allRows:allRows.filter(r=>r.account===currentFilter);
-  const sorted=[...filtered].sort((a,b)=>{
-    const va=a[sortKey]??0, vb=b[sortKey]??0;
-    if (typeof va==='string') return sortDir*va.localeCompare(vb);
-    return sortDir*(va-vb);
-  });
-  document.getElementById('tableBody').innerHTML=sorted.map(row=>{
-    const live=row.livePrice;
-    const glClass=row.glEur>0?'gain-cell':row.glEur<0?'loss-cell':'neutral-cell';
-    const wt=totalValue>0?(row.value/totalValue*100):0;
-    const barW=Math.max(2,Math.min(80,wt*3));
-    const barColor=ACCOUNT_COLORS[row.account]||'#888';
-    const typeBadge={'ETF':'type-etf','Stock':'type-stock','Fund':'type-fund','Fonds €':'type-fund','Livret':'type-livret','Cash':'type-cash'}[row.type]||'type-fund';
-    const accColor=ACCOUNT_COLORS[row.account]||'#888';
-    if (row.ticker==='CASH') return `<tr><td class="ticker">CASH</td><td class="name-cell">Cash</td><td><span style="color:${accColor}">Cash</span></td><td><span class="badge type-cash">Cash</span></td><td style="text-align:right">—</td><td style="text-align:right">—</td><td style="text-align:right">—</td><td style="text-align:right">${fmt(row.value)}</td><td class="neutral-cell" style="text-align:right">—</td><td class="neutral-cell" style="text-align:right">—</td><td style="text-align:right"><span class="sparkbar" style="background:${barColor};width:${barW}px"></span> ${wt.toFixed(1)}%</td></tr>`;
-
-    const staleColor = {'fresh':'#22c55e','warn':'#f59e0b','old':'#ef4444','never':'#6b7280','live':'#00d4aa'}[row.staleness||'live'];
-    const staleTitle = {'fresh':'Manually updated recently','warn':'Manual update >7 days ago','old':'Manual update >30 days ago ⚠','never':'Never manually updated','live':'Live price'}[row.staleness||'live'];
-    const liveStr = row.livePrice !== null
-      ? `<span style="color:var(--gain)">${row.livePrice>=1?row.livePrice.toFixed(2):row.livePrice.toFixed(4)} €</span>`
-      : row.isManual
-        ? `<span style="color:var(--muted);font-size:10px">manual</span>`
-        : `<span class="price-loading">…</span>`;
-
-    return `<tr>
-      <td class="ticker">${row.ticker.replace('_PERO','')}</td>
-      <td class="name-cell" title="${row.name}">${row.name}</td>
-      <td><span style="color:${accColor}">${row.account}</span></td>
-      <td><span class="badge ${typeBadge}">${row.type}</span></td>
-      <td style="text-align:right">${row.shares%1!==0?row.shares.toFixed(4):row.shares.toLocaleString('fr-FR')}</td>
-      <td style="text-align:right">${row.avgPrice.toFixed(2)} €</td>
-      <td style="text-align:right">${liveStr}</td>
-      <td style="text-align:right">${fmt(row.value)}</td>
-      <td style="text-align:right" class="${glClass}">${row.glEur!==0?(row.glEur>=0?'+':'')+fmt(row.glEur,0):'—'}</td>
-      <td style="text-align:right" class="${glClass}">${row.glPct!==0?fmtPct(row.glPct):'—'}</td>
-      <td style="text-align:right">
-        <span title="${staleTitle}" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${staleColor};margin-right:4px;vertical-align:middle"></span>
-        <span class="sparkbar" style="background:${barColor};width:${barW}px"></span> ${wt.toFixed(1)}%
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-function setFilter(f,el) { currentFilter=f; document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); render(); }
-function sortBy(key) { if(sortKey===key) sortDir*=-1; else{sortKey=key;sortDir=-1;} render(); }
-function updateCash(val) { CASH=parseFloat(val)||0; localStorage.setItem('portfolio_cash',CASH); render(); debouncedCloudSave(); }
-
-// ═══════════════════════════════════════════════════════
-// CLOUDFLARE WORKERS AUTO-SYNC
-// ═══════════════════════════════════════════════════════
-const CF_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/lukas-flow';
+// ── CLOUDFLARE SYNC ──────────────────────────────────────────────
+const CF_BASE   = 'https://widgets-sync.estebandido80.workers.dev/data';
 const CF_SECRET = 'widget-sync-secret-2024';
-let cfSaveTimer = null;
 
-function cfStatus(msg, type) {
-  const el = document.getElementById('cf-status-bar');
-  if (!el) return;
-  el.className = 'cf-status-bar' + (type ? ' ' + type : '');
-  el.innerHTML = type
-    ? `<span class="cf-status-dot"></span>${msg}`
-    : msg;
-}
-
-function debouncedCloudSave() {
-  clearTimeout(cfSaveTimer);
-  cfSaveTimer = setTimeout(cloudSave, 3000);
-}
-
-async function cloudSave() {
+async function cfFetch(path) {
   try {
-    await fetch(CF_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
-      body: JSON.stringify(getAllWidgetData())
+    const res = await fetch(`${CF_BASE}/${path}`, {
+      headers: { 'X-Secret': CF_SECRET }
     });
-    const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    cfStatus('Synced at ' + t, 'ok');
-  } catch(e) {
-    console.warn('[CF] Cloud save failed', e);
-    cfStatus('Sync failed', 'err');
+    if (!res.ok) return null;
+    return await res.json();
+  } catch(e) { return null; }
+}
+
+// ── RENDER FUNCTIONS (called after data is resolved) ─────────────
+
+function renderDoIt(data) {
+  const el = document.getElementById('stats-notes');
+  const foot = document.getElementById('footer-notes');
+  if (!data || !data.postits) { el.innerHTML = noData('Open Do it! to start'); return; }
+
+  // Cloudflare returns postits.today as array, localStorage as object with .items
+  const toArr = v => Array.isArray(v) ? v : (v?.items || []);
+  const todayItems = toArr(data.postits.today).filter(i => !i.done).slice(0, 5);
+  const weekItems  = toArr(data.postits.week).filter(i => !i.done).slice(0, 5);
+
+  const renderItems = items => items.length > 0
+    ? items.map(i => `<div class="doit-item">◦ ${i.text}</div>`).join('')
+    : `<div class="doit-item" style="opacity:0.4">All clear ✓</div>`;
+
+  el.innerHTML = `
+    <div class="doit-col"><div class="doit-col-title">Today</div>${renderItems(todayItems)}</div>
+    <div class="doit-col"><div class="doit-col-title">This week</div>${renderItems(weekItems)}</div>`;
+
+  if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
+}
+
+function renderTracker(data) {
+  const el = document.getElementById('stats-tracker');
+  const foot = document.getElementById('footer-tracker');
+  // Cloudflare wraps in { data, settings, cashflow } — localStorage is flat
+  const entries = data?.data || data;
+  if (!entries || typeof entries !== 'object') { el.innerHTML = noData('Open tracker to start'); return; }
+
+  const now = new Date();
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const curYear  = String(now.getFullYear());
+  const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  const monday = new Date(now); monday.setDate(now.getDate() - dayOfWeek); monday.setHours(0,0,0,0);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23,59,59,999);
+
+  let weekTotal = 0, monthTotal = 0, yearTotal = 0;
+  Object.entries(entries).forEach(([k, dayEntries]) => {
+    if (!Array.isArray(dayEntries)) return;
+    const sum = dayEntries.reduce((s, e) => s + (parseFloat(e.amt)||0), 0);
+    if (k.startsWith(curYear))  yearTotal  += sum;
+    if (k.startsWith(curMonth)) monthTotal += sum;
+    const d = new Date(k + 'T00:00:00');
+    if (d >= monday && d <= sunday) weekTotal += sum;
+  });
+
+  // Monthly budget from cashflow (Cloudflare or localStorage)
+  const cashflow = data?.cashflow || safeParse(safeGet('depenses_cashflow_v1')) || {};
+  const cf = cashflow[curMonth] || {};
+  const monthBudget = (parseFloat(cf.salary)||0) + (parseFloat(cf.partner)||0) +
+                      (parseFloat(cf.extra)||0)  + (parseFloat(cf.extra2)||0);
+  const budgetPct = monthBudget > 0 ? Math.min(100, Math.round((monthTotal / monthBudget) * 100)) : 0;
+  const barColor  = budgetPct < 70 ? '#00e5a0' : budgetPct < 90 ? '#ffd166' : '#ff6b6b';
+  const barHTML   = monthBudget > 0
+    ? `<div class="budget-bar-wrap"><div class="budget-bar-fill" style="width:${budgetPct}%;background:${barColor}"></div></div>`
+    : '';
+
+  el.innerHTML =
+    statHTML('This week',  fmt(weekTotal),  true) +
+    '<div class="stat-divider"></div>' +
+    `<div class="stat"><div class="stat-label">This month${monthBudget > 0 ? ' · '+budgetPct+'% of income' : ''}</div><div class="stat-value">${fmt(monthTotal)}</div>${barHTML}</div>` +
+    '<div class="stat-divider"></div>' +
+    statHTML('This year',  fmt(yearTotal));
+  foot.textContent = fmtAgo(safeGet('depenses_last_save'));
+}
+
+function renderCalc(data) {
+  const el   = document.getElementById('stats-calc');
+  const foot = document.getElementById('footer-calc');
+  const outputs = safeParse(safeGet('xpenses_calculator_outputs'));
+  const nowLeft  = outputs?.now?.leftover  ?? null;
+  const fireLeft = outputs?.fire?.leftover ?? null;
+  if (nowLeft === null && fireLeft === null) { el.innerHTML = noData('Open calculator to start'); return; }
+  el.innerHTML =
+    statHTML('Left / month · now',  nowLeft  !== null ? fmt(nowLeft)  : '—', true) +
+    '<div class="stat-divider"></div>' +
+    statHTML('Left / month · FIRE', fireLeft !== null ? fmt(fireLeft) : '—');
+  // Use savedAt from Cloudflare data first, fall back to local outputs
+  const savedAt = data?.savedAt || outputs?.savedAt || null;
+  if (savedAt) foot.textContent = fmtAgo(savedAt);
+}
+
+function renderPlanner(data) {
+  const el = document.getElementById('stats-planner');
+  if (!data) { el.innerHTML = noData('Open planner to start'); return; }
+
+  // Cloudflare: { acts, weekPlaces, curWeek, weekNotes }
+  // weekPlaces is array of week objects; each value has dur field
+  const curWeek   = data.curWeek ?? 0;
+  const curPlaces = data.weekPlaces?.[curWeek] || {};
+  const blocks    = Object.values(curPlaces);
+  const totalHours = blocks.reduce((s, b) => s + (b && typeof b==='object' ? (parseFloat(b.dur)||0) : 0), 0);
+
+  // Free weekdays: group by d field (0=Mon..4=Fri)
+  const hoursByDay = {0:0,1:0,2:0,3:0,4:0};
+  // Map string day names from CF to numbers
+  const dayMap = {mon:0,tue:1,wed:2,thu:3,fri:4};
+  blocks.forEach(b => {
+    if (!b || typeof b !== 'object') return;
+    const d = typeof b.d === 'number' ? b.d : (dayMap[b.d] ?? -1);
+    if (d >= 0 && d <= 4) hoursByDay[d] += (parseFloat(b.dur)||0);
+  });
+  const free = Object.values(hoursByDay).filter(h => h < 2).length;
+  const freeLabel = free === 1 ? '1 free day' : `${free} free days`;
+
+  el.innerHTML =
+    statHTML('Current week', 'Week ' + (curWeek + 1)) +
+    '<div class="stat-divider"></div>' +
+    statHTML('Hours planned', totalHours + 'h', true) +
+    '<div class="stat-divider"></div>' +
+    statHTML('Available this week', freeLabel);
+
+  const plannerSavedAt = safeGet('weekplan_savedAt');
+  const foot = document.getElementById('footer-planner');
+  if (plannerSavedAt) foot.textContent = fmtAgo(plannerSavedAt);
+}
+
+function renderFire(data) {
+  const el   = document.getElementById('stats-fire');
+  const foot = document.getElementById('footer-fire');
+  if (!data) { el.innerHTML = noData('Open FIRE sim to start'); return; }
+
+  // Use active scenario if available, else top-level S
+  let S = data.S;
+  let scenarioName = '';
+  if (Array.isArray(data.scenarios) && typeof data.activeScenario === 'number') {
+    const snap = data.scenarios[data.activeScenario];
+    if (snap && snap.snap && snap.snap.S) { S = snap.snap.S; scenarioName = snap.name || ''; }
+  }
+  if (!S) { el.innerHTML = noData('Run a simulation first'); return; }
+
+  const frEur  = ((S.pea||0)+(S.av||0)+(S.cto||0)+(S.liv||0)+(S.cash||0)) * 1000;
+  const coEur  = ((S.cop1||0)+(S.cop2||0)+(S.cop3||0)+(S.cop4||0)) * 1_000_000 / 4500;
+  const totEur = frEur + coEur;
+
+  el.innerHTML =
+    statHTML('Total' + (scenarioName ? ` · ${scenarioName}` : ''), fmt(totEur), true) +
+    '<div class="stat-divider"></div>' +
+    statHTML('🇫🇷 French',    fmt(frEur)) +
+    '<div class="stat-divider"></div>' +
+    statHTML('🇨🇴 Colombian', fmt(coEur));
+
+  if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
+}
+
+function renderWorkout(data) {
+  const el   = document.getElementById('stats-workout');
+  const foot = document.getElementById('footer-workout');
+  if (!data || !data.sessions) { el.innerHTML = noData('Open workout to start'); return; }
+
+  const { sessions, monthly } = data;
+  const now = new Date();
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthEntry = (monthly||[]).find(m => m.month === curMonth);
+  const monthCount = monthEntry?.sessions ?? 0;
+
+  const sorted  = sessions.slice().sort((a,b) => new Date(a.d) - new Date(b.d));
+  const last    = sorted.length > 0 ? sorted[sorted.length-1] : null;
+  const lastDate = last?.d ? new Date(last.d+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '—';
+  const lastDur  = last?.dur ?? null;
+  const maxKcal  = sessions.length > 0 ? Math.max(...sessions.map(s => s.kcal||0)) : null;
+
+  el.innerHTML =
+    statHTML('This month', monthCount+(monthCount===1?' session':' sessions'), true) +
+    '<div class="stat-divider"></div>' +
+    statHTML('Last workout', lastDate+(lastDur?' · '+lastDur+'min':'')) +
+    '<div class="stat-divider"></div>' +
+    statHTML('Best kcal ever', maxKcal !== null ? maxKcal+' kcal' : '—');
+
+  if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
+}
+
+function renderKals(data) {
+  const el   = document.getElementById('stats-kals');
+  const foot = document.getElementById('footer-kals');
+
+  // Cloudflare returns { settings, days: { kals_day_YYYY-MM-DD: {...} } }
+  // localStorage returns per-day objects directly
+  let dayData, settings, savedAt;
+
+  if (data?.days) {
+    // Cloudflare format
+    settings = data.settings || { budget: 2650 };
+    const todayKey = 'kals_day_' + new Date().toISOString().slice(0,10);
+    dayData = data.days[todayKey];
+    if (!dayData) {
+      // Fall back to most recent day
+      const keys = Object.keys(data.days).sort().reverse();
+      if (keys.length > 0) dayData = data.days[keys[0]];
+    }
+    savedAt = dayData?.savedAt || null;
+  } else {
+    // localStorage format (fallback)
+    settings = safeParse(safeGet('kals_settings')) || { budget: 2650 };
+    dayData = data;
+    savedAt = data?.savedAt || null;
+  }
+
+  if (!dayData) { el.innerHTML = noData('Open Kals to start'); return; }
+
+  const consumed = Math.round((dayData.meals||[]).reduce((s,m) => s+(m.kcal||0), 0));
+  const burned   = Math.round((dayData.burned||[]).reduce((s,b) => s+(b.kcal||0), 0));
+  const budget   = settings.budget || 2650;
+  const left     = (budget + burned) - consumed;
+  const waterL   = ((dayData.waterTotal||0)/1000).toFixed(1) + 'L';
+  const leftColor = left >= 0 ? 'var(--text)' : '#ff6b6b';
+
+  const kalsPct   = Math.min(100, Math.round((consumed / budget) * 100));
+  const kalsColor = kalsPct < 70 ? '#00e5a0' : kalsPct < 90 ? '#ffd166' : '#ff6b6b';
+  const kalsBar   = `<div class="budget-bar-wrap"><div class="budget-bar-fill" style="width:${kalsPct}%;background:${kalsColor}"></div></div>`;
+
+  el.innerHTML =
+    `<div class="stat"><div class="stat-label">Consumed · ${kalsPct}% of budget</div><div class="stat-value stat-value-big">${consumed} kcal</div>${kalsBar}</div>` +
+    '<div class="stat-divider"></div>' +
+    `<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${leftColor}">${left} kcal</div></div>` +
+    '<div class="stat-divider"></div>' +
+    statHTML('Water', waterL);
+
+  if (savedAt) foot.textContent = fmtAgo(savedAt);
+}
+
+function renderLukas(data) {
+  const el   = document.getElementById('stats-lukas');
+  const foot = document.getElementById('footer-lukas');
+
+  // The localStorage snapshot is the authoritative source — it includes
+  // both manual positions AND live Yahoo Finance prices computed by the widget.
+  // Cloudflare only stores manual positions, so totalValue from CF is always incomplete.
+  const snapshot = safeParse(safeGet('lukas_flow_snapshot'));
+
+  if (!snapshot || snapshot.totalValue === undefined) {
+    el.innerHTML = noData('Open LUKAS Flow to sync'); return;
+  }
+
+  const { totalValue, totalGL, totalGLPct } = snapshot;
+
+  // Use most recent updatedAt from CF manual_values if available, else snapshot
+  let updatedAt = snapshot.updatedAt || null;
+  if (data?.manual_values) {
+    const timestamps = Object.values(data.manual_values).map(v => v.updatedAt).filter(Boolean);
+    const cfLatest = timestamps.sort().pop();
+    if (cfLatest && cfLatest > (updatedAt || '')) updatedAt = cfLatest;
+  }
+
+  const glPositive = (totalGL ?? 0) >= 0;
+  const glSign     = glPositive ? '+' : '';
+  const glColor    = glPositive ? '#00e5a0' : '#ff6b6b';
+
+  let html = statHTML('Portfolio value', fmt(totalValue), true) + '<div class="stat-divider"></div>';
+
+  if (totalGL !== null && totalGL !== undefined) {
+    html += `<div class="stat"><div class="stat-label">Unrealized G/L</div><div class="stat-value" style="color:${glColor}">${glSign}${fmt(totalGL)} (${glSign}${totalGLPct?.toFixed(1)}%)</div></div>`;
+  } else {
+    html += statHTML('G/L', 'Open widget to compute');
+  }
+
+  el.innerHTML = html;
+  if (updatedAt) foot.textContent = fmtAgo(updatedAt);
+}
+
+// ── LOAD ALL — fetch from Cloudflare, fall back to localStorage ──
+async function loadAll() {
+  // Show localStorage data immediately
+  loadFromLocalStorage();
+
+  // Show shimmer while fetching from Cloudflare
+  setLoading(true);
+
+  const [doItCF, trackerCF, calcCF, plannerCF, fireCF, workoutCF, kalsCF, lukasCF] = await Promise.allSettled([
+    cfFetch('doit-lcc'),
+    cfFetch('xpenser'),
+    cfFetch('xpenses-calculator'),
+    cfFetch('weekplanner'),
+    cfFetch('fire-sim'),
+    cfFetch('workout'),
+    cfFetch('kalstrack'),
+    cfFetch('lukas-flow')
+  ]);
+
+  // Remove shimmer
+  setLoading(false);
+
+  const get = r => r.status === 'fulfilled' ? r.value : null;
+
+  renderDoIt(    get(doItCF)    || safeParse(safeGet('doit_lcc_v1')));
+  renderTracker( get(trackerCF) || safeParse(safeGet('depenses_data_v1')));
+  renderCalc(    get(calcCF)    || safeParse(safeGet('xpenses_calculator_v1')));
+  renderPlanner( get(plannerCF) || buildLocalPlanner());
+  renderFire(    get(fireCF)    || safeParse(safeGet('fire-sim-v1')));
+  renderWorkout( get(workoutCF) || safeParse(safeGet('workout_insights_v3')));
+  renderKals(    get(kalsCF)    || null);
+  renderLukas(   get(lukasCF)   || safeParse(safeGet('lukas_flow_snapshot')));
+
+  const stratFoot = document.getElementById('footer-strat');
+  if (stratFoot) stratFoot.textContent = 'To update manually';
+}
+
+function loadFromLocalStorage() {
+  renderDoIt(    safeParse(safeGet('doit_lcc_v1')));
+  renderTracker( safeParse(safeGet('depenses_data_v1')));
+  renderCalc(    null);
+  renderPlanner( buildLocalPlanner());
+  renderFire(    safeParse(safeGet('fire-sim-v1')));
+  renderWorkout( safeParse(safeGet('workout_insights_v3')));
+  renderKals(    null);
+  renderLukas(   safeParse(safeGet('lukas_flow_snapshot')));
+}
+
+function buildLocalPlanner() {
+  const curWeek   = parseInt(safeGet('weekplan_curweek')||'0')||0;
+  const weekPlaces = [];
+  for (let w = 0; w < 4; w++) weekPlaces.push(safeParse(safeGet('weekplan_week'+w))||{});
+  const acts      = safeParse(safeGet('weekplan_acts')) || [];
+  const weekNotes = safeParse(safeGet('weekplan_notes')) || [];
+  return { acts, weekPlaces, curWeek, weekNotes };
+}
+
+loadAll();
+</script>
+<script>
+// ── NOTIFICATIONS SETUP ──────────────────────────────────────────
+async function setupNotifications() {
+  if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
+
+  const reg = await navigator.serviceWorker.register('./sw.js');
+  await navigator.serviceWorker.ready;
+
+  if (Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+  if (Notification.permission !== 'granted') return;
+
+  scheduleNotifications(reg);
+}
+
+function scheduleNotifications(reg) {
+  const now = new Date();
+
+  // ── 1. "DoIT!" every day at 8:00am ──────────────────────────────
+  const doIt = new Date(now);
+  doIt.setHours(8, 0, 0, 0);
+  if (doIt <= now) doIt.setDate(doIt.getDate() + 1);
+  const doItDelay = doIt - now;
+
+  setTimeout(() => {
+    reg.showNotification('Life Hub', {
+      body: 'DoIT!',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: 'doit-daily',
+      renotify: true
+    });
+    setInterval(() => {
+      reg.showNotification('Life Hub', {
+        body: 'DoIT!',
+        icon: './icon-192.png',
+        badge: './icon-192.png',
+        tag: 'doit-daily',
+        renotify: true
+      });
+    }, 24 * 60 * 60 * 1000);
+  }, doItDelay);
+
+  // ── 2. "Log Workout!" Mon, Wed, Fri at 11:00am ───────────────────
+  function msUntilNext(targetDay, targetHour, targetMin) {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(targetHour, targetMin, 0, 0);
+    const currentDay = now.getDay();
+    let daysAhead = (targetDay - currentDay + 7) % 7;
+    if (daysAhead === 0 && next <= now) daysAhead = 7;
+    next.setDate(next.getDate() + daysAhead);
+    return next - now;
+  }
+
+  function scheduleWorkoutNotif(day) {
+    const delay = msUntilNext(day, 11, 0);
+    setTimeout(() => {
+      reg.showNotification('Life Hub', {
+        body: 'Log Workout!',
+        icon: './icon-192.png',
+        badge: './icon-192.png',
+        tag: 'workout-' + day,
+        renotify: true
+      });
+      setInterval(() => {
+        reg.showNotification('Life Hub', {
+          body: 'Log Workout!',
+          icon: './icon-192.png',
+          badge: './icon-192.png',
+          tag: 'workout-' + day,
+          renotify: true
+        });
+      }, 7 * 24 * 60 * 60 * 1000);
+    }, delay);
+  }
+
+  scheduleWorkoutNotif(1); // Monday
+  scheduleWorkoutNotif(3); // Wednesday
+  scheduleWorkoutNotif(5); // Friday
+
+  // ── 3. "Track Xpenses NOW!" if not saved in 24h ──────────────────
+  const xpensesSavedAt = localStorage.getItem('depenses_last_save');
+  if (xpensesSavedAt) {
+    const lastSave = new Date(xpensesSavedAt);
+    const hoursSince = (now - lastSave) / (1000 * 60 * 60);
+    if (hoursSince >= 24) {
+      reg.showNotification('Life Hub', {
+        body: 'Track Xpenses NOW!',
+        icon: './icon-192.png',
+        badge: './icon-192.png',
+        tag: 'xpenses-reminder',
+        renotify: true
+      });
+    } else {
+      const msUntilOverdue = (24 * 60 * 60 * 1000) - (now - lastSave);
+      setTimeout(() => {
+        reg.showNotification('Life Hub', {
+          body: 'Track Xpenses NOW!',
+          icon: './icon-192.png',
+          badge: './icon-192.png',
+          tag: 'xpenses-reminder',
+          renotify: true
+        });
+      }, msUntilOverdue);
+    }
   }
 }
 
-async function cloudLoad() {
-  try {
-    const res = await fetch(CF_URL, { headers: { 'X-Secret': CF_SECRET } });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data && Object.keys(data).length > 0) {
-      restoreAllWidgetData(data); // already calls render() internally
-      const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      cfStatus('Synced at ' + t, 'ok');
-    }
-  } catch(e) {
-    console.warn('[CF] Cloud load failed', e);
-    cfStatus('Sync failed', 'err');
-  }
-}
-
-// Initial render with stored values immediately (no flicker — fetch updates in place)
-render();
-// Then fetch live prices — render() is called once inside fetchAllPrices when done
-fetchAllPrices();
-setInterval(fetchAllPrices, 5*60*1000);
-// Cloud sync: load remote state on startup (will re-render if remote data differs)
-cloudLoad();
-
-// ═══════════════════════════════════════════════════════
-// GOOGLE DRIVE SYNC
-// ═══════════════════════════════════════════════════════
-const GD_CLIENT_ID = '453884215011-bnuqib76c5lt7vr87g6e5sd59q7r2cip.apps.googleusercontent.com';
-const GD_SCOPE     = 'https://www.googleapis.com/auth/drive.file';
-const GD_FILENAME  = 'portfolio_dashboard_data.json';
-let gdToken  = null;
-let gdFileId = null;
-
-function gdStatus(msg, type) {
-  const el = document.getElementById('drive-status-bar');
-  if (!el) return;
-  el.textContent = msg;
-  el.className = 'drive-status-bar' + (type ? ' ' + type : '');
-}
-function gdSetBusy(busy) {
-  const s = document.getElementById('drive-save-btn');
-  const l = document.getElementById('drive-load-btn');
-  if (s) s.disabled = busy;
-  if (l) l.disabled = busy;
-}
-function gdAuth(callback) {
-  if (gdToken) { callback(gdToken); return; }
-  gdStatus('Connecting to Google…', 'working');
-  gdSetBusy(true);
-  const client = google.accounts.oauth2.initTokenClient({
-    client_id: GD_CLIENT_ID, scope: GD_SCOPE,
-    callback: (response) => {
-      if (response.error) { gdStatus('Sign-in failed: ' + response.error, 'err'); gdSetBusy(false); return; }
-      gdToken = response.access_token;
-      gdStatus('Connected to Google Drive', 'ok');
-      callback(gdToken);
-    }
-  });
-  client.requestAccessToken();
-}
-function gdFindFile(token, callback) {
-  if (gdFileId) { callback(gdFileId); return; }
-  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%22' + GD_FILENAME + '%22+and+trashed%3Dfalse&fields=files(id,name)', { headers: { Authorization: 'Bearer ' + token } })
-  .then(r => r.json())
-  .then(res => { if (res.files && res.files.length > 0) { gdFileId = res.files[0].id; callback(gdFileId); } else callback(null); })
-  .catch(err => { console.error('[GD] find error:', err); gdStatus('Drive search failed', 'err'); gdSetBusy(false); });
-}
-function gdriveSave() {
-  gdSetBusy(true);
-  gdStatus('Saving to Google Drive…', 'working');
-  gdAuth(token => {
-    const payload = { version: 1, exportedAt: new Date().toISOString(), data: getAllWidgetData() };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    gdFindFile(token, fileId => {
-      const url = fileId ? 'https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=multipart' : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-      const method = fileId ? 'PATCH' : 'POST';
-      const formData = new FormData();
-      formData.append('metadata', new Blob([JSON.stringify({ name: GD_FILENAME, mimeType: 'application/json' })], { type: 'application/json' }));
-      formData.append('file', blob);
-      fetch(url, { method, headers: { Authorization: 'Bearer ' + token }, body: formData })
-      .then(r => r.json())
-      .then(res => {
-        if (res.error) throw new Error(JSON.stringify(res.error));
-        if (!fileId) gdFileId = res.id;
-        gdStatus('✓ Saved to Google Drive — ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}), 'ok');
-        gdSetBusy(false);
-      })
-      .catch(err => {
-        console.error('[GD] save error:', err);
-        if (String(err).includes('401')) { gdToken = null; gdFileId = null; gdStatus('Session expired — click Save again', 'err'); }
-        else gdStatus('Save failed — try again', 'err');
-        gdSetBusy(false);
-      });
-    });
-  });
-}
-function gdriveLoad() {
-  gdSetBusy(true);
-  gdStatus('Loading from Google Drive…', 'working');
-  gdAuth(token => {
-    gdFindFile(token, fileId => {
-      if (!fileId) { gdStatus('No file found in Drive — save first', 'err'); gdSetBusy(false); return; }
-      fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', { headers: { Authorization: 'Bearer ' + token } })
-      .then(r => r.json())
-      .then(payload => {
-        if (!payload.data) throw new Error('Invalid format');
-        restoreAllWidgetData(payload.data);
-        gdStatus('✓ Loaded from Google Drive — ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}), 'ok');
-        gdSetBusy(false);
-      })
-      .catch(err => {
-        console.error('[GD] load error:', err);
-        if (String(err).includes('401')) { gdToken = null; gdStatus('Session expired — click Load again', 'err'); }
-        else gdStatus('Load failed — try again', 'err');
-        gdSetBusy(false);
-      });
-    });
-  });
-}
-
-
-// ═══════════════════════════════════════════════════════
-// WIDGET DATA — get / restore
-// ═══════════════════════════════════════════════════════
-function getAllWidgetData() {
-  return {
-    cash:             CASH,
-    livret_rate_A:    LIVRETS[0].rate,
-    livret_rate_LDDS: LIVRETS[1].rate,
-    livret_value_A:   LIVRETS[0].value,
-    livret_value_LDDS:LIVRETS[1].value,
-    fe_rate_PERE:     FONDS_EUROS[0].rate,
-    fe_rate_PERO:     FONDS_EUROS[1].rate,
-    fe_rate_AV:       FONDS_EUROS[2].rate,
-    fe_value_PERE:    FONDS_EUROS[0].value,
-    fe_value_PERO:    FONDS_EUROS[1].value,
-    fe_value_AV:      FONDS_EUROS[2].value,
-    tax_bracket:      parseInt(document.getElementById('taxBracket').value),
-    manual_values:    loadManualValues(),
-  };
-}
-
-function restoreAllWidgetData(data, overwrite = true) {
-  if (data.cash             !== undefined) { CASH = data.cash; localStorage.setItem('portfolio_cash', CASH); }
-  if (data.livret_rate_A    !== undefined) { LIVRETS[0].rate  = data.livret_rate_A;    localStorage.setItem('liv_rate_A',     data.livret_rate_A); }
-  if (data.livret_rate_LDDS !== undefined) { LIVRETS[1].rate  = data.livret_rate_LDDS; localStorage.setItem('liv_rate_LDDS',  data.livret_rate_LDDS); }
-  if (data.livret_value_A   !== undefined) { LIVRETS[0].value = data.livret_value_A;   localStorage.setItem('liv_value_A',    data.livret_value_A); }
-  if (data.livret_value_LDDS!== undefined) { LIVRETS[1].value = data.livret_value_LDDS;localStorage.setItem('liv_value_LDDS', data.livret_value_LDDS); }
-  if (data.fe_rate_PERE     !== undefined) { FONDS_EUROS[0].rate  = data.fe_rate_PERE;  localStorage.setItem('fe_rate_PERE',  data.fe_rate_PERE); }
-  if (data.fe_rate_PERO     !== undefined) { FONDS_EUROS[1].rate  = data.fe_rate_PERO;  localStorage.setItem('fe_rate_PERO',  data.fe_rate_PERO); }
-  if (data.fe_rate_AV       !== undefined) { FONDS_EUROS[2].rate  = data.fe_rate_AV;    localStorage.setItem('fe_rate_AV',    data.fe_rate_AV); }
-  if (data.fe_value_PERE    !== undefined) { FONDS_EUROS[0].value = data.fe_value_PERE; localStorage.setItem('fe_value_PERE', data.fe_value_PERE); }
-  if (data.fe_value_PERO    !== undefined) { FONDS_EUROS[1].value = data.fe_value_PERO; localStorage.setItem('fe_value_PERO', data.fe_value_PERO); }
-  if (data.fe_value_AV      !== undefined) { FONDS_EUROS[2].value = data.fe_value_AV;   localStorage.setItem('fe_value_AV',   data.fe_value_AV); }
-  if (data.tax_bracket      !== undefined) { document.getElementById('taxBracket').value = data.tax_bracket; }
-  if (data.manual_values    !== undefined) { saveManualValuesToStorage(data.manual_values); }
-  render();
-}
+setupNotifications();
 </script>
 </body>
 </html>
