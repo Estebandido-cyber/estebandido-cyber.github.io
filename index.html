@@ -532,7 +532,7 @@
 
   <div class="tiles">
 
-    <a class="tile tile-notes" href="notes.html" onclick="hap()">
+    <a class="tile tile-notes" href="notes.html">
       <div class="tile-header">
         <div class="tile-icon">📝</div>
         <div class="tile-name">Do it!</div>
@@ -542,7 +542,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-tracker" href="XPENSE_TRACKER.html" onclick="hap()">
+    <a class="tile tile-tracker" href="XPENSE_TRACKER.html">
       <div class="tile-header">
         <div class="tile-icon">💳</div>
         <div class="tile-name">Xpenser</div>
@@ -552,7 +552,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-workout" href="workout_dashboard.html" onclick="hap()">
+    <a class="tile tile-workout" href="workout_dashboard.html">
       <div class="tile-header">
         <div class="tile-icon">💪</div>
         <div class="tile-name">Workout</div>
@@ -562,7 +562,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-kals" href="kals_track.html" onclick="hap()">
+    <a class="tile tile-kals" href="kals_track.html">
       <div class="tile-header">
         <div class="tile-icon">⚡</div>
         <div class="tile-name">Kals</div>
@@ -572,7 +572,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-lukas" href="lukas_analyzer.html" onclick="hap()">
+    <a class="tile tile-lukas" href="lukas_analyzer.html">
       <div class="tile-header">
         <div class="tile-icon">📊</div>
         <div class="tile-name">Lukas</div>
@@ -582,7 +582,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-calc" href="XPENSES_CALCULATOR.html" onclick="hap()">
+    <a class="tile tile-calc" href="XPENSES_CALCULATOR.html">
       <div class="tile-header">
         <div class="tile-icon">🧮</div>
         <div class="tile-name">Calculator</div>
@@ -592,7 +592,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-fire" href="FIRE_SIM.html" onclick="hap()">
+    <a class="tile tile-fire" href="FIRE_SIM.html">
       <div class="tile-header">
         <div class="tile-icon">🔥</div>
         <div class="tile-name">FIRE Sim</div>
@@ -602,7 +602,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-planner" href="WEEK_PLANNER.html" onclick="hap()">
+    <a class="tile tile-planner" href="WEEK_PLANNER.html">
       <div class="tile-header">
         <div class="tile-icon">📅</div>
         <div class="tile-name">Week Plan</div>
@@ -612,7 +612,7 @@
       <div class="tile-arrow">↗</div>
     </a>
 
-    <a class="tile tile-strat" href="FIRE_strat.html" onclick="hap()">
+    <a class="tile tile-strat" href="FIRE_strat.html">
       <div class="tile-header">
         <div class="tile-icon">♞</div>
         <div class="tile-name">Strat</div>
@@ -677,6 +677,10 @@ function fmtAgo(iso) {
 function hap() {
   if (navigator.vibrate) navigator.vibrate(8);
 }
+// Use pointerdown so haptic fires before navigation, without blocking it
+document.querySelectorAll('.tile').forEach(t => {
+  t.addEventListener('pointerdown', hap);
+});
 
 // ── THEME TOGGLE ─────────────────────────────────────────────────
 function toggleTheme() {
@@ -939,35 +943,23 @@ function renderLukas(data) {
   const el   = document.getElementById('stats-lukas');
   const foot = document.getElementById('footer-lukas');
 
-  // Try localStorage snapshot first for pre-computed G/L fields
+  // The localStorage snapshot is the authoritative source — it includes
+  // both manual positions AND live Yahoo Finance prices computed by the widget.
+  // Cloudflare only stores manual positions, so totalValue from CF is always incomplete.
   const snapshot = safeParse(safeGet('lukas_flow_snapshot'));
 
-  let totalValue, totalGL, totalGLPct, updatedAt;
+  if (!snapshot || snapshot.totalValue === undefined) {
+    el.innerHTML = noData('Open LUKAS Flow to sync'); return;
+  }
 
-  if (data && (data.cash !== undefined || data.manual_values)) {
-    // Cloudflare raw format — compute totalValue from components
-    const livrets  = (data.livret_value_A||0) + (data.livret_value_LDDS||0);
-    const fe       = (data.fe_value_PERE||0) + (data.fe_value_PERO||0) + (data.fe_value_AV||0);
-    const manuals  = Object.values(data.manual_values || {}).reduce((s, v) => s + (v.value||0), 0);
-    totalValue = (data.cash||0) + livrets + fe + manuals;
+  const { totalValue, totalGL, totalGLPct } = snapshot;
 
-    // G/L only available from localStorage snapshot
-    totalGL    = snapshot?.totalGL    ?? null;
-    totalGLPct = snapshot?.totalGLPct ?? null;
-
-    // Use most recent updatedAt from manual_values as timestamp
-    const timestamps = Object.values(data.manual_values || {}).map(v => v.updatedAt).filter(Boolean);
-    updatedAt = timestamps.sort().pop() || snapshot?.updatedAt || null;
-
-  } else if (snapshot?.totalValue !== undefined) {
-    // Fall back to localStorage snapshot
-    totalValue = snapshot.totalValue;
-    totalGL    = snapshot.totalGL    ?? null;
-    totalGLPct = snapshot.totalGLPct ?? null;
-    updatedAt  = snapshot.updatedAt  || null;
-  } else {
-    el.innerHTML = noData('Open LUKAS Flow to sync');
-    return;
+  // Use most recent updatedAt from CF manual_values if available, else snapshot
+  let updatedAt = snapshot.updatedAt || null;
+  if (data?.manual_values) {
+    const timestamps = Object.values(data.manual_values).map(v => v.updatedAt).filter(Boolean);
+    const cfLatest = timestamps.sort().pop();
+    if (cfLatest && cfLatest > (updatedAt || '')) updatedAt = cfLatest;
   }
 
   const glPositive = (totalGL ?? 0) >= 0;
@@ -976,7 +968,7 @@ function renderLukas(data) {
 
   let html = statHTML('Portfolio value', fmt(totalValue), true) + '<div class="stat-divider"></div>';
 
-  if (totalGL !== null) {
+  if (totalGL !== null && totalGL !== undefined) {
     html += `<div class="stat"><div class="stat-label">Unrealized G/L</div><div class="stat-value" style="color:${glColor}">${glSign}${fmt(totalGL)} (${glSign}${totalGLPct?.toFixed(1)}%)</div></div>`;
   } else {
     html += statHTML('G/L', 'Open widget to compute');
