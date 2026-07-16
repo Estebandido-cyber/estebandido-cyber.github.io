@@ -454,7 +454,6 @@
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const STATIC_POSITIONS = [
   { ticker:'WPEA.PA',          name:'Amundi PEA Monde',           account:'PEA',  type:'ETF',   shares:7706,    avgPrice:6.15 },
-  { ticker:'EUNL.DE',          name:'iShares Core MSCI World',    account:'CTO',  type:'ETF',   shares:213,     avgPrice:76.74 },
   { ticker:'VUSA.AS',          name:'Vanguard S&P 500 UCITS',     account:'CTO',  type:'ETF',   shares:106,     avgPrice:71.57 },
   { ticker:'AAPL',             name:'Apple Inc.',                  account:'CTO',  type:'Stock', shares:38,      avgPrice:131.20 },
   { ticker:'AMD',              name:'Advanced Micro Devices',     account:'CTO',  type:'Stock', shares:20,      avgPrice:88.28 },
@@ -500,7 +499,6 @@ const TAX_RULES = {
 // Approximate geographic breakdown per ticker (% of that position's value)
 const GEO_WEIGHTS = {
   'WPEA.PA':           { 'North America':65, 'Europe':20, 'Asia-Pacific':10, 'Emerging':5 },
-  'EUNL.DE':           { 'North America':67, 'Europe':16, 'Asia-Pacific':12, 'Emerging':5 },
   'VUSA.AS':           { 'North America':100 },
   'AAPL':              { 'North America':100 },
   'AMD':               { 'North America':100 },
@@ -521,7 +519,6 @@ const GEO_WEIGHTS = {
 };
 const SECTOR_WEIGHTS = {
   'WPEA.PA':           { 'Technology':25, 'Financials':15, 'Healthcare':12, 'Consumer':12, 'Industrials':10, 'Other':26 },
-  'EUNL.DE':           { 'Technology':25, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':27 },
   'VUSA.AS':           { 'Technology':32, 'Financials':13, 'Healthcare':11, 'Consumer':10, 'Industrials':8,  'Other':26 },
   'AAPL':              { 'Technology':100 },
   'AMD':               { 'Technology':100 },
@@ -551,7 +548,6 @@ const ACCOUNT_COLORS = {
 
 const REFERENCE_VALUES = {
   'WPEA.PA':           7706*6.15*(1+0.0625),
-  'EUNL.DE':           213*76.74*(1+0.5549),
   'VUSA.AS':           106*71.57*(1+0.6502),
   'AAPL':              38*131.20*(1+1.2463),
   'AMD':               20*88.28*(1+3.768),
@@ -579,7 +575,7 @@ let benchScope = 'ALL';
 
 // ─── MANUAL POSITION VALUES ───────────────────────────────────────────────────
 // Tickers that get live prices — never manually edited
-const LIVE_TICKERS = new Set(['WPEA.PA','EUNL.DE','VUSA.AS','AAPL','AMD','SAP.DE']);
+const LIVE_TICKERS = new Set(['WPEA.PA','VUSA.AS','AAPL','AMD','SAP.DE']);
 
 // Load manual values from localStorage (keyed by ticker)
 function loadManualValues() {
