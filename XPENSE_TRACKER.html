@@ -1310,6 +1310,38 @@
   }
 
   .search-avg-note span { color: var(--text2); }
+
+  /* Method filter row inside search results */
+  .search-method-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .search-method-filter-label {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    flex-shrink: 0;
+  }
+  .smf-pill {
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text2);
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .smf-pill:hover { opacity: 0.85; }
+  .smf-pill.active { color: #111; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -1597,6 +1629,7 @@ let settings = {
 
 let saveTimer = null;
 let cloudSaveTimer = null;
+let searchMethodFilter = 'all'; // 'all' or a method id
 
 // ═══════════════════════════════════════════════
 // INIT
@@ -2287,8 +2320,27 @@ function clearSearch(refocus = false) {
   document.getElementById('search-clear').style.display = 'none';
   document.getElementById('search-results').innerHTML = '';
   document.getElementById('search-header-hint').textContent = '';
+  searchMethodFilter = 'all';
   hideAutocomplete();
   if (refocus) document.getElementById('search-input').focus();
+}
+
+function buildMethodPillsHtml() {
+  const allActive = searchMethodFilter === 'all';
+  let html = `<div class="search-method-filter">
+    <span class="search-method-filter-label">Card</span>
+    <button class="smf-pill ${allActive ? 'active' : ''}" style="${allActive ? 'background:var(--surface3);border-color:var(--text3);' : ''}" onclick="setSearchMethod('all')">All</button>`;
+  settings.methods.forEach(m => {
+    const active = searchMethodFilter === m.id;
+    html += `<button class="smf-pill ${active ? 'active' : ''}" style="border-color:${m.color};${active ? `background:${m.color};` : `color:${m.color};`}" onclick="setSearchMethod(${JSON.stringify(m.id)})">${m.abbr} · ${m.name}</button>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function setSearchMethod(id) {
+  searchMethodFilter = id;
+  runSearch();
 }
 
 // ── Search logic ──
@@ -2313,6 +2365,12 @@ function runSearch() {
   const browseYearStr  = String(currentYear);
   const browseMonthName = MONTH_NAMES[currentMonth];
 
+  // Filter by method if active
+  function matchesMethod(e) {
+    if (searchMethodFilter === 'all') return true;
+    return (e.method || '') === searchMethodFilter;
+  }
+
   let monthCount = 0, monthAmt = 0;
   let yearCount  = 0, yearAmt  = 0;
   let allCount   = 0, allAmt   = 0;
@@ -2323,6 +2381,7 @@ function runSearch() {
     const monthKey = dateKey.substring(0, 7);
     data[dateKey].forEach(e => {
       if (!matchesQuery(e.cat)) return;
+      if (!matchesMethod(e)) return;
       const amt = parseFloat(e.amt) || 0;
 
       allCount++; allAmt += amt;
@@ -2336,7 +2395,9 @@ function runSearch() {
   });
 
   if (allCount === 0) {
-    resultsEl.innerHTML = `<div class="search-empty">No entries found matching "<strong>${escHtml(raw)}</strong>"</div>`;
+    // Build pill row HTML even when no results, so user can switch back
+    const pillsHtml = buildMethodPillsHtml();
+    resultsEl.innerHTML = pillsHtml + `<div class="search-empty">No entries found matching "<strong>${escHtml(raw)}</strong>"${searchMethodFilter !== 'all' ? ' with this payment method' : ''}</div>`;
     hintEl.textContent = 'No results';
     return;
   }
@@ -2348,7 +2409,10 @@ function runSearch() {
   const avgPerOccurrence = allCount > 0 ? allAmt / allCount : 0;
   const avgMonthly = monthKeys.length > 0 ? allAmt / monthKeys.length : 0;
 
-  let html = `
+  // Method filter pills
+  const pillsHtml = buildMethodPillsHtml();
+
+  let html = pillsHtml + `
     <div class="search-results-grid">
       <div class="search-stat-card month-card">
         <div class="search-stat-label">${browseMonthName} — Count</div>
