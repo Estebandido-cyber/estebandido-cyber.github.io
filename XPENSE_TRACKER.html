@@ -2332,7 +2332,7 @@ function buildMethodPillsHtml() {
     <button class="smf-pill ${allActive ? 'active' : ''}" style="${allActive ? 'background:var(--surface3);border-color:var(--text3);' : ''}" onclick="setSearchMethod('all')">All</button>`;
   settings.methods.forEach(m => {
     const active = searchMethodFilter === m.id;
-    html += `<button class="smf-pill ${active ? 'active' : ''}" style="border-color:${m.color};${active ? `background:${m.color};` : `color:${m.color};`}" onclick="setSearchMethod(${JSON.stringify(m.id)})">${m.abbr} · ${m.name}</button>`;
+    html += `<button class="smf-pill ${active ? 'active' : ''}" style="border-color:${m.color};${active ? `background:${m.color};` : `color:${m.color};`}" onclick="setSearchMethod(this.dataset.mid)" data-mid="${m.id}">${m.abbr} · ${m.name}</button>`;
   });
   html += `</div>`;
   return html;
