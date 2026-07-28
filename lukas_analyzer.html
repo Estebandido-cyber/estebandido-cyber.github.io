@@ -461,13 +461,7 @@ const STATIC_POSITIONS = [
   { ticker:'0P0000VQ1S.F',     name:'Avenir Actions Durables I',  account:'PEE',  type:'Fund',  shares:164,     avgPrice:60 },
   { ticker:'0P0000VQ4Q.F',     name:'Avenir Actions Monde I',     account:'PEE',  type:'Fund',  shares:441,     avgPrice:74 },
   { ticker:'0P00000WLG.F',     name:'Vanguard Global Stock Idx',  account:'PERE', type:'Fund',  shares:261.96,  avgPrice:46.54 },
-  { ticker:'0P00000PM8.F_PERO',name:'Multipar Oblig Court Terme', account:'PERO', type:'Fund',  shares:1.937,   avgPrice:240.3, realTicker:'0P00000PM8.F' },
-  { ticker:'0P0001I2K9.F',     name:'Multipar Actions Durables',  account:'PERO', type:'Fund',  shares:4.753,   avgPrice:142.18 },
-  { ticker:'0P0001IRGI.F',     name:'Multipar Actions Zone Euro', account:'PERO', type:'Fund',  shares:1.3502,  avgPrice:104.42 },
-  { ticker:'0P00016FY4.F',     name:'Multipar Oblig Euro HY',     account:'PERO', type:'Fund',  shares:9.103,   avgPrice:22.38 },
-  { ticker:'0P00011HBM.F',     name:'Multipar Actions Emergents', account:'PERO', type:'Fund',  shares:0.97,    avgPrice:364.20 },
-  { ticker:'0P00000BFT.F',     name:'Multipar Actions Monde',     account:'PERO', type:'Fund',  shares:2.0723,  avgPrice:936.89 },
-  { ticker:'0P0001JHK1.F',     name:'Multipar ISR Actions Monde', account:'PERO', type:'Fund',  shares:17.5826, avgPrice:110.65 },
+  { ticker:'0P00000WLG.F_PERO',name:'Vanguard Global Stock Idx',  account:'PERO', type:'Fund',  shares:17,      avgPrice:364.20, realTicker:'0P00000WLG.F' },
 ];
 
 let CASH = parseFloat(localStorage.getItem('portfolio_cash') || '10');
@@ -501,15 +495,8 @@ const GEO_WEIGHTS = {
   'SAP.DE':            { 'Europe':100 },
   '0P0000VQ1S.F':      { 'North America':55, 'Europe':25, 'Asia-Pacific':15, 'Emerging':5 },
   '0P0000VQ4Q.F':      { 'North America':60, 'Europe':20, 'Asia-Pacific':15, 'Emerging':5 },
-  '0P00000PM8.F':      { 'Europe':80, 'North America':20 },
   '0P00000WLG.F':      { 'North America':63, 'Europe':18, 'Asia-Pacific':13, 'Emerging':6 },
-  '0P00000PM8.F_PERO': { 'Europe':80, 'North America':20 },
-  '0P0001I2K9.F':      { 'North America':55, 'Europe':25, 'Asia-Pacific':15, 'Emerging':5 },
-  '0P0001IRGI.F':      { 'Europe':100 },
-  '0P00016FY4.F':      { 'Europe':80, 'North America':15, 'Other':5 },
-  '0P00011HBM.F':      { 'Emerging':90, 'Asia-Pacific':10 },
-  '0P00000BFT.F':      { 'North America':60, 'Europe':25, 'Asia-Pacific':10, 'Other':5 },
-  '0P0001JHK1.F':      { 'North America':60, 'Europe':20, 'Asia-Pacific':15, 'Emerging':5 },
+  '0P00000WLG.F_PERO': { 'North America':63, 'Europe':18, 'Asia-Pacific':13, 'Emerging':6 },
 };
 const SECTOR_WEIGHTS = {
   'WPEA.PA':           { 'Technology':25, 'Financials':15, 'Healthcare':12, 'Consumer':12, 'Industrials':10, 'Other':26 },
@@ -519,15 +506,8 @@ const SECTOR_WEIGHTS = {
   'SAP.DE':            { 'Technology':100 },
   '0P0000VQ1S.F':      { 'Technology':22, 'Financials':16, 'Healthcare':13, 'Consumer':12, 'Industrials':11, 'Other':26 },
   '0P0000VQ4Q.F':      { 'Technology':24, 'Financials':14, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':29 },
-  '0P00000PM8.F':      { 'Bonds':100 },
   '0P00000WLG.F':      { 'Technology':24, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':28 },
-  '0P00000PM8.F_PERO': { 'Bonds':100 },
-  '0P0001I2K9.F':      { 'Technology':22, 'Financials':16, 'Healthcare':13, 'Consumer':12, 'Industrials':11, 'Other':26 },
-  '0P0001IRGI.F':      { 'Financials':25, 'Consumer':18, 'Industrials':15, 'Healthcare':14, 'Technology':12, 'Other':16 },
-  '0P00016FY4.F':      { 'Bonds':100 },
-  '0P00011HBM.F':      { 'Technology':20, 'Financials':18, 'Consumer':16, 'Materials':12, 'Energy':10, 'Other':24 },
-  '0P00000BFT.F':      { 'Technology':25, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':27 },
-  '0P0001JHK1.F':      { 'Technology':24, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':28 },
+  '0P00000WLG.F_PERO': { 'Technology':24, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':28 },
 };
 
 const MSCI_WORLD_ANNUAL = 0.12; // ~12%/y benchmark (5y avg)
@@ -547,13 +527,7 @@ const REFERENCE_VALUES = {
   '0P0000VQ1S.F':      164*60*(1+0.603),
   '0P0000VQ4Q.F':      441*74*(1+0.5966),
   '0P00000WLG.F':      261.96*46.54*(1+0.3349),
-  '0P00000PM8.F_PERO': 1.937*240.3*(1-0.089),
-  '0P0001I2K9.F':      4.753*142.18*(1+0.04),
-  '0P0001IRGI.F':      1.3502*104.42*(1+0.002),
-  '0P00016FY4.F':      9.103*22.38*(1+0.1506),
-  '0P00011HBM.F':      0.97*364.20*(1+0.14),
-  '0P00000BFT.F':      2.0723*936.89*(1+0.0188),
-  '0P0001JHK1.F':      17.5826*110.65*(1+0.0198),
+  '0P00000WLG.F_PERO': 17*364.20*(1+0.21225),
 };
 
 let prices = {};
