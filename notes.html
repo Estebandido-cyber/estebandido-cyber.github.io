@@ -477,15 +477,10 @@ let state = {
 // ═══════════════════════════════════════════════
 
 const STORAGE_KEY = 'doit_lcc_v1';
-let saveTimer = null;
 let saveHideTimer = null;
 
 function saveToLS() {
-  showSaving();
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    _writeSave();
-  }, 1000);
+  _writeSave();
 }
 
 function _writeSave() {
@@ -501,10 +496,10 @@ function _writeSave() {
   } catch(e) { console.warn('Save error', e); }
 }
 
-// Flush immediately when navigating away
+// Flush CF save immediately when navigating away
 window.addEventListener('beforeunload', () => {
-  clearTimeout(saveTimer);
-  _writeSave();
+  clearTimeout(cfSaveTimer);
+  cloudSave();
 });
 
 function loadFromLS() {
