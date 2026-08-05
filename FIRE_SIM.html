@@ -709,6 +709,8 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
         <span class="col-badge" id="col-badge-header">0 / 4 in totals</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;color:var(--color-text-tertiary)" id="cop-rate-badge">COP/EUR —</span>
+        <span style="font-size:11px;color:var(--color-text-tertiary)">·</span>
         <span style="font-size:12px;font-weight:500;color:var(--color-text-warning)" id="col-header-cop">—</span>
         <span style="font-size:11px;color:var(--color-text-tertiary)">·</span>
         <span style="font-size:12px;font-weight:500;color:var(--color-text-secondary)" id="col-header-eur">—</span>
@@ -769,7 +771,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
     </div>
     <div style="text-align:right">
       <p style="font-size:11px;color:var(--color-text-tertiary);margin:0 0 2px">COP/EUR rate</p>
-      <p style="font-size:14px;font-weight:500;color:var(--color-text-secondary);margin:0">4 500</p>
+      <p style="font-size:14px;font-weight:500;color:var(--color-text-secondary);margin:0" id="cop-rate-display">3 500</p>
     </div>
   </div>
 
@@ -881,7 +883,8 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
 /* ═══════════════════════════════════════════════
    CONSTANTS & STATE
 ═══════════════════════════════════════════════ */
-const COP_EUR = 4500;
+let COP_EUR = 3500;
+let copEurSavedAt = null; // timestamp of last successful fetch
 const TAX     = { pea: 0.172, av: 0.18, cto: 0.30 };
 const LS_KEY  = 'fire-sim-v1';
 
@@ -1455,7 +1458,7 @@ function draw() {
   const avgRet   = frTotal > 0 ? (passive/frTotal*100) : 0;
   document.getElementById('fr-total-eur').textContent    = '€' + fmt(frTotal/1000) + 'K';
   document.getElementById('fr-total-sub').textContent    = 'Weighted avg return: ' + avgRet.toFixed(1) + '%  ·  Passive income: €' + fmt(passive) + '/yr';
-  document.getElementById('fr-total-cop').textContent    = '≈ ' + fmt(Math.round((frTotal*COP_EUR)/1e6)) + 'M COP  (at COP/EUR ≈ 4 500)';
+  document.getElementById('fr-total-cop').textContent    = '≈ ' + fmt(Math.round((frTotal*COP_EUR)/1e6)) + 'M COP  (at COP/EUR ≈ ' + fmt(Math.round(COP_EUR)) + ')';
   document.getElementById('fr-header-total').textContent = '€' + fmt(frTotal/1000) + 'K';
   document.getElementById('avg-ret').textContent         = avgRet.toFixed(1) + '%';
   document.getElementById('m-passive').textContent       = '€' + fmt(passive) + '/yr';
@@ -1764,11 +1767,75 @@ function gdriveLoad() {
 }
 
 /* ═══════════════════════════════════════════════
+   COP/EUR LIVE RATE — Frankfurter (ECB data)
+═══════════════════════════════════════════════ */
+const LS_RATE_KEY = 'fire-sim-cop-eur-rate';
+
+function updateRateBadge() {
+  const el = document.getElementById('cop-rate-badge');
+  const display = document.getElementById('cop-rate-display');
+  const rate = Math.round(COP_EUR).toLocaleString('fr-FR');
+  if (display) display.textContent = rate;
+  if (copEurSavedAt) {
+    const d = new Date(copEurSavedAt);
+    const today = new Date();
+    const isToday = d.toDateString() === today.toDateString();
+    const label = isToday
+      ? 'today ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })
+      : d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' });
+    el.textContent = 'COP/EUR ' + rate + ' · ' + label;
+    el.title = 'Source: European Central Bank via frankfurter.app';
+  } else {
+    el.textContent = 'COP/EUR ' + rate + ' · fallback';
+    el.title = 'Using fallback rate — live fetch unavailable';
+  }
+}
+
+async function fetchCopEurRate() {
+  // Try live fetch from Frankfurter (ECB data, free, no key required)
+  try {
+    const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=COP', { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (!data.rates || !data.rates.COP) throw new Error('No COP rate in response');
+    // Frankfurter gives EUR→COP, so 1 EUR = data.rates.COP COP
+    COP_EUR = data.rates.COP;
+    copEurSavedAt = new Date().toISOString();
+    // Cache in localStorage for next time
+    try {
+      localStorage.setItem(LS_RATE_KEY, JSON.stringify({ rate: COP_EUR, savedAt: copEurSavedAt }));
+    } catch(e) { /* storage full — not critical */ }
+    updateRateBadge();
+    draw(); // redraw with real rate
+    return;
+  } catch(e) {
+    console.warn('[COP/EUR] Live fetch failed:', e.message);
+  }
+  // Fallback: try last cached rate from localStorage
+  try {
+    const cached = localStorage.getItem(LS_RATE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed.rate && parsed.rate > 0) {
+        COP_EUR = parsed.rate;
+        copEurSavedAt = parsed.savedAt || null;
+        updateRateBadge();
+        draw(); // redraw with cached rate
+        return;
+      }
+    }
+  } catch(e) { /* corrupted cache — ignore */ }
+  // Final fallback: hardcoded 3500, no savedAt set
+  updateRateBadge();
+}
+
+/* ═══════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════ */
 ensureAllP2();
 loadState();
-draw();
+draw();           // first render with fallback rate (instant)
+fetchCopEurRate(); // async: updates rate + redraws when ready
 cloudLoad();
 </script>
 </body>
