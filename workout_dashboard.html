@@ -295,7 +295,6 @@ canvas{display:block;width:100%!important}
     <div class="add-actions">
       <button class="add-btn parse" onclick="parsePreview()">🔍 Parse &amp; Preview</button>
       <button class="add-btn confirm" id="confirmBtn" onclick="confirmAdd()" disabled>✓ Confirm &amp; Add</button>
-      <button class="add-btn edit-last" onclick="editLast()">✏️ Edit Last</button>
       <button class="add-btn clear-btn" onclick="clearAdd()">✕ Clear</button>
     </div>
     <div class="preview-card" id="previewCard">
@@ -339,7 +338,10 @@ canvas{display:block;width:100%!important}
       <div style="font-family:var(--font-mono);font-size:20px;font-weight:700;color:var(--accent)" id="lw-title">—</div>
       <div style="font-size:12px;color:#9a9aaa;margin-top:3px" id="lw-meta">—</div>
     </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-left:auto" id="lw-pills"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-left:auto">
+      <div id="lw-pills" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+      <button class="tbtn" onclick="editLastWorkout()" title="Edit this workout">✏️ Edit</button>
+    </div>
   </div>
   <div class="cards" id="lw-cards"></div>
   <div class="section-label">Exercise breakdown</div>
@@ -1173,16 +1175,42 @@ function confirmAdd() {
   );
 }
 
-function editLast() {
+function editLastWorkout() {
   if (!sessions.length) return;
   const last = sessions[sessions.length-1];
+
+  // Pre-fill date and location
   document.getElementById('addDate').value = last.d;
   const locSel = document.getElementById('addLoc');
   for (let i=0; i<locSel.options.length; i++) {
     if (locSel.options[i].value === last.loc) { locSel.selectedIndex=i; break; }
   }
-  document.getElementById('addText').focus();
-  setStatus(`Editing ${last.d} — paste updated text and Parse & Preview`,'warn');
+
+  // Clear text area and reset preview
+  document.getElementById('addText').innerHTML = '';
+  document.getElementById('previewCard').classList.remove('show');
+  document.getElementById('confirmBtn').disabled = true;
+  pendingWorkout = null;
+
+  // Show placeholder message in the text area
+  const addText = document.getElementById('addText');
+  addText.setAttribute('data-placeholder-override',
+    `Editing ${last.d} · ${last.loc}
+Paste your updated workout text here, then click Parse & Preview`);
+
+  // Switch to Add Workout tab
+  const addBtn = document.querySelector('.nav-btn[onclick*="addworkout"]');
+  showTab('addworkout', addBtn);
+
+  // Show a status message
+  setStatus(`Editing ${last.d} — paste updated text and click Parse & Preview`, 'warn');
+
+  // Scroll to text area and focus
+  setTimeout(() => {
+    const el = document.getElementById('addText');
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+    el.focus();
+  }, 150);
 }
 
 function clearAdd() {
