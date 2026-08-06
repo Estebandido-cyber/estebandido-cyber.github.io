@@ -457,15 +457,13 @@ const STATIC_POSITIONS = [
   { ticker:'VUSA.AS',          name:'Vanguard S&P 500 UCITS',     account:'CTO',  type:'ETF',   shares:106,     avgPrice:71.57 },
   { ticker:'AAPL',             name:'Apple Inc.',                  account:'CTO',  type:'Stock', shares:38,      avgPrice:131.20 },
   { ticker:'SAP.DE',           name:'SAP SE',                     account:'PEE',  type:'Stock', shares:85.611,  avgPrice:144.11 },
-  { ticker:'0P0000VQ1S.F',     name:'Avenir Actions Durables I',  account:'PEE',  type:'Fund',  shares:164,     avgPrice:60 },
-  { ticker:'0P0000VQ4Q.F',     name:'Avenir Actions Monde I',     account:'PEE',  type:'Fund',  shares:441,     avgPrice:74 },
+  { ticker:'0P0000VQ4Q.F',     name:'Avenir Actions Monde I',     account:'PEE',  type:'Fund',  shares:613.74,  avgPrice:79.11 },
   { ticker:'0P00000WLG.F',     name:'Vanguard Global Stock Idx',  account:'PERE', type:'Fund',  shares:261.96,  avgPrice:46.54 },
   { ticker:'0P00011HBM.F_PERO',name:'Vanguard Glb Stk Idx Ins Pl', account:'PERO', type:'Fund',  shares:17,      avgPrice:364.20, realTicker:'0P00011HBM.F' },
 ];
 
 let CASH = parseFloat(localStorage.getItem('portfolio_cash') || '10');
 const FONDS_EUROS = [
-  { name:'Fonds Euros PERO', account:'PERO', value: parseFloat(localStorage.getItem('fe_value_PERO')||'500'),   rate: parseFloat(localStorage.getItem('fe_rate_PERO')||'2.5') },
   { name:'Fonds Euros AV',   account:'AV',   value: parseFloat(localStorage.getItem('fe_value_AV')  ||'1000'), rate: parseFloat(localStorage.getItem('fe_rate_AV')  ||'2.5') },
 ];
 const LIVRETS = [
@@ -491,7 +489,6 @@ const GEO_WEIGHTS = {
   'VUSA.AS':           { 'North America':100 },
   'AAPL':              { 'North America':100 },
   'SAP.DE':            { 'Europe':100 },
-  '0P0000VQ1S.F':      { 'North America':55, 'Europe':25, 'Asia-Pacific':15, 'Emerging':5 },
   '0P0000VQ4Q.F':      { 'North America':60, 'Europe':20, 'Asia-Pacific':15, 'Emerging':5 },
   '0P00000WLG.F':      { 'North America':63, 'Europe':18, 'Asia-Pacific':13, 'Emerging':6 },
   '0P00011HBM.F_PERO': { 'North America':63, 'Europe':18, 'Asia-Pacific':13, 'Emerging':6 },
@@ -501,7 +498,6 @@ const SECTOR_WEIGHTS = {
   'VUSA.AS':           { 'Technology':32, 'Financials':13, 'Healthcare':11, 'Consumer':10, 'Industrials':8,  'Other':26 },
   'AAPL':              { 'Technology':100 },
   'SAP.DE':            { 'Technology':100 },
-  '0P0000VQ1S.F':      { 'Technology':22, 'Financials':16, 'Healthcare':13, 'Consumer':12, 'Industrials':11, 'Other':26 },
   '0P0000VQ4Q.F':      { 'Technology':24, 'Financials':14, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':29 },
   '0P00000WLG.F':      { 'Technology':24, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':28 },
   '0P00011HBM.F_PERO': { 'Technology':24, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':28 },
@@ -519,11 +515,10 @@ const REFERENCE_VALUES = {
   'WPEA.PA':           13594*6.47*(1+0.0874),
   'VUSA.AS':           106*71.57*(1+0.6502),
   'AAPL':              38*131.20*(1+1.2463),
-  'SAP.DE':            85.611*144.11*(1+0.12929),
-  '0P0000VQ1S.F':      164*60*(1+0.603),
-  '0P0000VQ4Q.F':      441*74*(1+0.5966),
+  'SAP.DE':            85.611*144.11*(1+0.19561),
+  '0P0000VQ4Q.F':      613.74*79.11*(1+0.63606),
   '0P00000WLG.F':      261.96*46.54*(1+0.3349),
-  '0P00011HBM.F_PERO': 17*364.20*(1+0.21433),
+  '0P00011HBM.F_PERO': 17*364.20*(1+0.24426),
 };
 
 let prices = {};
@@ -722,7 +717,7 @@ function saveManualUpdates() {
     } else if (special.startsWith('fonds')) {
       const idx = parseInt(special.replace('fonds',''));
       FONDS_EUROS[idx].value = val;
-      localStorage.setItem(['fe_value_PERO','fe_value_AV'][idx], val);
+      localStorage.setItem(['fe_value_AV'][idx], val);
     } else if (special.startsWith('livret')) {
       const idx = parseInt(special.replace('livret',''));
       LIVRETS[idx].value = val;
@@ -923,7 +918,7 @@ function renderIncome(fondsRows, livretRows) {
     html+=`<div class="income-row"><div><div class="income-name">${l.name}</div><div class="income-rate-line"><input class="income-edit" type="number" step="0.1" value="${l.rate}" onchange="updateRate('${key}',this.value,${i},'livret')">% / an</div></div><div class="income-amount">${fmt(income)}</div></div>`;
   });
   fondsRows.forEach((f,i) => {
-    const keys=['fe_rate_PERO','fe_rate_AV'];
+    const keys=['fe_rate_AV'];
     const income=f.value*(f.rate/100);
     total+=income;
     html+=`<div class="income-row"><div><div class="income-name">${f.name}</div><div class="income-rate-line"><input class="income-edit" type="number" step="0.1" value="${f.rate}" onchange="updateRate('${keys[i]}',this.value,${i},'fonds')">% / an (est.)</div></div><div class="income-amount">${fmt(income)}</div></div>`;
@@ -1256,10 +1251,8 @@ function getAllWidgetData() {
     livret_rate_LDDS: LIVRETS[1].rate,
     livret_value_A:   LIVRETS[0].value,
     livret_value_LDDS:LIVRETS[1].value,
-    fe_rate_PERO:     FONDS_EUROS[0].rate,
-    fe_rate_AV:       FONDS_EUROS[1].rate,
-    fe_value_PERO:    FONDS_EUROS[0].value,
-    fe_value_AV:      FONDS_EUROS[1].value,
+    fe_rate_AV:       FONDS_EUROS[0].rate,
+    fe_value_AV:      FONDS_EUROS[0].value,
     tax_bracket:      parseInt(document.getElementById('taxBracket').value),
     manual_values:    loadManualValues(),
   };
@@ -1271,10 +1264,8 @@ function restoreAllWidgetData(data, overwrite = true) {
   if (data.livret_rate_LDDS !== undefined) { LIVRETS[1].rate  = data.livret_rate_LDDS; localStorage.setItem('liv_rate_LDDS',  data.livret_rate_LDDS); }
   if (data.livret_value_A   !== undefined) { LIVRETS[0].value = data.livret_value_A;   localStorage.setItem('liv_value_A',    data.livret_value_A); }
   if (data.livret_value_LDDS!== undefined) { LIVRETS[1].value = data.livret_value_LDDS;localStorage.setItem('liv_value_LDDS', data.livret_value_LDDS); }
-  if (data.fe_rate_PERO     !== undefined) { FONDS_EUROS[0].rate  = data.fe_rate_PERO;  localStorage.setItem('fe_rate_PERO',  data.fe_rate_PERO); }
-  if (data.fe_rate_AV       !== undefined) { FONDS_EUROS[1].rate  = data.fe_rate_AV;    localStorage.setItem('fe_rate_AV',    data.fe_rate_AV); }
-  if (data.fe_value_PERO    !== undefined) { FONDS_EUROS[0].value = data.fe_value_PERO; localStorage.setItem('fe_value_PERO', data.fe_value_PERO); }
-  if (data.fe_value_AV      !== undefined) { FONDS_EUROS[1].value = data.fe_value_AV;   localStorage.setItem('fe_value_AV',   data.fe_value_AV); }
+  if (data.fe_rate_AV       !== undefined) { FONDS_EUROS[0].rate  = data.fe_rate_AV;    localStorage.setItem('fe_rate_AV',    data.fe_rate_AV); }
+  if (data.fe_value_AV      !== undefined) { FONDS_EUROS[0].value = data.fe_value_AV;   localStorage.setItem('fe_value_AV',   data.fe_value_AV); }
   if (data.tax_bracket      !== undefined) { document.getElementById('taxBracket').value = data.tax_bracket; }
   if (data.manual_values    !== undefined) { saveManualValuesToStorage(data.manual_values); }
   render();
