@@ -459,7 +459,7 @@ const STATIC_POSITIONS = [
   { ticker:'SAP.DE',           name:'SAP SE',                     account:'PEE',  type:'Stock', shares:85.611,  avgPrice:144.11 },
   { ticker:'0P0000VQ4Q.F',     name:'Avenir Actions Monde I',     account:'PEE',  type:'Fund',  shares:613.74,  avgPrice:79.11 },
   { ticker:'0P00000WLG.F',     name:'Vanguard Global Stock Idx',  account:'PERE', type:'Fund',  shares:261.96,  avgPrice:46.54 },
-  { ticker:'0P00011HBM.F_PERO',name:'Vanguard Glb Stk Idx Ins Pl', account:'PERO', type:'Fund',  shares:17,      avgPrice:364.20, realTicker:'0P00011HBM.F' },
+  { ticker:'0P00011HBM.F_PERO',name:'Vanguard Glb Stk Idx Ins Pl', account:'PERO', type:'Fund',  shares:17.52544,avgPrice:364.20, realTicker:'0P00011HBM.F' },
 ];
 
 let CASH = parseFloat(localStorage.getItem('portfolio_cash') || '10');
@@ -518,7 +518,7 @@ const REFERENCE_VALUES = {
   'SAP.DE':            85.611*144.11*(1+0.19561),
   '0P0000VQ4Q.F':      613.74*79.11*(1+0.63606),
   '0P00000WLG.F':      261.96*46.54*(1+0.3349),
-  '0P00011HBM.F_PERO': 17*364.20*(1+0.24426),
+  '0P00011HBM.F_PERO': 17.52544*364.20*(1+0.24232),
 };
 
 let prices = {};
