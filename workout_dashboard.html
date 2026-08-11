@@ -1076,6 +1076,8 @@ function parsePreview() {
   const existing = sessions.find(s => s.d === date);
 
   const {session, unrecognized: unknowns} = parseWorkoutText(text, date, loc, html);
+  // DEBUG
+  alert('PU:'+session.pu+' Sq:'+session.sq+'\nText lines:'+text.split('\n').length+'\nFirst exercise line:'+text.split('\n').find(l=>/^\d/.test(l.trim())&&!/^\d+h\d+/.test(l.trim())));
   pendingWorkout = {session, isEdit: !!existing, existingDate: date};
 
   // Build preview
