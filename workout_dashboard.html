@@ -761,7 +761,7 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
       // Use plain textLines with exercise heuristic (reliable line breaks).
       const exerciseLines = [];
       for (const l of textLines) {
-        if (/fitbit|miband|kcal|k?al\b/i.test(l)) break;
+        if (/fitbit|miband|kcal|\d\s*kal\b/i.test(l)) break;
         // Stop at summary line: starts with time/distance and contains multiple stats
         if (/^\d+m\d+s\s+Run/i.test(l)) break;
         if (/^\d+h\d+/.test(l)) continue;
@@ -1045,7 +1045,7 @@ function parseWorkoutTextDebug(pastedHtml, text) {
 
   const exerciseLines = [];
   for (const l of rawLines) {
-    if (/fitbit|miband|kcal|k?al\b/i.test(l)) break;
+    if (/fitbit|miband|kcal|\d\s*kal\b/i.test(l)) break;
     if (/^\d+h\d+/.test(l)) continue;
     if (/^\d/.test(l)) exerciseLines.push(l);
   }
