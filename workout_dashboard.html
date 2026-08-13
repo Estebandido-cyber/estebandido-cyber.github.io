@@ -768,7 +768,7 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
         if (/^\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(l)) continue;
         if (/^\d+m\s+Stretch$/i.test(l)) break;  // end of workout — stop here
         if (/^[\dms]+\s+(warm|stretch|rest|min|sec)/i.test(l)) continue;
-        if (/^\d/.test(l)) exerciseLines.push(l);
+        if (/^\d/.test(l) || /^[Xx]\d+$/.test(l)) exerciseLines.push(l);
       }
       bulletLines = exerciseLines;
     }
@@ -823,10 +823,16 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
   let currentBlock = [];
   bulletLines.forEach(line => {
     const blockMult = line.trim().match(/^[Xx](\d+)$/);
+    const hasInlineMult = !blockMult && /\bx\s*\d+$/i.test(line);
     if (blockMult) {
       if (currentBlock.length) { blocks.push({lines:currentBlock, mult:parseInt(blockMult[1])}); currentBlock=[]; }
     } else {
       currentBlock.push(line);
+      if (hasInlineMult) {
+        // Line has its own inline multiplier — close this block so a
+        // subsequent xN only applies to lines after this point
+        blocks.push({lines:currentBlock, mult:1}); currentBlock=[];
+      }
     }
   });
   if (currentBlock.length) blocks.push({lines:currentBlock, mult:1});
