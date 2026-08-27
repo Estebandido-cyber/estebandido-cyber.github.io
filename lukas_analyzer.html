@@ -750,14 +750,23 @@ function markAllReviewed() {
 // ─── YAHOO FINANCE ────────────────────────────────────────────────────────────
 async function fetchPrice(ticker) {
   const t = ticker.endsWith('_PERO') ? ticker.replace('_PERO','') : ticker;
-  try {
-    const res = await fetch(`https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=1d`, { headers:{'Accept':'application/json'} });
-    if (!res.ok) throw new Error();
-    const json = await res.json();
-    const meta = json?.chart?.result?.[0]?.meta;
-    if (!meta) throw new Error();
-    return { price: meta.regularMarketPrice || meta.previousClose, currency: meta.currency || 'EUR' };
-  } catch { return null; }
+  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=1d`;
+  const proxies = [
+    url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  ];
+  for (const proxy of proxies) {
+    try {
+      const res = await fetch(proxy(yahooUrl), { headers:{'Accept':'application/json'} });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const meta = json?.chart?.result?.[0]?.meta;
+      if (!meta) continue;
+      return { price: meta.regularMarketPrice || meta.previousClose, currency: meta.currency || 'EUR' };
+    } catch { continue; }
+  }
+  return null;
 }
 
 async function fetchAllPrices() {
