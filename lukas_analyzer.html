@@ -512,13 +512,13 @@ const ACCOUNT_COLORS = {
 };
 
 const REFERENCE_VALUES = {
-  'WPEA.PA':           16507*6.56*(1+0.0521),
-  'VUSA.AS':           106*71.57*(1+0.6502),
-  'AAPL':              38*131.20*(1+1.2463),
-  'SAP.DE':            85.611*144.11*(1+0.19561),
-  '0P0000VQ4Q.F':      613.74*79.11*(1+0.63606),
-  '0P00000WLG.F':      261.96*46.54*(1+0.3349),
-  '0P00011HBM.F_PERO': 17.52544*364.20*(1+0.24232),
+  'WPEA.PA':           16507*6.56*(1+0.1030),   // = €119,444
+  'VUSA.AS':           106*71.57*(1+0.8459),    // = €14,004
+  'AAPL':              38*131.20*(1+1.3219),    // = €11,576
+  'SAP.DE':            85.611*144.11*(1+0.3603),// = €16,783
+  '0P0000VQ4Q.F':      613.74*79.11*(1+0.6411), // = €79,680
+  '0P00000WLG.F':      261.96*46.54*(1+0.4110), // = €17,202
+  '0P00011HBM.F_PERO': 17.52544*364.20*(1+0.2797),// = €8,168
 };
 
 let prices = {};
@@ -748,8 +748,25 @@ function markAllReviewed() {
 }
 
 // ─── YAHOO FINANCE ────────────────────────────────────────────────────────────
+// CF_PRICE_URL: own Worker proxies Yahoo — no CORS issues, no rate limits
+const CF_PRICE_URL = 'https://widgets-sync.estebandido80.workers.dev/price';
+
 async function fetchPrice(ticker) {
   const t = ticker.endsWith('_PERO') ? ticker.replace('_PERO','') : ticker;
+
+  // 1st: Own Cloudflare Worker proxy (reliable, no CORS issues)
+  try {
+    const res = await fetch(`${CF_PRICE_URL}?ticker=${encodeURIComponent(t)}`, {
+      headers: { 'Accept': 'application/json', 'X-Secret': CF_SECRET }
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const meta = json?.chart?.result?.[0]?.meta;
+      if (meta) return { price: meta.regularMarketPrice || meta.previousClose, currency: meta.currency || 'EUR' };
+    }
+  } catch { /* fall through to public proxies */ }
+
+  // Fallback: public CORS proxies (unreliable but better than nothing)
   const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?interval=1d&range=1d`;
   const proxies = [
     url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
