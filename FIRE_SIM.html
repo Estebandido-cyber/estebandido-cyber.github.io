@@ -654,7 +654,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
       </div>
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">AV / PERO / PERE</span>
+          <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">Assurance Vie — AV</span>
           <span class="tax-tag tax-av">~18% effective on gains</span>
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('av',-5)">−</button><span class="sval" id="av-v">20K</span><button onclick="step('av',5)">+</button></div></div>
@@ -663,7 +663,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
       </div>
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">CTO / PEE</span>
+          <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">CTO</span>
           <span class="tax-tag tax-cto">30% PFU on gains</span>
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('cto',-5)">−</button><span class="sval" id="cto-v">45K</span><button onclick="step('cto',5)">+</button></div></div>
@@ -963,6 +963,9 @@ function loadState() {
       Object.keys(p.S).forEach(k => {
         S[k] = p.S[k];
         if (!(k in LIM)) LIM[k] = [0, 1e9];
+        // Repopulate p2Init so ensureP2Year doesn't overwrite restored values
+        const m = k.match(/^p2s_(\d+)$/);
+        if (m) p2Init.add(Number(m[1]));
       });
     }
     applyColChecks(p.colChecks);
@@ -1226,6 +1229,12 @@ function fmtLabel(k, v) {
 
 function ensureP2Year(age) {
   if (p2Init.has(age)) return;
+  // If values were already restored from storage, just register the age and set limits
+  if (`p2s_${age}` in S && `p2i_${age}` in S) {
+    LIM[`p2s_${age}`] = [500,3000]; LIM[`p2i_${age}`] = [0,3000];
+    p2Init.add(age);
+    return;
+  }
   const from = [...p2Init].sort((a,b)=>a-b)[0] ?? null;
   S[`p2s_${age}`] = from ? S[`p2s_${from}`] : 1800;
   S[`p2i_${age}`] = from ? S[`p2i_${from}`] : 200;
