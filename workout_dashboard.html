@@ -908,7 +908,7 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
     if (/slow.*dom|dom.*slow/i.test(ex)) return 'dom_slow';
     if (/archer.*dom|dom.*archer/i.test(ex)) return 'dom_archer';
     if (/\bbic\b/i.test(ex) && /dom/i.test(ex)) return 'dom_lsit';
-    if (/\bbic\b/i.test(ex) && !/pu|push|manc/i.test(ex)) return 'bic_chinup';
+    if (/\bbic\b/i.test(ex) && !/pu|push|manc|red|band/i.test(ex)) return 'bic_chinup';
     if (/\bdom\b/i.test(ex)) return 'dom_plain';
     // Push-ups
     if (/pu\s*fu|pufu/i.test(ex)) return 'pu_fu';
@@ -948,7 +948,7 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
     if (/scalp.*pull|scap/i.test(ex)) return 'scalp_pull';
     if (/bird.*dog/i.test(ex)) return 'bird_dog';
     // Band/dumbbells
-    if (/bic.*manc|manc.*bic/i.test(ex)) return 'bic_manc';
+    if (/bic.*manc|manc.*bic|bic.*(?:red|band)|(?:red|band).*bic/i.test(ex)) return 'bic_manc';
     if (/milit.*(?:p|press).*manc|manc.*milit|milit.*manc/i.test(ex)) return 'milit_press';
     if (/row/i.test(ex)) return 'row_band';
     if (/milit.*press|should.*manc/i.test(ex)) return 'milit_press';
