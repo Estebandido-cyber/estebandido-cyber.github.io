@@ -656,7 +656,7 @@ const LS_KEY          = 'xpenses_calculator_v1';
 //    yearly — true if the state value is annual (displayed as /12)
 // ════════════════════════════════════════════════════════════════════
 const SHARED_DEF = [
-  { key: 'rent',        label: 'Rent',           step: 10 },
+  { key: 'rent',        label: 'Rent',           step: 5  },
   { key: 'insurance',   label: 'Home insurance', step: 1  },
   { key: 'internet',    label: 'Internet',       step: 5  },
   { key: 'netflix',     label: 'Netflix',        step: 1  },
@@ -665,9 +665,11 @@ const SHARED_DEF = [
 
 const PERSONAL_DEF = [
   { key: 'lunch',       label: 'Lunch',                 step: 10 },
+  { key: 'resto',       label: 'Resto',                 step: 10 },
   { key: 'extras',      label: 'Extras',                step: 10 },
   { key: 'health',      label: 'Health',                step: 10 },
   { key: 'beer',        label: 'Beer',                  step: 5  },
+  { key: 'bar',         label: 'Bar',                   step: 10 },
   { key: 'smoothie',    label: 'Post-workout smoothie', step: 5  },
   { key: 'savings',     label: 'Savings',               step: 10 },
   { key: 'drums',       label: 'Drums',                 step: 5  },
@@ -698,20 +700,20 @@ const CHART_CATS = [
 // ════════════════════════════════════════════════════════════════════
 const DEFAULTS = {
   now: {
-    salary: 2000, tickets: 200,
+    salary: 2000, tickets: 200, mel: 40,
     rent: 1450, insurance: 25, internet: 40, netflix: 15, electricity: 120,
     sharedAcc: 600,
-    phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
-    billar: 150, billarMonth: 10, lunch: 100, extras: 100,
+    phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, bar: 0, chess: 90,
+    billar: 150, billarMonth: 10, lunch: 100, resto: 0, extras: 100,
     health: 120, drums: 10, savings: 50,
     partnerFixed: 630,
   },
   fire: {
-    salary: 0, tickets: 500,
+    salary: 0, tickets: 500, mel: 40,
     rent: 900, insurance: 20, internet: 40, netflix: 15, electricity: 80,
     sharedAcc: 400,
-    phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
-    billar: 150, billarMonth: 10, lunch: 60, extras: 150,
+    phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, bar: 0, chess: 90,
+    billar: 150, billarMonth: 10, lunch: 60, resto: 0, extras: 150,
     health: 120, drums: 10, savings: 0,
     partnerFixed: 400,
   },
@@ -740,7 +742,7 @@ function derived(s) {
   }, 0);
   const gross    = sharedTotal + s.sharedAcc + personalMonthly;
   const net      = gross - s.partnerFixed;
-  const income   = s.salary + s.tickets;
+  const income   = s.salary + s.tickets + s.mel;
   const leftover = income - net;
   return { sharedTotal, personalMonthly, gross, net, income, leftover };
 }
@@ -982,6 +984,11 @@ function buildCard(tab) {
           <div class="spin-wrap" id="${tab}-spin-tickets"></div>
           <span class="eamt" id="${tab}-amt-tickets">—</span>
         </div>
+        <div class="income-row">
+          <span class="iname">Mel</span>
+          <div class="spin-wrap" id="${tab}-spin-mel"></div>
+          <span class="eamt" id="${tab}-amt-mel">—</span>
+        </div>
       </div>
       <div class="metric c-green">
         <div class="lbl">Total income</div>
@@ -1049,6 +1056,7 @@ function buildCard(tab) {
 
   makeSpin(`${tab}-spin-salary`,       tab, 'salary',       50);
   makeSpin(`${tab}-spin-tickets`,      tab, 'tickets',      10);
+  makeSpin(`${tab}-spin-mel`,          tab, 'mel',          1);
   makeSpin(`${tab}-spin-sharedAcc`,    tab, 'sharedAcc',    50);
   makeSpin(`${tab}-spin-partnerFixed`, tab, 'partnerFixed', 5);
   SHARED_DEF.forEach(def   => makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step));
@@ -1067,6 +1075,8 @@ function render(tab) {
   document.getElementById(`${p}amt-salary`).textContent  = fmt(s.salary);
   document.getElementById(`${p}sv-tickets`).textContent  = fmt(s.tickets);
   document.getElementById(`${p}amt-tickets`).textContent = fmt(s.tickets);
+  document.getElementById(`${p}sv-mel`).textContent      = fmt(s.mel);
+  document.getElementById(`${p}amt-mel`).textContent     = fmt(s.mel);
   document.getElementById(`${p}m-income`).textContent    = fmt(d.income);
 
   document.getElementById(`${p}m-gross`).textContent      = fmt(d.gross);
