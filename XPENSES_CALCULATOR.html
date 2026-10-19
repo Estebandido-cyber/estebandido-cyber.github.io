@@ -478,7 +478,6 @@ body {
 .sa-left.pos { color: var(--green) !important; }
 .sa-left.neg { color: var(--red) !important; }
 .sa-left .sa-pct { font-size: 11px; font-weight: 400; opacity: .75; margin-left: 6px; }
-.p-row.p-row-mid { margin-bottom: 0.5rem; background: var(--bg-card); }
 
 /* ── Expense rows ── */
 .expense-rows { display: flex; flex-direction: column; gap: 1px; }
@@ -712,7 +711,6 @@ const DEFAULTS = {
     phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, bar: 0, chess: 90,
     billar: 150, billarMonth: 10, lunch: 100, resto: 0, extras: 100,
     health: 120, drums: 10, savings: 50,
-    partnerFixed: 630,
   },
   fire: {
     salary: 0, tickets: 500, mel: 40,
@@ -721,7 +719,6 @@ const DEFAULTS = {
     phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, bar: 0, chess: 90,
     billar: 150, billarMonth: 10, lunch: 60, resto: 0, extras: 150,
     health: 120, drums: 10, savings: 0,
-    partnerFixed: 400,
   },
 };
 
@@ -752,7 +749,7 @@ function derived(s) {
   const sharedLeft = sharedPool - sharedTotal;
   // If bills exceed the pot, the shortfall is topped up 50/50 → your half counts too
   const gross    = s.sharedAcc + Math.max(0, -sharedLeft) / 2 + personalMonthly;
-  const net      = gross - s.partnerFixed;
+  const net      = gross; // partner's monthly contribution is already in income (Mel)
   const income   = s.salary + s.tickets + s.mel;
   const leftover = income - net;
   return { sharedTotal, sharedPool, sharedLeft, personalMonthly, gross, net, income, leftover };
@@ -1011,14 +1008,12 @@ function buildCard(tab) {
     <hr class="divider">
     <p class="section-label">Monthly summary</p>
     <div class="metric-grid">
-      <div class="metric c-red">   <div class="lbl">You pay (gross)</div>      <div class="val" id="${tab}-m-gross">—</div>      <div class="sub">before reimbursement</div></div>
-      <div class="metric c-green"> <div class="lbl">Partner transfer</div>     <div class="val" id="${tab}-m-partner">—</div>    <div class="sub">monthly, from her</div></div>
-      <div class="metric c-blue">  <div class="lbl">Your net cost</div>        <div class="val" id="${tab}-m-net">—</div>        <div class="sub">what you actually pay</div></div>
+      <div class="metric c-red">   <div class="lbl">Your expenses</div>        <div class="val" id="${tab}-m-gross">—</div>      <div class="sub">shared account + personal</div></div>
       <div class="metric c-amber"> <div class="lbl">Shared account</div>       <div class="val" id="${tab}-m-shared-acc">—</div> <div class="sub">each contributes</div></div>
       <div class="metric c-purple" id="${tab}-leftover-card">
         <div class="lbl">Left at end of month</div>
         <div class="val" id="${tab}-m-leftover">—</div>
-        <div class="sub">income minus net cost</div>
+        <div class="sub">income minus expenses</div>
       </div>
     </div>
 
@@ -1027,13 +1022,6 @@ function buildCard(tab) {
       <span class="sa-label">Shared account</span>
       <span class="sa-note" id="${tab}-sa-note">each puts in €600</span>
       <div class="spin-wrap" id="${tab}-spin-sharedAcc"></div>
-    </div>
-
-    <div class="p-row p-row-mid">
-      <span class="plbl">Monthly transfer from partner</span>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="spin-wrap" id="${tab}-spin-partnerFixed"></div>
-      </div>
     </div>
 
     <div class="box-shared" id="${tab}-box-shared">
@@ -1065,7 +1053,6 @@ function buildCard(tab) {
   makeSpin(`${tab}-spin-tickets`,      tab, 'tickets',      10);
   makeSpin(`${tab}-spin-mel`,          tab, 'mel',          1);
   makeSpin(`${tab}-spin-sharedAcc`,    tab, 'sharedAcc',    50);
-  makeSpin(`${tab}-spin-partnerFixed`, tab, 'partnerFixed', 1);
   SHARED_DEF.forEach(def   => makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step));
   PERSONAL_DEF.forEach(def => makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step));
 }
@@ -1087,8 +1074,6 @@ function render(tab) {
   document.getElementById(`${p}m-income`).textContent    = fmt(d.income);
 
   document.getElementById(`${p}m-gross`).textContent      = fmt(d.gross);
-  document.getElementById(`${p}m-partner`).textContent    = fmt(s.partnerFixed);
-  document.getElementById(`${p}m-net`).textContent        = fmt(d.net);
   document.getElementById(`${p}m-shared-acc`).textContent = fmt(s.sharedAcc);
   document.getElementById(`${p}m-leftover`).textContent   = fmt(d.leftover);
   document.getElementById(`${p}leftover-card`).className  = d.leftover >= 0 ? 'metric c-purple' : 'metric c-red';
@@ -1122,7 +1107,6 @@ function render(tab) {
   });
   document.getElementById(`${p}total-personal`).textContent = fmt(d.personalMonthly);
 
-  document.getElementById(`${p}sv-partnerFixed`).textContent = fmt(s.partnerFixed);
 
   const cats      = CHART_CATS.map(c => ({ ...c, value: c.fn(s) }));
   const isDark    = window.matchMedia('(prefers-color-scheme:dark)').matches;
