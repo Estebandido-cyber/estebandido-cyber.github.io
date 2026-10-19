@@ -225,6 +225,18 @@ body { margin: 0; padding: 0; background: var(--color-bg-tertiary); color: var(-
 .coll-toggle.open { transform: rotate(180deg); }
 .coll-body { padding: 0 14px 12px; background: var(--color-bg-primary); }
 .coll-body.hidden { display: none; }
+/* Return-by-period (PEA / CTO) */
+.ret-sum  { display: flex; align-items: center; gap: 8px; margin: 7px 0; padding: 6px 8px; font-size: 13px; color: var(--color-text-secondary); background: var(--color-bg-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--radius-md); cursor: pointer; user-select: none; }
+.ret-sum .ret-lbl { flex: 1; }
+.ret-sum .ret-avg { font-weight: 500; color: var(--color-text-primary); }
+.ret-chev { font-size: 11px; color: var(--color-text-tertiary); transition: transform .2s; }
+.ret-chev.open { transform: rotate(90deg); }
+.ret-body.hidden { display: none; }
+.ret-presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 4px; }
+.ret-presets button { font-size: 11px; padding: 4px 9px; border: 0.5px solid var(--color-border-secondary); border-radius: 999px; background: var(--color-bg-primary); color: var(--color-text-secondary); cursor: pointer; }
+.ret-presets button:hover { background: var(--color-bg-tertiary, var(--color-bg-primary)); color: var(--color-text-primary); }
+.ret-row .rlbl { font-size: 11px; color: var(--color-text-tertiary); margin-left: 4px; }
+.ret-sync-note { font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0; }
 .fr-block  { border-color: var(--blue-border) !important; }
 .fr-header { background: var(--color-bg-info) !important; }
 .col-block  { border-color: var(--amb-border) !important; border-style: dashed !important; }
@@ -649,7 +661,11 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
           <span class="tax-tag tax-pea">17.2% charges sociales on gains</span>
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('pea',-5)">−</button><span class="sval" id="pea-v">100K</span><button onclick="step('pea',5)">+</button></div></div>
-        <div class="row"><label>Annual return (%)</label><div class="stepper"><button onclick="step('pea-r',-0.5)">−</button><span class="sval" id="pea-r-v">5%</span><button onclick="step('pea-r',0.5)">+</button></div></div>
+        <div class="ret-sum" onclick="toggleRet('pea')"><span class="ret-lbl">Annual return by period</span><span class="ret-avg" id="pea-cagr">5.0%/yr avg</span><span class="ret-chev" id="pea-ret-chev">▸</span></div>
+        <div class="ret-body hidden" id="pea-ret-body">
+          <div class="ret-presets"><button onclick="applyRetPreset('pea','base')">Base</button><button onclick="applyRetPreset('pea','crash')">Crash early</button><button onclick="applyRetPreset('pea','lost')">Lost decade</button></div>
+          <div id="pea-ret-rows"></div>
+        </div>
         <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">Grows tax-free. Only gains taxed at withdrawal.</p>
       </div>
       <div class="sub-card">
@@ -658,7 +674,15 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
           <span class="tax-tag tax-cto">30% PFU on gains</span>
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('cto',-5)">−</button><span class="sval" id="cto-v">45K</span><button onclick="step('cto',5)">+</button></div></div>
-        <div class="row"><label>Annual return (%)</label><div class="stepper"><button onclick="step('cto-r',-0.5)">−</button><span class="sval" id="cto-r-v">5%</span><button onclick="step('cto-r',0.5)">+</button></div></div>
+        <div class="ret-sum" onclick="toggleRet('cto')"><span class="ret-lbl">Annual return by period</span><span class="ret-avg" id="cto-cagr">5.0%/yr avg</span><span class="ret-chev" id="cto-ret-chev">▸</span></div>
+        <div class="ret-body hidden" id="cto-ret-body">
+          <div class="col-switch-row"><span class="csl" id="lbl-cto-sync">Same periods as PEA</span><label class="switch"><input type="checkbox" id="cb-cto-sync" onchange="toggleCtoSync(this.checked)"><span class="slider-sw"></span></label></div>
+          <div id="cto-ret-own">
+            <div class="ret-presets"><button onclick="applyRetPreset('cto','base')">Base</button><button onclick="applyRetPreset('cto','crash')">Crash early</button><button onclick="applyRetPreset('cto','lost')">Lost decade</button></div>
+            <div id="cto-ret-rows"></div>
+          </div>
+          <p class="ret-sync-note" id="cto-sync-note" style="display:none">Copies the PEA periods — both are equities, a crash hits both.</p>
+        </div>
         <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">30% on realised gains. Principal tax-free.</p>
       </div>
       <div class="sub-card">
@@ -897,7 +921,10 @@ const COL_ENTRIES = [
 
 // Default simulation state — overwritten by localStorage on load
 const S = {
-  pea:100, 'pea-r':5, av:20, 'av-r':4, cto:45, 'cto-r':5,
+  pea:100, av:20, 'av-r':4, cto:45,
+  'pea-r1':5,'pea-r2':5,'pea-r3':5,'pea-r4':5,'pea-r5':5,'pea-r6':5,'pea-r7':5,'pea-r8':5,'pea-r9':5,
+  'cto-r1':5,'cto-r2':5,'cto-r3':5,'cto-r4':5,'cto-r5':5,'cto-r6':5,'cto-r7':5,'cto-r8':5,'cto-r9':5,
+  'cto-sync':0,
   liv:37, 'liv-r':1.75, cash:30,
   cop1:130, 'cop1-r':5, cop2:300, 'cop2-r':3, cop3:150, 'cop3-r':2, cop4:30, 'cop4-r':2,
   salary:3500, lock:3, infl:2, startAge:46,
@@ -905,13 +932,21 @@ const S = {
   spend3:1800, side3:200, partner3:0, retraite:400,
 };
 const LIM = {
-  pea:[0,200], 'pea-r':[0,10], av:[0,200], 'av-r':[0,10],
-  cto:[0,200], 'cto-r':[0,10], liv:[0,40], 'liv-r':[0,5], cash:[0,100],
+  pea:[0,200], av:[0,200], 'av-r':[0,10],
+  cto:[0,200], liv:[0,40], 'liv-r':[0,5], cash:[0,100],
   cop1:[10,500], 'cop1-r':[0,15], cop2:[10,1000], 'cop2-r':[0,15],
   cop3:[10,500], 'cop3-r':[1,5],  cop4:[10,200],  'cop4-r':[1,5],
   salary:[1000,8000], lock:[0,10], infl:[0,6], startAge:[46,52],
   partner1:[0,2000], spend2:[500,3000], side2:[0,3000], partner2:[0,2000],
   spend3:[500,3000], side3:[0,1000], partner3:[0,2000], retraite:[0,1500],
+};
+// Return-by-period: 9 buckets of 5 years cover the 44-year horizon (last bucket = years 41–44)
+const RET_N = 9, RET_LEN = 5, HORIZON = 44;
+for (let i = 1; i <= RET_N; i++) { LIM['pea-r'+i] = [-10,15]; LIM['cto-r'+i] = [-10,15]; }
+const RET_PRESETS = {
+  base:  [5,5,5,5,5,5,5,5,5],
+  crash: [-3,7,7,5,5,5,5,5,5],
+  lost:  [0,0,5,5,5,5,5,5,5],
 };
 
 // Runtime state
@@ -943,6 +978,18 @@ function applyColChecks(cc) {
   });
 }
 
+// Upgrade old saves: a single 'pea-r'/'cto-r' becomes the value of every period
+function migrateReturns(src) {
+  if (!src) return src;
+  ['pea','cto'].forEach(a => {
+    if (src[a+'-r'] !== undefined) {
+      if (src[a+'-r1'] === undefined) for (let i = 1; i <= RET_N; i++) src[a+'-r'+i] = src[a+'-r'];
+      delete src[a+'-r'];
+    }
+  });
+  return src;
+}
+
 function saveState() {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify({
@@ -960,6 +1007,7 @@ function loadState() {
     if (!raw) return false;
     const p = JSON.parse(raw);
     if (p.S) {
+      migrateReturns(p.S);
       Object.keys(p.S).forEach(k => {
         S[k] = p.S[k];
         if (!(k in LIM)) LIM[k] = [0, 1e9];
@@ -969,7 +1017,7 @@ function loadState() {
       });
     }
     applyColChecks(p.colChecks);
-    if (p.scenarios)      p.scenarios.forEach((s, i) => { scenarios[i] = s || null; });
+    if (p.scenarios)      p.scenarios.forEach((s, i) => { if (s?.snap?.S) migrateReturns(s.snap.S); scenarios[i] = s || null; });
     if (p.activeScenario !== undefined) activeScenario = p.activeScenario;
     return true;
   } catch(e) { console.warn('Load failed', e); return false; }
@@ -1031,9 +1079,10 @@ async function cloudLoad() {
     const p = await res.json();
     if (!p || !p.S) return;
     p2Init.clear();
+    migrateReturns(p.S);
     Object.keys(p.S).forEach(k => { S[k] = p.S[k]; if (!(k in LIM)) LIM[k] = [0, 1e9]; });
     applyColChecks(p.colChecks);
-    if (p.scenarios)      p.scenarios.forEach((s, i) => { scenarios[i] = s || null; });
+    if (p.scenarios)      p.scenarios.forEach((s, i) => { if (s?.snap?.S) migrateReturns(s.snap.S); scenarios[i] = s || null; });
     if (p.activeScenario !== undefined) activeScenario = p.activeScenario;
     saveState();
     draw();
@@ -1049,6 +1098,7 @@ function captureSnapshot() {
 }
 function applySnapshot(snap) {
   p2Init.clear();
+  migrateReturns(snap.S);
   Object.keys(snap.S).forEach(k => { S[k] = snap.S[k]; if (!(k in LIM)) LIM[k] = [0,1e9]; });
   applyColChecks(snap.colChecks);
 }
@@ -1103,11 +1153,17 @@ function renderScenarioCards() {
 /* ═══════════════════════════════════════════════
    BREAK-EVEN CALCULATOR
 ═══════════════════════════════════════════════ */
+// Return for account a ('pea'|'cto') in simulation year y (0 = departure year)
+function retKey(a, b) { return ((a === 'cto' && S['cto-sync']) ? 'pea' : a) + '-r' + b; }
+function rateFor(a, y) { return S[retKey(a, Math.min(RET_N, Math.floor(y / RET_LEN) + 1))] / 100; }
+// Annualised equivalent (geometric mean / CAGR) over the full horizon
+function cagr(a) { let g = 1; for (let y = 0; y < HORIZON; y++) g *= 1 + rateFor(a, y); return Math.pow(g, 1 / HORIZON) - 1; }
+
 // Shadow drawdown run with a given uniform Phase 2 side income.
 // Returns depletion age, or null if capital lasts all 44 years.
 function shadowRun(p2Side) {
   const sa   = S.startAge;
-  const peaR = S['pea-r']/100, avR = S['av-r']/100, ctoR = S['cto-r']/100, livR = S['liv-r']/100;
+  const avR = S['av-r']/100, livR = S['liv-r']/100;
   const infl = S.infl/100, lockYrs = S.lock;
   const chomageY1 = S.salary * 9; // 6 × full + 6 × half
 
@@ -1129,7 +1185,7 @@ function shadowRun(p2Side) {
     else                { spend=S.spend3;                 side=S.side3; partner=S.partner3; ret=S.retraite; }
 
     const inflSpend = spend * Math.pow(1+infl, y);
-    bPea*=(1+peaR); bAv*=(1+avR); bCto*=(1+ctoR); bLiv*=(1+livR);
+    bPea*=(1+rateFor('pea',y)); bAv*=(1+avR); bCto*=(1+rateFor('cto',y)); bLiv*=(1+livR);
     COL_ENTRIES.forEach(e => { if (col[e.id].active) col[e.id].bal *= (1+col[e.id].rD); });
 
     const inflow = (phase===1 ? chomageY1 : 0) + side*12 + partner*12 + ret*12;
@@ -1222,6 +1278,7 @@ const getP2Ages = () => { const a=[],sa=S.startAge; for(let i=sa+1;i<=59;i++) a.
 function fmtLabel(k, v) {
   if (k === 'lock')    return v + ' yr' + (v !== 1 ? 's' : '');
   if (k === 'startAge') return 'Age ' + v;
+  if (/-r\d$/.test(k)) return (v < 0 ? '−' + Math.abs(v) : v) + '%';
   if (/-(r)$/.test(k) || k === 'infl') return v + '%';
   if (['cop1','cop2','cop3','cop4'].includes(k)) return fmt(v) + 'M';
   return fmt(v);
@@ -1268,6 +1325,46 @@ function togglePh2() {
   if (!b || !t) return;
   b.classList.toggle('hidden');
   t.classList.toggle('open', !b.classList.contains('hidden'));
+}
+
+/* ── Return by period (PEA / CTO) ── */
+function toggleRet(a) {
+  const b = document.getElementById(a+'-ret-body'), c = document.getElementById(a+'-ret-chev');
+  if (!b || !c) return;
+  b.classList.toggle('hidden');
+  c.classList.toggle('open', !b.classList.contains('hidden'));
+}
+function toggleCtoSync(on) { S['cto-sync'] = on ? 1 : 0; draw(); }
+function applyRetPreset(a, name) {
+  const p = RET_PRESETS[name]; if (!p) return;
+  p.forEach((v, i) => { S[a+'-r'+(i+1)] = v; });
+  draw();
+}
+function buildRetUI() {
+  const sa = S.startAge;
+  ['pea','cto'].forEach(a => {
+    const box = document.getElementById(a+'-ret-rows');
+    if (box) {
+      let h = '';
+      for (let i = 1; i <= RET_N; i++) {
+        const y0 = (i-1)*RET_LEN + 1, y1 = Math.min(i*RET_LEN, HORIZON), k = a+'-r'+i;
+        h += `<div class="row ret-row"><label>Yrs ${y0}–${y1}<span class="rlbl">age ${sa+y0-1}–${sa+y1-1}</span></label>` +
+             `<div class="stepper"><button onclick="step('${k}',-0.5)">−</button><span class="sval" id="${k}-v">${fmtLabel(k,S[k])}</span>` +
+             `<button onclick="step('${k}',0.5)">+</button></div></div>`;
+      }
+      box.innerHTML = h;
+    }
+    const c = cagr(a)*100, el = document.getElementById(a+'-cagr');
+    if (el) {
+      el.textContent = (c < 0 ? '−' : '') + Math.abs(c).toFixed(1) + '%/yr avg';
+      el.style.color = c < 0 ? 'var(--color-text-danger)' : '';
+    }
+  });
+  const sync = !!S['cto-sync'];
+  const cb = document.getElementById('cb-cto-sync'); if (cb) cb.checked = sync;
+  const lbl = document.getElementById('lbl-cto-sync'); if (lbl) lbl.className = 'csl' + (sync ? ' on' : '');
+  const own = document.getElementById('cto-ret-own'); if (own) own.style.display = sync ? 'none' : '';
+  const note = document.getElementById('cto-sync-note'); if (note) note.style.display = sync ? '' : 'none';
 }
 
 function showTab(t) {
@@ -1419,6 +1516,7 @@ function updateStickyHeader(frTotal, totCopEur, grandTotal, depleteAge) {
 function draw() {
   ensureAllP2();
   buildPh2UI();
+  buildRetUI();
   updateLabels();
 
   const sa  = S.startAge;
@@ -1461,7 +1559,7 @@ function draw() {
 
   // ── French totals ──
   const pea=S.pea*1000, av=S.av*1000, cto=S.cto*1000, liv=S.liv*1000, cash=S.cash*1000;
-  const peaR=S['pea-r']/100, avR=S['av-r']/100, ctoR=S['cto-r']/100, livR=S['liv-r']/100;
+  const peaR=cagr('pea'), avR=S['av-r']/100, ctoR=cagr('cto'), livR=S['liv-r']/100;
   const frTotal  = pea+av+cto+liv+cash;
   const passive  = pea*peaR + av*avR + cto*ctoR + liv*livR;
   const avgRet   = frTotal > 0 ? (passive/frTotal*100) : 0;
@@ -1525,7 +1623,7 @@ function draw() {
 
     const inflSpend = spend * Math.pow(1+infl, y);
     const chomage   = phase===1 ? chomageY1 : 0;
-    bPea*=(1+peaR); bAv*=(1+avR); bCto*=(1+ctoR); bLiv*=(1+livR);
+    bPea*=(1+rateFor('pea',y)); bAv*=(1+avR); bCto*=(1+rateFor('cto',y)); bLiv*=(1+livR);
     COL_ENTRIES.forEach(e => { if (colState[e.id].active) colState[e.id].bal *= (1+colState[e.id].rD); });
 
     const inflow  = chomage + side*12 + partner*12 + ret*12;
