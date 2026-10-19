@@ -3,6 +3,7 @@
 <head>
 <script src="lib/sync-auth.js"></script>
 <script src="lib/sync.js"></script>
+<script src="lib/drive.js"></script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Week Plan</title>
@@ -857,10 +858,7 @@ async function cloudLoad(){
 cloudLoad();
 
 // ── Google Drive Sync ──
-const GD_CLIENT_ID='453884215011-bnuqib76c5lt7vr87g6e5sd59q7r2cip.apps.googleusercontent.com';
-const GD_SCOPE='https://www.googleapis.com/auth/drive.file';
 const GD_FILENAME='weekplan_data.json';
-let gdToken=null,gdFileId=null;
 
 let gdStatusTimer=null;
 function gdStatus(msg,type){
@@ -882,93 +880,28 @@ function gdSetBusy(busy){
   const l=document.getElementById('driveloadbtn');
   if(s)s.disabled=busy;if(l)l.disabled=busy;
 }
-function gdAuth(cb){
-  if(gdToken){cb(gdToken);return;}
-  gdStatus('Connecting to Google…','working');gdSetBusy(true);
-  const client=google.accounts.oauth2.initTokenClient({
-    client_id:GD_CLIENT_ID,scope:GD_SCOPE,
-    callback:resp=>{
-      if(resp.error){gdStatus('Sign-in failed: '+resp.error,'err');gdSetBusy(false);return;}
-      gdToken=resp.access_token;gdStatus('Connected to Google Drive','ok');cb(gdToken);
-    }
-  });
-  client.requestAccessToken();
-}
-function gdFindFile(token,cb){
-  if(gdFileId){cb(gdFileId);return;}
-  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%22'+GD_FILENAME+'%22+and+trashed%3Dfalse&fields=files(id,name)',
-    {headers:{Authorization:'Bearer '+token}})
-  .then(r=>r.json())
-  .then(res=>{
-    if(res.files&&res.files.length>0){gdFileId=res.files[0].id;cb(gdFileId);}else cb(null);
-  })
-  .catch(()=>{gdStatus('Drive search failed','err');gdSetBusy(false);});
-}
-function gdriveSave(){
-  gdSetBusy(true);gdStatus('Saving to Google Drive…','working');
-  gdAuth(token=>{
-    const payload={version:1,exportedAt:new Date().toISOString(),acts,weekPlaces,weekNotes,curWeek};
-    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-    gdFindFile(token,fileId=>{
-      const url=fileId
-        ?'https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=multipart'
-        :'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-      const method=fileId?'PATCH':'POST';
-      const form=new FormData();
-      form.append('metadata',new Blob([JSON.stringify({name:GD_FILENAME,mimeType:'application/json'})],{type:'application/json'}));
-      form.append('file',blob);
-      fetch(url,{method,headers:{Authorization:'Bearer '+token},body:form})
-      .then(r=>r.json())
-      .then(res=>{
-        if(res.error)throw new Error(JSON.stringify(res.error));
-        if(!fileId)gdFileId=res.id;
-        const t=new Date();
-        gdStatus('✓ Saved to Drive — '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0'),'ok');
-        gdSetBusy(false);toast('Saved to Drive!');
-      })
-      .catch(err=>{
-        console.error('[GD] save:',err);
-        if(String(err).includes('401')){gdToken=null;gdFileId=null;gdStatus('Session expired — click Save again','err');}
-        else gdStatus('Save failed — try again','err');
-        gdSetBusy(false);
-      });
-    });
-  });
-}
-function gdriveLoad(){
-  gdSetBusy(true);gdStatus('Loading from Google Drive…','working');
-  gdAuth(token=>{
-    gdFindFile(token,fileId=>{
-      if(!fileId){gdStatus('No file found in Drive — save first','err');gdSetBusy(false);return;}
-      fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media',
-        {headers:{Authorization:'Bearer '+token}})
-      .then(r=>r.json())
-      .then(payload=>{
-        if(!payload.acts)throw new Error('Invalid format');
-        acts=payload.acts;
-        weekPlaces=payload.weekPlaces||[{},{},{},{}];
-        if(Array.isArray(payload.weekNotes))weekNotes=payload.weekNotes;
-        if(typeof payload.curWeek==='number')curWeek=payload.curWeek;
-        // persist to localStorage
-        localStorage.setItem(SK_ACTS,JSON.stringify(acts));
-        for(let w=0;w<4;w++)localStorage.setItem(SK_WEEK(w),JSON.stringify(weekPlaces[w]));
-        localStorage.setItem(SK_NOTES,JSON.stringify(weekNotes));
-        localStorage.setItem(SK_CUR,String(curWeek));
-        localStorage.setItem('weekplan_savedAt',new Date().toISOString());
-        renderTabs();renderChips();renderBlocks();renderTracker();renderNote();setTapSel(null);
-        const t=new Date();
-        gdStatus('✓ Loaded from Drive — '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0'),'ok');
-        gdSetBusy(false);toast('Loaded from Drive!');
-      })
-      .catch(err=>{
-        console.error('[GD] load:',err);
-        if(String(err).includes('401')){gdToken=null;gdStatus('Session expired — click Load again','err');}
-        else gdStatus('Load failed — try again','err');
-        gdSetBusy(false);
-      });
-    });
-  });
-}
+// Google Drive backup — shared logic in lib/drive.js
+const DRIVE = LifeDrive.create({
+  filename: GD_FILENAME,
+  status: gdStatus,
+  busy: gdSetBusy,
+  payload: () => ({version:1,exportedAt:new Date().toISOString(),acts,weekPlaces,weekNotes,curWeek}),
+  apply: payload=>{
+      if(!payload.acts)throw new Error('Invalid format');
+      acts=payload.acts;
+      weekPlaces=payload.weekPlaces||[{},{},{},{}];
+      if(Array.isArray(payload.weekNotes))weekNotes=payload.weekNotes;
+      if(typeof payload.curWeek==='number')curWeek=payload.curWeek;
+      localStorage.setItem(SK_ACTS,JSON.stringify(acts));
+      for(let w=0;w<4;w++)localStorage.setItem(SK_WEEK(w),JSON.stringify(weekPlaces[w]));
+      localStorage.setItem(SK_NOTES,JSON.stringify(weekNotes));
+      localStorage.setItem(SK_CUR,String(curWeek));
+      localStorage.setItem('weekplan_savedAt',new Date().toISOString());
+      renderTabs();renderChips();renderBlocks();renderTracker();renderNote();setTapSel(null);
+    },
+});
+function gdriveSave() { DRIVE.save(); }
+function gdriveLoad() { DRIVE.load(); }
 document.getElementById('drivesavebtn').addEventListener('click',gdriveSave);
 document.getElementById('driveloadbtn').addEventListener('click',gdriveLoad);
 

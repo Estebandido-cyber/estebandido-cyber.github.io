@@ -3,6 +3,7 @@
 <head>
 <script src="lib/sync-auth.js"></script>
 <script src="lib/sync.js"></script>
+<script src="lib/drive.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KALS Track</title>
@@ -2611,10 +2612,8 @@ function closeModal(e) {
 }
 
 // ── Google Drive Sync ──
-const GD_CLIENT_ID = '453884215011-bnuqib76c5lt7vr87g6e5sd59q7r2cip.apps.googleusercontent.com';
-const GD_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const GD_FILENAME = 'kalstrack_data.json';
-let gdToken = null, gdFileId = null, gdStatusTimer = null;
+let gdStatusTimer = null;
 
 function gdStatus(msg, type) {
   const el = document.getElementById('drive-status');
@@ -2638,39 +2637,7 @@ function gdSetBusy(busy) {
   if (l) l.disabled = busy;
 }
 
-function gdAuth(cb) {
-  if (gdToken) { cb(gdToken); return; }
-  gdStatus('Connecting to Google…', 'working');
-  gdSetBusy(true);
-  try {
-    const client = google.accounts.oauth2.initTokenClient({
-      client_id: GD_CLIENT_ID,
-      scope: GD_SCOPE,
-      callback: resp => {
-        if (resp.error) { gdStatus('Sign-in failed: ' + resp.error, 'err'); gdSetBusy(false); return; }
-        gdToken = resp.access_token;
-        gdStatus('Connected to Google Drive', 'ok');
-        cb(gdToken);
-      }
-    });
-    client.requestAccessToken();
-  } catch(e) {
-    gdStatus('Google Sign-in unavailable — check client ID', 'err');
-    gdSetBusy(false);
-  }
-}
 
-function gdFindFile(token, cb) {
-  if (gdFileId) { cb(gdFileId); return; }
-  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%22' + GD_FILENAME + '%22+and+trashed%3Dfalse&fields=files(id,name)',
-    { headers: { Authorization: 'Bearer ' + token } })
-    .then(r => r.json())
-    .then(res => {
-      if (res.files && res.files.length > 0) { gdFileId = res.files[0].id; cb(gdFileId); }
-      else cb(null);
-    })
-    .catch(() => { gdStatus('Drive search failed', 'err'); gdSetBusy(false); });
-}
 
 // Collect full widget state from localStorage
 function getStateToSave() {
@@ -2720,70 +2687,20 @@ function applyLoadedState(payload) {
   checkPastRecaps();
 }
 
-function gdriveSave() {
-  if (GD_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
-    gdStatus('⚠ No Google Client ID configured — see setup instructions', 'err'); return;
-  }
-  gdSetBusy(true);
-  gdStatus('Saving to Google Drive…', 'working');
-  gdAuth(token => {
-    const payload = { version: 1, exportedAt: new Date().toISOString(), ...getStateToSave() };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    gdFindFile(token, fileId => {
-      const url = fileId
-        ? 'https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=multipart'
-        : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-      const method = fileId ? 'PATCH' : 'POST';
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify({ name: GD_FILENAME, mimeType: 'application/json' })], { type: 'application/json' }));
-      form.append('file', blob);
-      fetch(url, { method, headers: { Authorization: 'Bearer ' + token }, body: form })
-        .then(r => r.json())
-        .then(res => {
-          if (res.error) throw new Error(JSON.stringify(res.error));
-          if (!fileId) gdFileId = res.id;
-          const t = new Date();
-          gdStatus('✓ Saved — ' + t.getHours() + ':' + String(t.getMinutes()).padStart(2,'0'), 'ok');
-          gdSetBusy(false);
-        })
-        .catch(err => {
-          console.error('[GD] save:', err);
-          if (String(err).includes('401')) { gdToken = null; gdFileId = null; gdStatus('Session expired — click Save again', 'err'); }
-          else gdStatus('Save failed — try again', 'err');
-          gdSetBusy(false);
-        });
-    });
-  });
-}
+// Google Drive backup — shared logic in lib/drive.js
+const DRIVE = LifeDrive.create({
+  filename: GD_FILENAME,
+  status: gdStatus,
+  busy: gdSetBusy,
+  payload: () => ({ version: 1, exportedAt: new Date().toISOString(), ...getStateToSave() }),
+  apply: payload => {
+      if (!payload) throw new Error('Empty file');
+      applyLoadedState(payload);
+    },
+});
+function gdriveSave() { DRIVE.save(); }
 
-function gdriveLoad() {
-  if (GD_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
-    gdStatus('⚠ No Google Client ID configured — see setup instructions', 'err'); return;
-  }
-  gdSetBusy(true);
-  gdStatus('Loading from Google Drive…', 'working');
-  gdAuth(token => {
-    gdFindFile(token, fileId => {
-      if (!fileId) { gdStatus('No save file found in Drive — save first', 'err'); gdSetBusy(false); return; }
-      fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media',
-        { headers: { Authorization: 'Bearer ' + token } })
-        .then(r => r.json())
-        .then(payload => {
-          if (!payload) throw new Error('Empty file');
-          applyLoadedState(payload);
-          const t = new Date();
-          gdStatus('✓ Loaded — ' + t.getHours() + ':' + String(t.getMinutes()).padStart(2,'0'), 'ok');
-          gdSetBusy(false);
-        })
-        .catch(err => {
-          console.error('[GD] load:', err);
-          if (String(err).includes('401')) { gdToken = null; gdStatus('Session expired — click Load again', 'err'); }
-          else gdStatus('Load failed — try again', 'err');
-          gdSetBusy(false);
-        });
-    });
-  });
-}
+function gdriveLoad() { DRIVE.load(); }
 
 document.getElementById('drivesavebtn').addEventListener('click', gdriveSave);
 document.getElementById('driveloadbtn').addEventListener('click', gdriveLoad);
