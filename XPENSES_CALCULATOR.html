@@ -474,7 +474,7 @@ body {
 }
 .box-shared .section-total   { color: var(--blue);  border-top-color: rgba(26,95,168,0.15); }
 .box-personal .section-total { color: var(--green); border-top-color: rgba(10,122,94,0.15); }
-.box-shared .section-total.sa-left { margin-top: 0; border-top: none; padding-top: 2px; }
+.box-shared .section-total.sa-left { margin-top: 0; border-top: none; padding: 4px 6px 0; }
 .sa-left.pos { color: var(--green) !important; }
 .sa-left.neg { color: var(--red) !important; }
 .sa-left .sa-pct { font-size: 11px; font-weight: 400; opacity: .75; margin-left: 6px; }
@@ -497,6 +497,16 @@ body {
 .ename { font-size: 13px; font-weight: 400; color: var(--text-1); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .enote { font-size: 10px; color: var(--text-3); white-space: nowrap; }
 .eamt  { font-size: 13px; font-weight: 500; color: var(--text-1); text-align: right; min-width: 58px; }
+/* Shared box: one grid so header, rows and total share column widths */
+.expense-rows.split-grid { display: grid; grid-template-columns: 1fr auto auto auto; column-gap: 8px; }
+.split-grid > .erow { grid-column: 1 / -1; grid-template-columns: subgrid; }
+.erow-head { padding-top: 0; padding-bottom: 2px; }
+.erow-head:hover, .erow-total:hover { background: none !important; }
+.erow-head .ch { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--blue); opacity: .7; text-align: center; white-space: nowrap; }
+.erow-head .ch:last-child { text-align: right; }
+.erow-total { margin-top: 6px; border-top: 1px solid rgba(26,95,168,0.15); border-radius: 0; padding-top: 7px; color: var(--blue); font-size: 13px; font-weight: 500; }
+.erow-total .tt { text-align: center; }
+.erow-total .eamt { color: var(--blue); }
 
 /* ── Spinners ── */
 .spin-wrap { display: flex; align-items: center; }
@@ -1029,8 +1039,11 @@ function buildCard(tab) {
         <span>Shared expenses — paid from shared account</span>
         <span class="box-chevron">▼</span>
       </div>
-      <div class="expense-rows">${rowsHTML(SHARED_DEF)}</div>
-      <div class="section-total"><span>Total shared expenses</span><span id="${tab}-total-shared">—</span></div>
+      <div class="expense-rows split-grid">
+        <div class="erow erow-head"><span></span><span></span><span class="ch">Paid by both</span><span class="ch">Your half</span></div>
+        ${rowsHTML(SHARED_DEF)}
+        <div class="erow erow-total"><span>Total</span><span></span><span class="tt" id="${tab}-total-shared">—</span><span class="eamt" id="${tab}-half-shared">—</span></div>
+      </div>
       <div class="section-total sa-left" id="${tab}-sa-left-row"><span>Left in shared account</span><span><span id="${tab}-sa-left">—</span><span class="sa-pct" id="${tab}-sa-left-pct"></span></span></div>
     </div>
 
@@ -1087,9 +1100,10 @@ function render(tab) {
   } catch (_) {}
   SHARED_DEF.forEach(def => {
     document.getElementById(`${p}sv-${def.key}`).textContent  = fmt(s[def.key]);
-    document.getElementById(`${p}amt-${def.key}`).textContent = fmt(s[def.key]);
+    document.getElementById(`${p}amt-${def.key}`).textContent = fmtSmart(s[def.key] / 2); // your half
   });
   document.getElementById(`${p}total-shared`).textContent = fmt(d.sharedTotal);
+  document.getElementById(`${p}half-shared`).textContent  = fmtSmart(d.sharedTotal / 2);
   document.getElementById(`${p}sa-left`).textContent       = (d.sharedLeft < 0 ? '−' : '') + fmt(Math.abs(d.sharedLeft));
   document.getElementById(`${p}sa-left-pct`).textContent   = d.sharedPool > 0 ? (d.sharedLeft >= 0 ? `${Math.round(d.sharedLeft / d.sharedPool * 100)}% of ${fmt(d.sharedPool)}` : `over ${fmt(d.sharedPool)} · you top up ${fmt(-d.sharedLeft / 2)}`) : '';
   document.getElementById(`${p}sa-left-row`).classList.toggle('pos', d.sharedLeft >= 0);
