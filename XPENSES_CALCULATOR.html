@@ -662,13 +662,13 @@ const LS_KEY          = 'xpenses_calculator_v1';
 // ════════════════════════════════════════════════════════════════════
 const SHARED_DEF = [
   { key: 'rent',        label: 'Rent',           step: 5  },
-  { key: 'insurance',   label: 'Home insurance', step: 1  },
   { key: 'internet',    label: 'Internet',       step: 5  },
   { key: 'netflix',     label: 'Netflix',        step: 1  },
   { key: 'electricity', label: 'Electricity',    step: 10 },
 ];
 
 const PERSONAL_DEF = [
+  { key: 'insurance',   label: 'Home insurance',        step: 1  },
   { key: 'lunch',       label: 'Lunch',                 step: 10 },
   { key: 'resto',       label: 'Resto',                 step: 10 },
   { key: 'extras',      label: 'Extras',                step: 10 },
@@ -690,7 +690,7 @@ const CHART_CATS = [
   // Shared bills are paid from the joint account (both put in sharedAcc) → your half of each
   { label: 'Rent',             color: '#3d8fe0', fn: s => s.rent / 2 },
   { label: 'Electricity',      color: '#1aaa84', fn: s => s.electricity / 2 },
-  { label: 'Utilities & svcs', color: '#4a9fd0', fn: s => (s.internet + s.netflix + s.insurance) / 2 },
+  { label: 'Utilities & svcs', color: '#4a9fd0', fn: s => (s.internet + s.netflix) / 2 + s.insurance },
   { label: 'Unspent',          color: '#8070e0', fn: s => Math.max(0, s.sharedAcc - derived(s).sharedTotal / 2) },
   { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.beer },
   { label: 'Health & sport',   color: '#d05830', fn: s => s.health + s.smoothie + s.billarMonth + s.billar/12 + s.chess/12 + s.drums },
@@ -742,7 +742,7 @@ const fmtSmart = n => (n % 1 === 0) ? fmt(n) : fmtd(n);
 //  DERIVED VALUES
 // ════════════════════════════════════════════════════════════════════
 function derived(s) {
-  const sharedTotal = s.rent + s.insurance + s.internet + s.netflix + s.electricity;
+  const sharedTotal = SHARED_DEF.reduce((sum, def) => sum + s[def.key], 0);
   const personalMonthly = PERSONAL_DEF.reduce((sum, def) => {
     return sum + (def.yearly ? s[def.key] / 12 : s[def.key]);
   }, 0);
@@ -1027,14 +1027,12 @@ function buildCard(tab) {
       <span class="sa-label">Shared account</span>
       <span class="sa-note" id="${tab}-sa-note">each puts in €600</span>
       <div class="spin-wrap" id="${tab}-spin-sharedAcc"></div>
-      <span class="eamt" id="${tab}-amt-sharedAcc">—</span>
     </div>
 
     <div class="p-row p-row-mid">
       <span class="plbl">Monthly transfer from partner</span>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="spin-wrap" id="${tab}-spin-partnerFixed"></div>
-        <span class="pval" id="${tab}-p-fixed">—</span>
       </div>
     </div>
 
@@ -1067,7 +1065,7 @@ function buildCard(tab) {
   makeSpin(`${tab}-spin-tickets`,      tab, 'tickets',      10);
   makeSpin(`${tab}-spin-mel`,          tab, 'mel',          1);
   makeSpin(`${tab}-spin-sharedAcc`,    tab, 'sharedAcc',    50);
-  makeSpin(`${tab}-spin-partnerFixed`, tab, 'partnerFixed', 5);
+  makeSpin(`${tab}-spin-partnerFixed`, tab, 'partnerFixed', 1);
   SHARED_DEF.forEach(def   => makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step));
   PERSONAL_DEF.forEach(def => makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step));
 }
@@ -1113,7 +1111,6 @@ function render(tab) {
   document.getElementById(`${p}sa-left-row`).classList.toggle('neg', d.sharedLeft < 0);
 
   document.getElementById(`${p}sv-sharedAcc`).textContent  = fmt(s.sharedAcc);
-  document.getElementById(`${p}amt-sharedAcc`).textContent = fmt(s.sharedAcc);
   document.getElementById(`${p}sa-note`).textContent       = `each puts in €${s.sharedAcc}`;
 
   PERSONAL_DEF.forEach(def => {
@@ -1126,7 +1123,6 @@ function render(tab) {
   document.getElementById(`${p}total-personal`).textContent = fmt(d.personalMonthly);
 
   document.getElementById(`${p}sv-partnerFixed`).textContent = fmt(s.partnerFixed);
-  document.getElementById(`${p}p-fixed`).textContent         = fmt(s.partnerFixed);
 
   const cats      = CHART_CATS.map(c => ({ ...c, value: c.fn(s) }));
   const isDark    = window.matchMedia('(prefers-color-scheme:dark)').matches;
