@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="lib/sync-auth.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Xpenser Tracker</title>
@@ -2814,7 +2815,7 @@ function gdriveLoad() {
 // CLOUDFLARE WORKERS AUTO-SYNC
 // ═══════════════════════════════════════════════
 const CW_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/xpenser';
-const CW_SECRET = 'widget-sync-secret-2024';
+const CW_SECRET = getSyncSecret();
 
 async function cloudSave() {
   try {

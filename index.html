@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="lib/sync-auth.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Life Hub</title>
@@ -705,7 +706,7 @@ function setLoading(on) {
 
 // ── CLOUDFLARE SYNC ──────────────────────────────────────────────
 const CF_BASE   = 'https://widgets-sync.estebandido80.workers.dev/data';
-const CF_SECRET = 'widget-sync-secret-2024';
+const CF_SECRET = getSyncSecret();
 
 async function cfFetch(path) {
   try {
