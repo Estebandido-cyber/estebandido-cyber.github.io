@@ -1012,6 +1012,14 @@ function buildCard(tab) {
     </div>
 
     <hr class="divider">
+    <div class="shared-acc-card">
+      <span class="sa-label">Shared account</span>
+      <span class="sa-note" id="${tab}-sa-note">each puts in €600</span>
+      <div class="spin-wrap" id="${tab}-spin-sharedAcc"></div>
+      <span class="eamt" id="${tab}-amt-sharedAcc">—</span>
+      <span class="sa-badge">equal split</span>
+    </div>
+
     <div class="box-shared" id="${tab}-box-shared">
       <div class="box-title" onclick="toggleBox('${tab}-box-shared')">
         <span>Shared expenses — you pay, she reimburses</span>
@@ -1019,14 +1027,6 @@ function buildCard(tab) {
       </div>
       <div class="expense-rows">${rowsHTML(SHARED_DEF)}</div>
       <div class="section-total"><span>Total shared expenses</span><span id="${tab}-total-shared">—</span></div>
-    </div>
-
-    <div class="shared-acc-card">
-      <span class="sa-label">Shared account</span>
-      <span class="sa-note" id="${tab}-sa-note">each puts in €600</span>
-      <div class="spin-wrap" id="${tab}-spin-sharedAcc"></div>
-      <span class="eamt" id="${tab}-amt-sharedAcc">—</span>
-      <span class="sa-badge">equal split</span>
     </div>
 
     <div class="box-personal" id="${tab}-box-personal">
