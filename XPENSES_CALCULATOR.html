@@ -674,6 +674,8 @@ const SHARED_DEF = [
   { key: 'internet',    label: 'Internet',       step: 5  },
   { key: 'netflix',     label: 'Netflix',        step: 1  },
   { key: 'electricity', label: 'Electricity',    step: 10 },
+  { key: 'bobsFood',    label: "Bob's Food",     step: 2  },
+  { key: 'bobsLitiere', label: "Bob's Litière",  step: 5  },
 ];
 
 const PERSONAL_DEF = [
@@ -700,6 +702,7 @@ const CHART_CATS = [
   { label: 'Rent',             color: '#3d8fe0', fn: s => s.rent / 2 },
   { label: 'Electricity',      color: '#1aaa84', fn: s => s.electricity / 2 },
   { label: 'Utilities & svcs', color: '#4a9fd0', fn: s => (s.internet + s.netflix) / 2 + s.insurance },
+  { label: "Bob",             color: '#d08a3a', fn: s => (s.bobsFood + s.bobsLitiere) / 2 },
   { label: 'Unspent',          color: '#8070e0', fn: s => Math.max(0, s.sharedAcc - derived(s).sharedTotal / 2) },
   { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.beer },
   { label: 'Health & sport',   color: '#d05830', fn: s => s.health + s.smoothie + s.billarMonth + s.billar/12 + s.chess/12 + s.drums },
@@ -717,6 +720,7 @@ const DEFAULTS = {
   now: {
     salary: 2000, tickets: 200, mel: 40,
     rent: 1450, insurance: 25, internet: 40, netflix: 15, electricity: 120,
+    bobsFood: 20, bobsLitiere: 50,
     sharedAcc: 600,
     phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, bar: 0, chess: 90,
     billar: 150, billarMonth: 10, lunch: 100, resto: 0, extras: 100,
@@ -725,6 +729,7 @@ const DEFAULTS = {
   fire: {
     salary: 0, tickets: 500, mel: 40,
     rent: 900, insurance: 20, internet: 40, netflix: 15, electricity: 80,
+    bobsFood: 20, bobsLitiere: 50,
     sharedAcc: 400,
     phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, bar: 0, chess: 90,
     billar: 150, billarMonth: 10, lunch: 60, resto: 0, extras: 150,
