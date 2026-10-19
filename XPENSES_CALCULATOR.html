@@ -474,6 +474,11 @@ body {
 }
 .box-shared .section-total   { color: var(--blue);  border-top-color: rgba(26,95,168,0.15); }
 .box-personal .section-total { color: var(--green); border-top-color: rgba(10,122,94,0.15); }
+.box-shared .section-total.sa-left { margin-top: 0; border-top: none; padding-top: 2px; }
+.sa-left.pos { color: var(--green) !important; }
+.sa-left.neg { color: var(--red) !important; }
+.sa-left .sa-pct { font-size: 11px; font-weight: 400; opacity: .75; margin-left: 6px; }
+.p-row.p-row-mid { margin-bottom: 0.5rem; background: var(--bg-card); }
 
 /* ── Expense rows ── */
 .expense-rows { display: flex; flex-direction: column; gap: 1px; }
@@ -682,10 +687,11 @@ const PERSONAL_DEF = [
 
 // Chart slices — fn() returns the slice value from state
 const CHART_CATS = [
-  { label: 'Rent',             color: '#3d8fe0', fn: s => s.rent },
-  { label: 'Shared account',   color: '#8070e0', fn: s => s.sharedAcc },
-  { label: 'Electricity',      color: '#1aaa84', fn: s => s.electricity },
-  { label: 'Utilities & svcs', color: '#4a9fd0', fn: s => s.internet + s.netflix + s.insurance },
+  // Shared bills are paid from the joint account (both put in sharedAcc) → your half of each
+  { label: 'Rent',             color: '#3d8fe0', fn: s => s.rent / 2 },
+  { label: 'Electricity',      color: '#1aaa84', fn: s => s.electricity / 2 },
+  { label: 'Utilities & svcs', color: '#4a9fd0', fn: s => (s.internet + s.netflix + s.insurance) / 2 },
+  { label: 'Unspent',          color: '#8070e0', fn: s => Math.max(0, s.sharedAcc - derived(s).sharedTotal / 2) },
   { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.beer },
   { label: 'Health & sport',   color: '#d05830', fn: s => s.health + s.smoothie + s.billarMonth + s.billar/12 + s.chess/12 + s.drums },
   { label: 'Subscriptions',    color: '#c04880', fn: s => s.amazonPrime/12 + s.phone },
@@ -740,11 +746,16 @@ function derived(s) {
   const personalMonthly = PERSONAL_DEF.reduce((sum, def) => {
     return sum + (def.yearly ? s[def.key] / 12 : s[def.key]);
   }, 0);
-  const gross    = sharedTotal + s.sharedAcc + personalMonthly;
+  // Shared bills are paid from the joint account (each puts in sharedAcc),
+  // so only your contribution counts as your expense — no double counting.
+  const sharedPool = s.sharedAcc * 2;
+  const sharedLeft = sharedPool - sharedTotal;
+  // If bills exceed the pot, the shortfall is topped up 50/50 → your half counts too
+  const gross    = s.sharedAcc + Math.max(0, -sharedLeft) / 2 + personalMonthly;
   const net      = gross - s.partnerFixed;
   const income   = s.salary + s.tickets + s.mel;
   const leftover = income - net;
-  return { sharedTotal, personalMonthly, gross, net, income, leftover };
+  return { sharedTotal, sharedPool, sharedLeft, personalMonthly, gross, net, income, leftover };
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1001,7 +1012,7 @@ function buildCard(tab) {
     <p class="section-label">Monthly summary</p>
     <div class="metric-grid">
       <div class="metric c-red">   <div class="lbl">You pay (gross)</div>      <div class="val" id="${tab}-m-gross">—</div>      <div class="sub">before reimbursement</div></div>
-      <div class="metric c-green"> <div class="lbl">Partner covers</div>       <div class="val" id="${tab}-m-partner">—</div>    <div class="sub">her shared half</div></div>
+      <div class="metric c-green"> <div class="lbl">Partner transfer</div>     <div class="val" id="${tab}-m-partner">—</div>    <div class="sub">monthly, from her</div></div>
       <div class="metric c-blue">  <div class="lbl">Your net cost</div>        <div class="val" id="${tab}-m-net">—</div>        <div class="sub">what you actually pay</div></div>
       <div class="metric c-amber"> <div class="lbl">Shared account</div>       <div class="val" id="${tab}-m-shared-acc">—</div> <div class="sub">each contributes</div></div>
       <div class="metric c-purple" id="${tab}-leftover-card">
@@ -1017,16 +1028,24 @@ function buildCard(tab) {
       <span class="sa-note" id="${tab}-sa-note">each puts in €600</span>
       <div class="spin-wrap" id="${tab}-spin-sharedAcc"></div>
       <span class="eamt" id="${tab}-amt-sharedAcc">—</span>
-      <span class="sa-badge">equal split</span>
+    </div>
+
+    <div class="p-row p-row-mid">
+      <span class="plbl">Monthly transfer from partner</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="spin-wrap" id="${tab}-spin-partnerFixed"></div>
+        <span class="pval" id="${tab}-p-fixed">—</span>
+      </div>
     </div>
 
     <div class="box-shared" id="${tab}-box-shared">
       <div class="box-title" onclick="toggleBox('${tab}-box-shared')">
-        <span>Shared expenses — you pay, she reimburses</span>
+        <span>Shared expenses — paid from shared account</span>
         <span class="box-chevron">▼</span>
       </div>
       <div class="expense-rows">${rowsHTML(SHARED_DEF)}</div>
       <div class="section-total"><span>Total shared expenses</span><span id="${tab}-total-shared">—</span></div>
+      <div class="section-total sa-left" id="${tab}-sa-left-row"><span>Left in shared account</span><span><span id="${tab}-sa-left">—</span><span class="sa-pct" id="${tab}-sa-left-pct"></span></span></div>
     </div>
 
     <div class="box-personal" id="${tab}-box-personal">
@@ -1036,16 +1055,6 @@ function buildCard(tab) {
       </div>
       <div class="expense-rows">${rowsHTML(PERSONAL_DEF)}</div>
       <div class="section-total"><span>Total personal expenses</span><span id="${tab}-total-personal">—</span></div>
-    </div>
-
-    <hr class="divider">
-    <p class="section-label">Her share of shared expenses</p>
-    <div class="p-row">
-      <span class="plbl">Monthly transfer from partner</span>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="spin-wrap" id="${tab}-spin-partnerFixed"></div>
-        <span class="pval" id="${tab}-p-fixed">—</span>
-      </div>
     </div>
 
     <hr class="divider">
@@ -1098,6 +1107,10 @@ function render(tab) {
     document.getElementById(`${p}amt-${def.key}`).textContent = fmt(s[def.key]);
   });
   document.getElementById(`${p}total-shared`).textContent = fmt(d.sharedTotal);
+  document.getElementById(`${p}sa-left`).textContent       = (d.sharedLeft < 0 ? '−' : '') + fmt(Math.abs(d.sharedLeft));
+  document.getElementById(`${p}sa-left-pct`).textContent   = d.sharedPool > 0 ? (d.sharedLeft >= 0 ? `${Math.round(d.sharedLeft / d.sharedPool * 100)}% of ${fmt(d.sharedPool)}` : `over ${fmt(d.sharedPool)} · you top up ${fmt(-d.sharedLeft / 2)}`) : '';
+  document.getElementById(`${p}sa-left-row`).classList.toggle('pos', d.sharedLeft >= 0);
+  document.getElementById(`${p}sa-left-row`).classList.toggle('neg', d.sharedLeft < 0);
 
   document.getElementById(`${p}sv-sharedAcc`).textContent  = fmt(s.sharedAcc);
   document.getElementById(`${p}amt-sharedAcc`).textContent = fmt(s.sharedAcc);
