@@ -705,6 +705,7 @@ const PERSONAL_DEF = [
   { key: 'chess',       label: 'Chess membership',      step: 5,  yearly: true },
   { key: 'amazonPrime', label: 'Amazon Prime',          step: 5,  yearly: true },
   { key: 'phone',       label: 'Phone',                 step: 1  },
+  { key: 'claude',      label: 'Claude',                step: 1  },
 ];
 
 // Chart slices — fn() returns the slice value from state
@@ -716,7 +717,7 @@ const CHART_CATS = [
   { label: 'Bobs',            color: '#d08a3a', fn: s => (s.bobsFood + s.bobsLitiere) / 2 },
   { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.beer + (s.courses + s.sharedResto + s.deliveroo + s.sharedBar) / 2 },
   { label: 'Health & sport',   color: '#d05830', fn: s => s.health + s.smoothie + s.billarMonth + s.billar/12 + s.chess/12 + s.drums },
-  { label: 'Subscriptions',    color: '#c04880', fn: s => s.amazonPrime/12 + s.phone },
+  { label: 'Subscriptions',    color: '#c04880', fn: s => s.amazonPrime/12 + s.phone + s.claude },
   { label: 'Savings',          color: '#6a9a20', fn: s => s.savings },
   { label: 'Extras',           color: '#909088', fn: s => s.extras + s.sharedExtras / 2 },
 ];
@@ -732,7 +733,7 @@ const DEFAULTS = {
     rent: 1450, insurance: 25, internet: 40, netflix: 15, electricity: 120,
     bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, deliveroo: 100, sharedBar: 200, sharedExtras: 60,
     sharedAcc: 600,
-    phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
+    phone: 10, claude: 20, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
     billar: 150, billarMonth: 10, lunch: 100, extras: 100,
     health: 120, drums: 10, savings: 50,
   },
@@ -741,7 +742,7 @@ const DEFAULTS = {
     rent: 900, insurance: 20, internet: 40, netflix: 15, electricity: 80,
     bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, deliveroo: 100, sharedBar: 200, sharedExtras: 60,
     sharedAcc: 400,
-    phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
+    phone: 10, claude: 20, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
     billar: 150, billarMonth: 10, lunch: 60, extras: 150,
     health: 120, drums: 10, savings: 0,
   },
