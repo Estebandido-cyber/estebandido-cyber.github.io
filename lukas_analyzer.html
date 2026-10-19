@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="lib/sync-auth.js"></script>
+<script src="lib/sync.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LUKAS Flow</title>
@@ -753,16 +754,15 @@ function markAllReviewed() {
 }
 
 // ─── YAHOO FINANCE ────────────────────────────────────────────────────────────
-// CF_PRICE_URL: own Worker proxies Yahoo — no CORS issues, no rate limits
-const CF_PRICE_URL = 'https://widgets-sync.estebandido80.workers.dev/price';
+// Own Worker (/price) proxies Yahoo — no CORS issues, no rate limits
 
 async function fetchPrice(ticker) {
   const t = ticker.endsWith('_PERO') ? ticker.replace('_PERO','') : ticker;
 
   // 1st: Own Cloudflare Worker proxy (reliable, no CORS issues)
   try {
-    const res = await fetch(`${CF_PRICE_URL}?ticker=${encodeURIComponent(t)}`, {
-      headers: { 'Accept': 'application/json', 'X-Secret': CF_SECRET }
+    const res = await LifeSync.request(`/price?ticker=${encodeURIComponent(t)}`, {
+      headers: { 'Accept': 'application/json' }
     });
     if (res.ok) {
       const json = await res.json();
@@ -1118,8 +1118,7 @@ function updateCash(val) { CASH=parseFloat(val)||0; localStorage.setItem('portfo
 // ═══════════════════════════════════════════════════════
 // CLOUDFLARE WORKERS AUTO-SYNC
 // ═══════════════════════════════════════════════════════
-const CF_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/lukas-flow';
-const CF_SECRET = getSyncSecret();
+const CLOUD = LifeSync.cloud('lukas-flow');
 let cfSaveTimer = null;
 
 function cfStatus(msg, type) {
@@ -1138,11 +1137,7 @@ function debouncedCloudSave() {
 
 async function cloudSave() {
   try {
-    await fetch(CF_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
-      body: JSON.stringify(getAllWidgetData())
-    });
+    await CLOUD.put(getAllWidgetData());
     const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     cfStatus('Synced at ' + t, 'ok');
   } catch(e) {
@@ -1153,9 +1148,7 @@ async function cloudSave() {
 
 async function cloudLoad() {
   try {
-    const res = await fetch(CF_URL, { headers: { 'X-Secret': CF_SECRET } });
-    if (!res.ok) return;
-    const data = await res.json();
+    const data = await CLOUD.get();
     if (data && Object.keys(data).length > 0) {
       restoreAllWidgetData(data); // already calls render() internally
       const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });

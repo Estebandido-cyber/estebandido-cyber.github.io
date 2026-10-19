@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="lib/sync-auth.js"></script>
+<script src="lib/sync.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Life Command Center</title>
@@ -1257,8 +1258,7 @@ function applyStateData(data) {
 // ═══════════════════════════════════════════════
 // CLOUDFLARE WORKERS AUTO-SYNC
 // ═══════════════════════════════════════════════
-const CF_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/doit-lcc';
-const CF_SECRET = getSyncSecret();
+const CLOUD = LifeSync.cloud('doit-lcc');
 
 let cfSaveTimer = null;
 
@@ -1277,12 +1277,7 @@ function scheduleCfSave() {
 async function cloudSave() {
   cfStatus('Syncing\u2026', 'working');
   try {
-    const res = await fetch(CF_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
-      body: JSON.stringify(state)
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    await CLOUD.put(state);
     const t = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
     cfStatus('\u2b24 Synced at ' + t, 'ok');
   } catch(e) {
@@ -1293,8 +1288,7 @@ async function cloudSave() {
 
 async function cloudLoad() {
   try {
-    const res  = await fetch(CF_URL, { headers: { 'X-Secret': CF_SECRET } });
-    const data = await res.json();
+    const data = await CLOUD.get();
     if (data && Object.keys(data).length > 0) {
       applyStateData(data);
       saveToLS();

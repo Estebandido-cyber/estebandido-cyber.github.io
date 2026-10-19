@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="lib/sync-auth.js"></script>
+<script src="lib/sync.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Workout Insights</title>
@@ -679,8 +680,7 @@ function loadFromDrive() {
 // ═══════════════════════════════════════════════
 // CLOUDFLARE WORKERS AUTO-SYNC
 // ═══════════════════════════════════════════════
-const CF_URL = 'https://widgets-sync.estebandido80.workers.dev/data/workout';
-const CF_SECRET = getSyncSecret();
+const CLOUD = LifeSync.cloud('workout');
 let _cfSaveTimer = null;
 
 function setCfStatus(ok, msg) {
@@ -695,11 +695,7 @@ function cloudSave() {
   clearTimeout(_cfSaveTimer);
   _cfSaveTimer = setTimeout(async () => {
     try {
-      await fetch(CF_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
-        body: JSON.stringify({ sessions, monthly })
-      });
+      await CLOUD.put({ sessions, monthly });
       setCfStatus(true, `Synced at ${fmtTime(new Date())}`);
     } catch(e) {
       console.warn('Cloud save failed', e);
@@ -710,8 +706,7 @@ function cloudSave() {
 
 async function cloudLoad() {
   try {
-    const res = await fetch(CF_URL, { headers: { 'X-Secret': CF_SECRET } });
-    const data = await res.json();
+    const data = await CLOUD.get();
     if (data && data.sessions && data.monthly) {
       sessions = data.sessions;
       monthly = data.monthly;

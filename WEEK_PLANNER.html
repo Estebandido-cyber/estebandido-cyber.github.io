@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="lib/sync-auth.js"></script>
+<script src="lib/sync.js"></script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Week Plan</title>
@@ -802,8 +803,7 @@ load();buildGrid();renderTabs();renderChips();renderBlocks();renderTracker();ren
 // ═══════════════════════════════════════════════
 // CLOUDFLARE WORKERS AUTO-SYNC
 // ═══════════════════════════════════════════════
-const CF_URL='https://widgets-sync.estebandido80.workers.dev/data/weekplanner';
-const CF_SECRET=getSyncSecret();
+const CLOUD=LifeSync.cloud('weekplanner');
 let cfSaveTimer=null;
 
 function cfStatus(msg,type){
@@ -822,12 +822,7 @@ function scheduleCloudsave(){
 async function cloudSave(){
   try{
     const payload={acts,weekPlaces,weekNotes,curWeek};
-    const res=await fetch(CF_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Secret':CF_SECRET},
-      body:JSON.stringify(payload)
-    });
-    if(!res.ok)throw new Error('HTTP '+res.status);
+    await CLOUD.put(payload);
     const t=new Date();
     cfStatus('Synced at '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0'),'ok');
   }catch(e){
@@ -837,8 +832,7 @@ async function cloudSave(){
 }
 async function cloudLoad(){
   try{
-    const res=await fetch(CF_URL,{headers:{'X-Secret':CF_SECRET}});
-    const data=await res.json();
+    const data=await CLOUD.get();
     if(data&&data.acts&&data.weekPlaces){
       acts=data.acts;
       weekPlaces=data.weekPlaces;

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="lib/sync-auth.js"></script>
+<script src="lib/sync.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Life Hub</title>
@@ -705,18 +706,7 @@ function setLoading(on) {
 }
 
 // ── CLOUDFLARE SYNC ──────────────────────────────────────────────
-const CF_BASE   = 'https://widgets-sync.estebandido80.workers.dev/data';
-const CF_SECRET = getSyncSecret();
-
-async function cfFetch(path) {
-  try {
-    const res = await fetch(`${CF_BASE}/${path}`, {
-      headers: { 'X-Secret': CF_SECRET }
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch(e) { return null; }
-}
+const cfFetch = key => LifeSync.tryGet(key); // shared client in lib/sync.js
 
 // ── RENDER FUNCTIONS (called after data is resolved) ─────────────
 

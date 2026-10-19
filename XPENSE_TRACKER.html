@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="lib/sync-auth.js"></script>
+<script src="lib/sync.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Xpenser Tracker</title>
@@ -2814,28 +2815,19 @@ function gdriveLoad() {
 // ═══════════════════════════════════════════════
 // CLOUDFLARE WORKERS AUTO-SYNC
 // ═══════════════════════════════════════════════
-const CW_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/xpenser';
-const CW_SECRET = getSyncSecret();
+const CLOUD = LifeSync.cloud('xpenser');
 
 async function cloudSave() {
   try {
     const payload = { data, settings, cashflow: cfData, notes: notesData };
-    await fetch(CW_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Secret': CW_SECRET },
-      body: JSON.stringify(payload)
-    });
+    await CLOUD.put(payload);
     updateLastSaveBar(true);
   } catch(e) { console.warn('Cloud save failed', e); }
 }
 
 async function cloudLoad() {
   try {
-    const res = await fetch(CW_URL, {
-      headers: { 'X-Secret': CW_SECRET }
-    });
-    if (!res.ok) return;
-    const payload = await res.json();
+    const payload = await CLOUD.get();
     if (!payload || !payload.data || Object.keys(payload.data).length === 0) return;
 
     data = payload.data;

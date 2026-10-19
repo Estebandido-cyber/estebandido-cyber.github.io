@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="lib/sync-auth.js"></script>
+<script src="lib/sync.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Xpenses Calculator</title>
@@ -820,8 +821,7 @@ function showToast(msg) {
 // ════════════════════════════════════════════════════════════════════
 //  CLOUDFLARE WORKERS AUTO-SYNC
 // ════════════════════════════════════════════════════════════════════
-const CF_URL    = 'https://widgets-sync.estebandido80.workers.dev/data/xpenses-calculator';
-const CF_SECRET = getSyncSecret();
+const CLOUD = LifeSync.cloud('xpenses-calculator');
 
 function cfSetStatus(ok) {
   const wrap = document.getElementById('cf-status');
@@ -836,12 +836,8 @@ async function cloudSave() {
   clearTimeout(cfSaveTimer);
   cfSaveTimer = setTimeout(async () => {
     try {
-      const res = await fetch(CF_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Secret': CF_SECRET },
-        body: JSON.stringify({ savedAt: new Date().toISOString(), ...states }),
-      });
-      cfSetStatus(res.ok);
+      await CLOUD.put({ savedAt: new Date().toISOString(), ...states });
+      cfSetStatus(true);
     } catch (e) {
       cfSetStatus(false);
       console.warn('Cloud save failed', e);
@@ -851,8 +847,7 @@ async function cloudSave() {
 
 async function cloudLoad() {
   try {
-    const res  = await fetch(CF_URL, { headers: { 'X-Secret': CF_SECRET } });
-    const data = await res.json();
+    const data = await CLOUD.get();
     if (data && data.now && data.fire) {
       states.now  = { ...DEFAULTS.now,  ...data.now  };
       states.fire = { ...DEFAULTS.fire, ...data.fire };
