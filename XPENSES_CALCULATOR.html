@@ -686,6 +686,7 @@ const SHARED_DEF = [
   { key: 'bobsFood',    label: 'Bobs Food',      step: 2  },
   { key: 'bobsLitiere', label: 'Bobs Litière',   step: 5  },
   { key: 'sharedResto', label: 'Restos',         step: 10 },
+  { key: 'deliveroo',   label: 'Deliveroo',      step: 5  },
   { key: 'sharedBar',   label: 'Bar',            step: 10 },
   { key: 'sharedExtras',label: 'Extras',         step: 5  },
 ];
@@ -714,7 +715,7 @@ const CHART_CATS = [
   { label: 'Utilities & svcs', color: '#4a9fd0', fn: s => (s.internet + s.netflix) / 2 + s.insurance },
   { label: 'Bobs',            color: '#d08a3a', fn: s => (s.bobsFood + s.bobsLitiere) / 2 },
   { label: 'Unspent',          color: '#8070e0', fn: s => Math.max(0, s.sharedAcc - derived(s).sharedTotal / 2) },
-  { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.beer + (s.courses + s.sharedResto + s.sharedBar) / 2 },
+  { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.beer + (s.courses + s.sharedResto + s.deliveroo + s.sharedBar) / 2 },
   { label: 'Health & sport',   color: '#d05830', fn: s => s.health + s.smoothie + s.billarMonth + s.billar/12 + s.chess/12 + s.drums },
   { label: 'Subscriptions',    color: '#c04880', fn: s => s.amazonPrime/12 + s.phone },
   { label: 'Savings',          color: '#6a9a20', fn: s => s.savings },
@@ -730,7 +731,7 @@ const DEFAULTS = {
   now: {
     salary: 2000, tickets: 200, mel: 40,
     rent: 1450, insurance: 25, internet: 40, netflix: 15, electricity: 120,
-    bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, sharedBar: 200, sharedExtras: 60,
+    bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, deliveroo: 100, sharedBar: 200, sharedExtras: 60,
     sharedAcc: 600,
     phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
     billar: 150, billarMonth: 10, lunch: 100, extras: 100,
@@ -739,7 +740,7 @@ const DEFAULTS = {
   fire: {
     salary: 0, tickets: 500, mel: 40,
     rent: 900, insurance: 20, internet: 40, netflix: 15, electricity: 80,
-    bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, sharedBar: 200, sharedExtras: 60,
+    bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, deliveroo: 100, sharedBar: 200, sharedExtras: 60,
     sharedAcc: 400,
     phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
     billar: 150, billarMonth: 10, lunch: 60, extras: 150,
@@ -1057,7 +1058,7 @@ function buildCard(tab) {
 
     <div class="box-shared" id="${tab}-box-shared">
       <div class="box-title" onclick="toggleBox('${tab}-box-shared')">
-        <span>Shared expenses — paid from shared account</span>
+        <span>Shared expenses — paid from Revolut</span>
         <span class="box-chevron">▼</span>
       </div>
       <div class="expense-rows split-grid">
