@@ -383,10 +383,16 @@ body {
 /* ── Summary metric cards ── */
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0,1fr));
+  grid-template-columns: repeat(4, minmax(0,1fr));
   gap: 8px;
 }
-@media (max-width: 580px) { .metric-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 580px) { .metric-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.metric-grid .metric .lbl { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; }
+.metric.income-total { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.metric.income-total .lbl { font-size: 13px; white-space: normal; overflow: visible; margin-bottom: 4px; }
+.metric.income-total .val { font-size: 32px; letter-spacing: -0.6px; line-height: 1.1; }
+.metric.income-total .sub { font-size: 12px; margin-top: 4px; }
+.sa-total { font-size: 13px; font-weight: 600; color: var(--purple); min-width: 58px; text-align: right; }
 
 .metric {
   background: var(--bg-card);
@@ -541,6 +547,8 @@ body {
 
 /* ── Income rows ── */
 .income-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 580px) { .income-grid { grid-template-columns: minmax(0,1fr); } .metric.income-total { padding: 0.9rem; } }
+.income-grid > * { min-width: 0; }
 .income-row {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -674,6 +682,7 @@ const SHARED_DEF = [
   { key: 'internet',    label: 'Free',           step: 5  },
   { key: 'netflix',     label: 'Netflix',        step: 1  },
   { key: 'electricity', label: 'Electricity',    step: 10 },
+  { key: 'courses',     label: 'Courses',        step: 10 },
   { key: 'bobsFood',    label: 'Bobs Food',      step: 2  },
   { key: 'bobsLitiere', label: 'Bobs Litière',   step: 5  },
   { key: 'sharedResto', label: 'Restos',         step: 10 },
@@ -705,7 +714,7 @@ const CHART_CATS = [
   { label: 'Utilities & svcs', color: '#4a9fd0', fn: s => (s.internet + s.netflix) / 2 + s.insurance },
   { label: 'Bobs',            color: '#d08a3a', fn: s => (s.bobsFood + s.bobsLitiere) / 2 },
   { label: 'Unspent',          color: '#8070e0', fn: s => Math.max(0, s.sharedAcc - derived(s).sharedTotal / 2) },
-  { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.beer + (s.sharedResto + s.sharedBar) / 2 },
+  { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.beer + (s.courses + s.sharedResto + s.sharedBar) / 2 },
   { label: 'Health & sport',   color: '#d05830', fn: s => s.health + s.smoothie + s.billarMonth + s.billar/12 + s.chess/12 + s.drums },
   { label: 'Subscriptions',    color: '#c04880', fn: s => s.amazonPrime/12 + s.phone },
   { label: 'Savings',          color: '#6a9a20', fn: s => s.savings },
@@ -721,7 +730,7 @@ const DEFAULTS = {
   now: {
     salary: 2000, tickets: 200, mel: 40,
     rent: 1450, insurance: 25, internet: 40, netflix: 15, electricity: 120,
-    bobsFood: 20, bobsLitiere: 50, sharedResto: 200, sharedBar: 200, sharedExtras: 60,
+    bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, sharedBar: 200, sharedExtras: 60,
     sharedAcc: 600,
     phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
     billar: 150, billarMonth: 10, lunch: 100, extras: 100,
@@ -730,7 +739,7 @@ const DEFAULTS = {
   fire: {
     salary: 0, tickets: 500, mel: 40,
     rent: 900, insurance: 20, internet: 40, netflix: 15, electricity: 80,
-    bobsFood: 20, bobsLitiere: 50, sharedResto: 200, sharedBar: 200, sharedExtras: 60,
+    bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, sharedBar: 200, sharedExtras: 60,
     sharedAcc: 400,
     phone: 10, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
     billar: 150, billarMonth: 10, lunch: 60, extras: 150,
@@ -748,7 +757,7 @@ const charts = { now: null, fire: null };
 //  FORMATTERS
 // ════════════════════════════════════════════════════════════════════
 const fmt      = n => '€' + Math.round(n).toLocaleString('de-DE');
-const fmtd     = n => '€' + (Math.round(n * 100) / 100).toFixed(2);
+const fmtd     = n => '€' + n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtSmart = n => (n % 1 === 0) ? fmt(n) : fmtd(n);
 
 // ════════════════════════════════════════════════════════════════════
@@ -1014,7 +1023,7 @@ function buildCard(tab) {
           <span class="eamt" id="${tab}-amt-mel">—</span>
         </div>
       </div>
-      <div class="metric c-green">
+      <div class="metric c-green income-total">
         <div class="lbl">Total income</div>
         <div class="val" id="${tab}-m-income">—</div>
         <div class="sub">per month</div>
@@ -1025,11 +1034,16 @@ function buildCard(tab) {
     <p class="section-label">Monthly summary</p>
     <div class="metric-grid">
       <div class="metric c-red">   <div class="lbl">Your expenses</div>        <div class="val" id="${tab}-m-gross">—</div>      <div class="sub">shared account + personal</div></div>
-      <div class="metric c-amber"> <div class="lbl">Shared account</div>       <div class="val" id="${tab}-m-shared-acc">—</div> <div class="sub">each contributes</div></div>
+      <div class="metric c-amber"> <div class="lbl">Shared Revolut</div>       <div class="val" id="${tab}-m-shared-acc">—</div> <div class="sub">each contributes</div></div>
       <div class="metric c-purple" id="${tab}-leftover-card">
         <div class="lbl">Left at end of month</div>
         <div class="val" id="${tab}-m-leftover">—</div>
         <div class="sub">income minus expenses</div>
+      </div>
+      <div class="metric c-green" id="${tab}-year-card">
+        <div class="lbl">Total left / year</div>
+        <div class="val" id="${tab}-m-year">—</div>
+        <div class="sub">monthly left × 12</div>
       </div>
     </div>
 
@@ -1038,6 +1052,7 @@ function buildCard(tab) {
       <span class="sa-label">Shared Revolut</span>
       <span class="sa-note" id="${tab}-sa-note">each puts in €600</span>
       <div class="spin-wrap" id="${tab}-spin-sharedAcc"></div>
+      <span class="sa-total" id="${tab}-sa-total">—</span>
     </div>
 
     <div class="box-shared" id="${tab}-box-shared">
@@ -1050,7 +1065,7 @@ function buildCard(tab) {
         ${rowsHTML(SHARED_DEF)}
         <div class="erow erow-total"><span>Total</span><span></span><span class="tt" id="${tab}-total-shared">—</span><span class="eamt" id="${tab}-half-shared">—</span></div>
       </div>
-      <div class="section-total sa-left" id="${tab}-sa-left-row"><span>Left in shared account</span><span><span id="${tab}-sa-left">—</span><span class="sa-pct" id="${tab}-sa-left-pct"></span></span></div>
+      <div class="section-total sa-left" id="${tab}-sa-left-row"><span>Left in Revolut</span><span><span id="${tab}-sa-left">—</span><span class="sa-pct" id="${tab}-sa-left-pct"></span></span></div>
     </div>
 
     <div class="box-personal" id="${tab}-box-personal">
@@ -1096,6 +1111,8 @@ function render(tab) {
   document.getElementById(`${p}m-shared-acc`).textContent = fmt(s.sharedAcc);
   document.getElementById(`${p}m-leftover`).textContent   = fmt(d.leftover);
   document.getElementById(`${p}leftover-card`).className  = d.leftover >= 0 ? 'metric c-purple' : 'metric c-red';
+  document.getElementById(`${p}m-year`).textContent       = fmt(d.leftover * 12);
+  document.getElementById(`${p}year-card`).className      = d.leftover >= 0 ? 'metric c-green' : 'metric c-red';
 
   // Write computed outputs so the Life Hub can read them directly
   try {
@@ -1117,6 +1134,7 @@ function render(tab) {
 
   document.getElementById(`${p}sv-sharedAcc`).textContent  = fmt(s.sharedAcc);
   document.getElementById(`${p}sa-note`).textContent       = `each puts in €${s.sharedAcc}`;
+  document.getElementById(`${p}sa-total`).textContent      = fmt(d.sharedPool);
 
   PERSONAL_DEF.forEach(def => {
     const raw     = s[def.key];
