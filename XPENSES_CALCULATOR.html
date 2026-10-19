@@ -714,7 +714,6 @@ const CHART_CATS = [
   { label: 'Electricity',      color: '#1aaa84', fn: s => s.electricity / 2 },
   { label: 'Utilities & svcs', color: '#4a9fd0', fn: s => (s.internet + s.netflix) / 2 + s.insurance },
   { label: 'Bobs',            color: '#d08a3a', fn: s => (s.bobsFood + s.bobsLitiere) / 2 },
-  { label: 'Unspent',          color: '#8070e0', fn: s => Math.max(0, s.sharedAcc - derived(s).sharedTotal / 2) },
   { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.beer + (s.courses + s.sharedResto + s.deliveroo + s.sharedBar) / 2 },
   { label: 'Health & sport',   color: '#d05830', fn: s => s.health + s.smoothie + s.billarMonth + s.billar/12 + s.chess/12 + s.drums },
   { label: 'Subscriptions',    color: '#c04880', fn: s => s.amazonPrime/12 + s.phone },
@@ -769,12 +768,12 @@ function derived(s) {
   const personalMonthly = PERSONAL_DEF.reduce((sum, def) => {
     return sum + (def.yearly ? s[def.key] / 12 : s[def.key]);
   }, 0);
-  // Shared bills are paid from the joint account (each puts in sharedAcc),
-  // so only your contribution counts as your expense — no double counting.
+  // Joint Revolut pot: both put in sharedAcc; shared bills are paid from it.
   const sharedPool = s.sharedAcc * 2;
   const sharedLeft = sharedPool - sharedTotal;
-  // If bills exceed the pot, the shortfall is topped up 50/50 → your half counts too
-  const gross    = s.sharedAcc + Math.max(0, -sharedLeft) / 2 + personalMonthly;
+  // Real cost of living: your half of what the shared account actually pays + personal.
+  // Unspent Revolut money is still yours, so it is not counted as an expense.
+  const gross    = sharedTotal / 2 + personalMonthly;
   const net      = gross; // partner's monthly contribution is already in income (Mel)
   const income   = s.salary + s.tickets + s.mel;
   const leftover = income - net;
@@ -1034,7 +1033,7 @@ function buildCard(tab) {
     <hr class="divider">
     <p class="section-label">Monthly summary</p>
     <div class="metric-grid">
-      <div class="metric c-red">   <div class="lbl">Your expenses</div>        <div class="val" id="${tab}-m-gross">—</div>      <div class="sub">shared account + personal</div></div>
+      <div class="metric c-red">   <div class="lbl">Your expenses</div>        <div class="val" id="${tab}-m-gross">—</div>      <div class="sub">your half of shared + personal</div></div>
       <div class="metric c-amber"> <div class="lbl">Shared Revolut</div>       <div class="val" id="${tab}-m-shared-acc">—</div> <div class="sub">each contributes</div></div>
       <div class="metric c-purple" id="${tab}-leftover-card">
         <div class="lbl">Left at end of month</div>
