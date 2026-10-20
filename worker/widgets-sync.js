@@ -8,7 +8,7 @@
  *
  * Routes:
  *   GET  /data/<key>          → stored JSON ('{}' if empty)
- *   POST /data/<key>          → store body
+ *   POST /data/<key>          → store body (max 5 MB → 413)
  *   GET  /price?ticker=XXX    → Yahoo Finance chart JSON (used by Lukas)
  *   GET  /backups/<key>       → { key, dates: ['YYYY-MM-DD', …] } newest first
  *   GET  /backups/<key>/<date>→ the backed-up JSON for that day
@@ -22,7 +22,7 @@
 const ALLOWED_ORIGIN = 'https://estebandido-cyber.github.io';
 const KEY_RE    = /^[a-z0-9-]{1,40}$/;          // widget keys like fire-sim, xpenser
 const TICKER_RE = /^[A-Za-z0-9.=^_-]{1,20}$/;   // e.g. WPEA.PA, EURUSD=X
-const MAX_BODY  = 1_000_000;                    // 1 MB per widget
+const MAX_BODY  = 5_000_000;                    // 5 MB per widget (KV allows 25 MB); keep in sync with LifeSync.LIMIT
 const BACKUP_DAYS = 30;
 const DATE_RE   = /^\d{4}-\d{2}-\d{2}$/;
 

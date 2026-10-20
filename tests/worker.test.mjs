@@ -47,7 +47,8 @@ await t('data: save, load, empty key returns {}, bad keys and big bodies rejecte
   assert.equal((await call(env, 'GET', '/data/never-saved')).text, '{}');
   assert.equal((await call(env, 'GET', '/data/Bad_Key')).status, 400);
   assert.equal((await call(env, 'GET', '/data/bak:fire-sim:2026-01-01')).status, 400);
-  assert.equal((await call(env, 'POST', '/data/fire-sim', { body: 'x'.repeat(1_000_001) })).status, 413);
+  assert.equal((await call(env, 'POST', '/data/fire-sim', { body: 'x'.repeat(5_000_001) })).status, 413);
+  assert.equal((await call(env, 'POST', '/data/workout', { body: 'x'.repeat(4_999_999) })).status, 200);
 });
 
 await t('backups: one per widget per day, holds the previous value, 30-day TTL', async () => {

@@ -30,7 +30,7 @@ and can be backed up manually to Google Drive.
 |---|---|---|
 | `sync-auth.js` | Sync key, entered once per browser, stored in localStorage (`lifehub_sync_secret`). Clears itself on HTTP 401. | `getSyncSecret()`, `resetSyncSecret()` |
 | `pwa.js` | Registers the offline service worker `sw.js`. Per-device switch: `?nosw` turns offline mode off (and clears caches), `?sw` turns it back on. | — |
-| `sync.js` | Cloudflare Worker client. Failed uploads are kept as `lifesync_pending_<key>` and pushed first on the next `get()` or when the browser goes back online, so offline edits are never overwritten by older cloud data. Saves whose content is unchanged since the last sync (ignoring `savedAt`/`exportedAt`/`updatedAt`) are skipped (`lifesync_synced_<key>` fingerprint), so opening a widget never uploads a stale copy. | `LifeSync.cloud(key).get()` / `.put(obj)` (throw on error), `LifeSync.tryGet(key)` (null on error), `LifeSync.request(path, init)`, `LifeSync.debounce(fn, ms)`, `LifeSync.time()` |
+| `sync.js` | Cloudflare Worker client. Failed uploads are kept as `lifesync_pending_<key>` and pushed first on the next `get()` or when the browser goes back online, so offline edits are never overwritten by older cloud data. Saves whose content is unchanged since the last sync (ignoring `savedAt`/`exportedAt`/`updatedAt`) are skipped (`lifesync_synced_<key>` fingerprint), so opening a widget never uploads a stale copy. A banner warns when a widget's data passes 70% of the 5 MB limit, or if a save is refused as too large. | `LifeSync.cloud(key).get()` / `.put(obj)` (throw on error), `LifeSync.tryGet(key)` (null on error), `LifeSync.request(path, init)`, `LifeSync.debounce(fn, ms)`, `LifeSync.time()` |
 | `drive.js` | Google Drive manual backup (Google Identity Services). | `LifeDrive.create({ filename, status, busy, payload, apply, types }).save() / .load()` |
 
 Load order in `<head>`: `pwa.js` → `sync-auth.js` → `sync.js` → `drive.js` (only if the widget has Drive buttons).
@@ -43,7 +43,7 @@ Same-origin files are **network-first** (a deploy is visible on the next normal 
 
 Cloudflare Worker `widgets-sync` (`https://widgets-sync.estebandido80.workers.dev`), bound to KV namespace `WIDGET_DATA`.
 
-- `GET /data/<key>` → stored JSON (`{}` if empty) · `POST /data/<key>` → store body (max 1 MB)
+- `GET /data/<key>` → stored JSON (`{}` if empty) · `POST /data/<key>` → store body (max 5 MB; `LifeSync.LIMIT` in `lib/sync.js` must match)
 - `GET /price?ticker=XXX` → Yahoo Finance chart JSON, 5-min edge cache (used by LUKAS)
 - **Daily backups**: the first save of each day (Paris time) copies the previous value to `bak:<key>:<YYYY-MM-DD>`, kept 30 days. Read-only: `GET /backups/<key>` lists dates, `GET /backups/<key>/<date>` returns that copy.
 - Auth: header `X-Secret` must equal the Worker secret `SYNC_SECRET` (Settings → Variables and Secrets). **The secret is never committed.**

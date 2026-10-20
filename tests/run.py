@@ -69,7 +69,7 @@ def wait_until(pg, fn, timeout=6.0):
 
 
 class FakeWorker:
-    def __init__(self): self.store, self.log, self.offline = {}, [], False
+    def __init__(self): self.store, self.log, self.offline, self.max_body = {}, [], False, None
     def handle(self, route):
         rq = route.request
         if self.offline: return route.abort('internetdisconnected')
@@ -81,6 +81,8 @@ class FakeWorker:
         if path.startswith('/data/'):
             k = path[6:]
             if rq.method == 'POST':
+                if self.max_body and len(rq.post_data or '') > self.max_body:
+                    return route.fulfill(status=413, body='Too large', headers=CORS)
                 self.store[k] = rq.post_data
                 return route.fulfill(status=200, body='OK', headers=CORS)
             return route.fulfill(status=200, body=self.store.get(k, '{}'), headers=JSONH)
@@ -315,6 +317,28 @@ def sync_offline_edits_are_never_lost(b):
         assert posts() == n, 'unchanged content (only a timestamp differs) must not be uploaded'
         pg.evaluate(f"{C}.put({{v:'C'}})")
         assert posts() == n + 1 and worker.store['fire-sim'] == '{"v":"C"}', 'a real change must be uploaded'
+        assert not errs, errs
+        ctx.close()
+
+@test
+def sync_size_warning(b):
+    with Server() as srv:
+        worker = FakeWorker(); worker.max_body = 1000
+        worker.store['big-read'] = json.dumps({'x': 'y' * 900})
+        ctx = new_context(b, worker)
+        pg, errs = open_page(ctx, srv.base + 'README.md')
+        pg.add_script_tag(url='/lib/sync-auth.js'); pg.add_script_tag(url='/lib/sync.js')
+        pg.evaluate("LifeSync.LIMIT = 1000")
+        banner = lambda: pg.evaluate("[...document.querySelectorAll('.lifesync-size-warning')].map(e => e.textContent)")
+        pg.evaluate("LifeSync.cloud('small').put({x: 'y'.repeat(500)})")
+        assert banner() == [], f'warned below 70%: {banner()}'
+        pg.evaluate("LifeSync.cloud('growing').put({x: 'y'.repeat(780)})")
+        assert len(banner()) == 1 and 'Still syncing' in banner()[0] and 'growing' in banner()[0], f'no early warning: {banner()}'
+        assert 'growing' in worker.store, 'a save between 70% and 100% must still go through'
+        pg.evaluate("LifeSync.cloud('too-big').get().then(() => LifeSync.cloud('too-big').put({x: 'y'.repeat(1200)})).catch(() => 0)")
+        assert any('NOT syncing' in t and 'too-big' in t for t in banner()), f'no warning when refused: {banner()}'
+        pg.evaluate("LifeSync.tryGet('big-read')")
+        assert any('big-read' in t for t in banner()), 'large data on load (e.g. Hub) must warn too'
         assert not errs, errs
         ctx.close()
 
