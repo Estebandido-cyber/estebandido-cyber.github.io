@@ -17,6 +17,7 @@ This repo is published as-is by GitHub Pages: **everything committed is public**
 - **Never change cloud keys or Drive filenames** (see README table) — data is looked up by name.
 - **Never write to the real Worker/KV from tests.** Route `**/widgets-sync.*/**` to a mock in every browser test.
 - When changing a saved data shape, add a migration so old localStorage, cloud and Drive payloads still load (see `migrateReturns` in `FIRE_SIM.html`). Unknown keys must not break loading.
+- Every page must include `<script src="lib/pwa.js"></script>` first in `<head>`. Never make same-origin files cache-first in `sw.js` (a deploy must never hide behind a stale cache). In browser tests over http, set `PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1` so `context.route` also mocks requests made by the service worker.
 - Keep each widget self-contained: shared code goes in `lib/`, loaded via `<script src="lib/...">` in `<head>`. No build step, no framework.
 
 ## Workflow
