@@ -31,7 +31,7 @@ This repo is published as-is by GitHub Pages: **everything committed is public**
 - `tests/run.py`: Playwright checks (all pages load, cloud sync per widget, wrong key, Drive backup, offline edits, service worker, Xpenses and FIRE calculation rules). `tests/worker.test.mjs`: Worker unit tests.
 - Network is fully mocked by one catch-all route; the real Worker/Google/CDNs are never contacted. Chart.js is fetched once into `tests/.cache` (gitignored).
 - Tests use their own inputs and check rules, not defaults or labels. Adding/renaming rows or changing defaults needs no test change; changing how money is calculated does — update the rule in the same commit and say so in the commit message.
-- New feature with math → add a rule test. For layout changes screenshot at phone (390 px), the owner's OnePlus Pad Go tablet (mostly landscape; viewports in ROADMAP.md) and desktop (≥ 1200 px), light and dark.
+- New feature with math → add a rule test. For layout changes screenshot at the owner's real viewports: **tablet 1070×596 landscape (main)** and ~764×900 portrait (OnePlus Pad Go), **phone 411×784** (Pixel 8), desktop ≥ 1200 px — light and dark. The tablet is only 596 px tall in landscape.
 - In the harness, wait with `wait_until(pg, …)` / `pg.wait_for_timeout`, never `time.sleep` (it freezes the mocked network).
 
 ## Widget notes
