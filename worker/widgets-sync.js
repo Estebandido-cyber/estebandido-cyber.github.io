@@ -10,12 +10,35 @@
  *   GET  /data/<key>          → stored JSON ('{}' if empty)
  *   POST /data/<key>          → store body
  *   GET  /price?ticker=XXX    → Yahoo Finance chart JSON (used by Lukas)
+ *   GET  /backups/<key>       → { key, dates: ['YYYY-MM-DD', …] } newest first
+ *   GET  /backups/<key>/<date>→ the backed-up JSON for that day
+ *
+ * Daily backups: on the first save of each day (Europe/Paris), the value that
+ * is about to be overwritten is copied to 'bak:<key>:<date>' and auto-deleted
+ * after BACKUP_DAYS. So the backup dated D = how the widget looked before
+ * its first save on day D. Backup keys contain ':' and can't be reached via /data/.
  */
 
 const ALLOWED_ORIGIN = 'https://estebandido-cyber.github.io';
 const KEY_RE    = /^[a-z0-9-]{1,40}$/;          // widget keys like fire-sim, xpenser
 const TICKER_RE = /^[A-Za-z0-9.=^_-]{1,20}$/;   // e.g. WPEA.PA, EURUSD=X
 const MAX_BODY  = 1_000_000;                    // 1 MB per widget
+const BACKUP_DAYS = 30;
+const DATE_RE   = /^\d{4}-\d{2}-\d{2}$/;
+
+function today() {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date()); }
+  catch (_) { return new Date().toISOString().slice(0, 10); }
+}
+
+// Copy the current value to bak:<key>:<today> once per day, before it is overwritten
+async function backupBeforeWrite(kv, key) {
+  const bakKey = `bak:${key}:${today()}`;
+  if (await kv.get(bakKey) !== null) return;          // already backed up today
+  const current = await kv.get(key);
+  if (!current || current === '{}') return;            // nothing worth keeping
+  await kv.put(bakKey, current, { expirationTtl: BACKUP_DAYS * 86400 });
+}
 
 function cors() {
   return {
@@ -62,6 +85,22 @@ export default {
       });
     }
 
+    // ── Daily backups (read-only) ──
+    if (url.pathname.startsWith('/backups/')) {
+      if (request.method !== 'GET') return new Response('Method not allowed', { status: 405, headers: CORS });
+      const [key, date] = url.pathname.slice('/backups/'.length).replace(/\/$/, '').split('/');
+      if (!KEY_RE.test(key || '')) return new Response('Bad key', { status: 400, headers: CORS });
+      if (date === undefined) {
+        const list = await env.WIDGET_DATA.list({ prefix: `bak:${key}:` });
+        const dates = list.keys.map(k => k.name.split(':')[2]).sort().reverse();
+        return new Response(JSON.stringify({ key, dates }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+      if (!DATE_RE.test(date)) return new Response('Bad date', { status: 400, headers: CORS });
+      const value = await env.WIDGET_DATA.get(`bak:${key}:${date}`);
+      if (value === null) return new Response('No backup for that date', { status: 404, headers: CORS });
+      return new Response(value, { headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
+
     // ── Widget data ──
     if (!url.pathname.startsWith('/data/')) return new Response('Not found', { status: 404, headers: CORS });
     const key = url.pathname.slice('/data/'.length).replace(/\/$/, '');
@@ -75,6 +114,8 @@ export default {
     if (request.method === 'POST') {
       const body = await request.text();
       if (body.length > MAX_BODY) return new Response('Too large', { status: 413, headers: CORS });
+      try { await backupBeforeWrite(env.WIDGET_DATA, key); }
+      catch (e) { console.warn('backup failed', key, e); }   // never block the save
       await env.WIDGET_DATA.put(key, body);
       return new Response('OK', { headers: CORS });
     }

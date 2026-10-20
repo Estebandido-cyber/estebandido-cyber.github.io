@@ -40,6 +40,7 @@ Cloudflare Worker `widgets-sync` (`https://widgets-sync.estebandido80.workers.de
 
 - `GET /data/<key>` → stored JSON (`{}` if empty) · `POST /data/<key>` → store body (max 1 MB)
 - `GET /price?ticker=XXX` → Yahoo Finance chart JSON, 5-min edge cache (used by LUKAS)
+- **Daily backups**: the first save of each day (Paris time) copies the previous value to `bak:<key>:<YYYY-MM-DD>`, kept 30 days. Read-only: `GET /backups/<key>` lists dates, `GET /backups/<key>/<date>` returns that copy.
 - Auth: header `X-Secret` must equal the Worker secret `SYNC_SECRET` (Settings → Variables and Secrets). **The secret is never committed.**
 - CORS: only `https://estebandido-cyber.github.io`
 
