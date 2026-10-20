@@ -37,5 +37,6 @@ This repo is published as-is by GitHub Pages: **everything committed is public**
 ## Widget notes
 - **FIRE_SIM.html** — state `S`, limits `LIM`, render `draw()`, save `saveState()`. PEA/CTO returns are 9 five-year periods `pea-r1..9`, `cto-r1..9` (`cto-sync` copies PEA); horizon 44 years; summary uses CAGR via `cagr()`. Old `pea-r`/`cto-r` migrated by `migrateReturns()`.
 - **XPENSES_CALCULATOR.html** — `states.now` / `states.fire` merged over `DEFAULTS`; rows come from `SHARED_DEF` / `PERSONAL_DEF` (adding a row = one def line + default in both tabs + a donut category in `CHART_CATS`). Shared expenses are full bills paid from the joint Revolut pot (2 × `sharedAcc`); "Your expenses" = half of shared + personal. Partner's contribution is income (`mel`). Donut must sum to `derived().gross`.
+- **workout_dashboard.html** — sessions parsed from pasted calendar text by `parseWorkoutText` → `parseLineExercises` → `classifyExercise`. Rings: an `RG` tag on a PU/DOM/BIC/DIP line keeps its normal bucket/variant and also adds to `rpu`/`rdom`/`rdip`; `N s/m HOLD RG` adds seconds to `rhold`. Rings fields are stored only when > 0; monthly totals `rg_pu/rg_dom/rg_dip/rg_hold`.
 - **WEEK_PLANNER.html** — script wrapped in an IIFE; functions are not global (trigger via UI in tests).
 - **index.html** — Hub tiles; `cfFetch(key)` = `LifeSync.tryGet`.

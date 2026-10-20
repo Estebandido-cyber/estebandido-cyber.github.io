@@ -435,6 +435,12 @@ canvas{display:block;width:100%!important}
   </div>
   <div class="chart-wrap h200 chart-section"><canvas id="domVariantChart"></canvas></div>
 
+  <div class="section-label">Rings — monthly reps (included in the totals above)</div>
+  <div id="ringsStats" style="font-size:12px;color:#9a9aaa;margin:-4px 0 10px;font-family:var(--font-mono)"></div>
+  <div class="chart-wrap h200 chart-section"><canvas id="ringsChart"></canvas></div>
+  <div class="section-label">Rings hold — minutes per month</div>
+  <div class="chart-wrap h200 chart-section" style="height:150px"><canvas id="ringsHoldChart"></canvas></div>
+
   <div class="two-col">
     <div>
       <div class="section-label">Push-up mix — all time</div>
@@ -791,6 +797,15 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
 
       const totalMult = blockMult * inlineMult;
 
+      // Rings hold (time): "30s HOLD RG", "1m HOLD RG", "1m30s HOLD RG", "30 HOLD RG" (= seconds)
+      if (/\bhold\b/i.test(cleanPart) && /\brg\b/i.test(cleanPart)) {
+        const hm = cleanPart.match(/^(?:(\d+)\s*m(?:in)?\s*)?(?:(\d+)\s*s(?:ec)?)?\s*(?=\D)/i);
+        const bare = cleanPart.match(/^(\d+)\s+/);
+        const secs = hm && (hm[1] || hm[2]) ? (parseInt(hm[1] || 0) * 60 + parseInt(hm[2] || 0))
+                   : bare ? parseInt(bare[1]) : 0;
+        if (secs) { result.rg_hold = (result.rg_hold || 0) + secs * totalMult; return; }
+      }
+
       // Match "N ExerciseName" at start
       const numMatch = cleanPart.match(/^(\d+)\s+(.+)$/);
       if (!numMatch) return;
@@ -804,9 +819,16 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
       const key = classifyExercise(exName);
       if (key) {
         result[key] = (result[key]||0) + total;
+        // Rings (RG suffix): same bucket as usual, also tallied as rings
+        if (/\brg\b/i.test(exName)) {
+          const ringKey = key.startsWith('pu_') ? 'rg_pu'
+                        : (key.startsWith('dom_') || key === 'bic_chinup') ? 'rg_dom'
+                        : (key === 'dip_plain' || key === 'dip_knee') ? 'rg_dip' : null;
+          if (ringKey) result[ringKey] = (result[ringKey]||0) + total;
+        }
       } else {
         // Flag unrecognized non-trivial patterns
-        const cleaned = exName.replace(/\b(blocs?|blocks?|yoga|each|warm|up|stretch|hang|hold|step|rest|bar)\b/gi,'').trim();
+        const cleaned = exName.replace(/\b(blocs?|blocks?|yoga|each|warm|up|stretch|hang|hold|step|rest|bar|rg)\b/gi,'').trim();
         if (cleaned.length > 1 && !/^\d+$/.test(cleaned) && !/\bjr\b/i.test(cleaned)) {
           unrecognized.push(`"${numMatch[1]} ${numMatch[2].trim()}"`);
         }
@@ -938,6 +960,11 @@ function parseWorkoutText(text, date, loc, pastedHtml='') {
     dnd: exTotals.dom_neutr||0, dcd: exTotals.dom_close||0, dwd: exTotals.dom_wide||0,
     dad: exTotals.dom_austr||0, ded: exTotals.dom_explo||0, dfd: exTotals.dom_fat||0,
     dbc: exTotals.bic_chinup||0,
+    // rings (only stored when > 0): reps already included in pu/dom/dip above
+    ...(exTotals.rg_pu   ? {rpu:   exTotals.rg_pu}   : {}),
+    ...(exTotals.rg_dom  ? {rdom:  exTotals.rg_dom}  : {}),
+    ...(exTotals.rg_dip  ? {rdip:  exTotals.rg_dip}  : {}),
+    ...(exTotals.rg_hold ? {rhold: exTotals.rg_hold} : {}),
   };
   // Deduplicate unrecognized list
   const unrecognizedUniq = [...new Set(unrecognized)];
@@ -1041,6 +1068,12 @@ function parsePreview() {
   if(session.dnd) variants.push(`Neutr Dom:${session.dnd}`);
   if(session.dcd) variants.push(`Close Dom:${session.dcd}`);
   if(session.dbc) variants.push(`BIC:${session.dbc}`);
+  const ringsBits = [];
+  if(session.rpu) ringsBits.push(`PU ${session.rpu}`);
+  if(session.rdom) ringsBits.push(`DOM ${session.rdom}`);
+  if(session.rdip) ringsBits.push(`DIP ${session.rdip}`);
+  if(session.rhold) ringsBits.push(`Hold ${Math.floor(session.rhold/60)}m${session.rhold%60?(session.rhold%60)+'s':''}`);
+  if(ringsBits.length) variants.push(`Rings: ${ringsBits.join(' ')}`);
   exDiv.textContent = variants.length ? '↳ ' + variants.join(' · ') : '';
 
   // Debug: show extracted bullet lines count
@@ -1179,6 +1212,7 @@ function rebuildMonthly() {
       jr_min_total:0,jr_max_s:0,run_min_total:0,
       pu_fu:0,pu_diam:0,pu_wide:0,pu_spartan:0,pu_russian:0,pu_indian:0,pu_plain:0,
       dom_neutr:0,dom_close:0,dom_wide:0,dom_austr:0,dom_explo:0,dom_fat:0,bic_chinup:0,dom_plain:0,
+      rg_pu:0,rg_dom:0,rg_dip:0,rg_hold:0,
       kcal_arr:[],max_hr_arr:[],av_hr_arr:[],dur_arr:[]
     };
     const m=agg[ym];
@@ -1200,6 +1234,7 @@ function rebuildMonthly() {
     m.pu_plain += Math.max(0,(s.pu||0)-puVariantsSum);
     const domVariantsSum=(s.dnd||0)+(s.dcd||0)+(s.dwd||0)+(s.dad||0)+(s.ded||0)+(s.dfd||0)+(s.dbc||0);
     m.dom_plain += Math.max(0,(s.dom||0)-domVariantsSum);
+    m.rg_pu+=s.rpu||0; m.rg_dom+=s.rdom||0; m.rg_dip+=s.rdip||0; m.rg_hold+=s.rhold||0;
   });
 
   monthly = Object.values(agg).sort((a,b)=>a.month.localeCompare(b.month)).map(m=>({
@@ -1217,6 +1252,7 @@ function rebuildMonthly() {
     dom_neutr:m.dom_neutr, dom_close:m.dom_close, dom_wide:m.dom_wide,
     dom_austr:m.dom_austr, dom_explo:m.dom_explo, dom_fat:m.dom_fat,
     bic_chinup:m.bic_chinup, dom_plain:m.dom_plain,
+    rg_pu:m.rg_pu, rg_dom:m.rg_dom, rg_dip:m.rg_dip, rg_hold:m.rg_hold,
   }));
 }
 
@@ -1368,6 +1404,23 @@ function rebuildCharts() {
     });
     domTabs._bound=true;
   }
+
+  // Rings — stacked monthly reps + hold minutes + this month's share
+  (function buildRings(){
+    const ctx=document.getElementById('ringsChart'); if(!ctx)return;
+    if(charts['ringsChart'])charts['ringsChart'].destroy();
+    const sets=[['Push-ups','rg_pu',C.pu],['Pull-ups','rg_dom',C.dom],['Dips','rg_dip',C.dip]];
+    charts['ringsChart']=new Chart(ctx,{type:'bar',data:{labels,datasets:sets.map(([label,k,c])=>({label,data:monthly.map(m=>m[k]||0),backgroundColor:c+'cc',borderRadius:1}))},
+      options:{...baseOpts,scales:{x:{...baseOpts.scales.x,stacked:true},y:{...baseOpts.scales.y,stacked:true}},plugins:{...baseOpts.plugins,legend:{display:true,labels:{color:'#6b6b78',font:{size:10},boxWidth:10}}}}});
+    mkBar('ringsHoldChart',labels,monthly.map(m=>m.rg_hold?+(m.rg_hold/60).toFixed(1):0),C.kcal);
+    const st=document.getElementById('ringsStats');
+    const any=monthly.some(m=>m.rg_pu||m.rg_dom||m.rg_dip||m.rg_hold);
+    if(!any){ st.textContent='No rings yet — add RG to a line, e.g. "10 DOM RG", "8 DIP RG", "30s HOLD RG".'; return; }
+    const cur=monthly[monthly.length-1]||{};
+    const pct=(r,t)=>t?Math.round(r/t*100)+'%':'—';
+    const hold=cur.rg_hold?`${Math.floor(cur.rg_hold/60)}m${cur.rg_hold%60?(cur.rg_hold%60)+'s':''}`:'0';
+    st.textContent=`${labels[labels.length-1]||cur.month||''} on rings: push-ups ${cur.rg_pu||0} (${pct(cur.rg_pu,cur.pu)}) · pull-ups ${cur.rg_dom||0} (${pct(cur.rg_dom,cur.dom)}) · dips ${cur.rg_dip||0} (${pct(cur.rg_dip,cur.dip)}) · hold ${hold}`;
+  })();
 
   // Pie charts
   function mkPie(id, data, colors) {
@@ -1593,6 +1646,8 @@ function buildLastWorkout() {
   if(s.mhr) pills.push({label:`❤️ ${s.mhr} bpm`, color:C.hr});
   if(s.jr) pills.push({label:`🪢 ${Math.round(s.jr/60)}min JR`, color:C.jr});
   if(s.run) pills.push({label:`🏃 ${Math.round(s.run/60)}min run`, color:C.run});
+  const ringReps=(s.rpu||0)+(s.rdom||0)+(s.rdip||0);
+  if(ringReps||s.rhold) pills.push({label:`⭕ Rings ${ringReps} reps${s.rhold?` · ${Math.floor(s.rhold/60)}m${s.rhold%60?(s.rhold%60)+'s':''} hold`:''}`, color:C.dom});
   document.getElementById('lw-pills').innerHTML = pills.map(p=>
     `<span style="background:${p.color}22;border:1px solid ${p.color}66;border-radius:20px;padding:4px 10px;font-size:11px;color:${p.color};font-family:var(--font-mono)">${p.label}</span>`
   ).join('');

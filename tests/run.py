@@ -422,6 +422,28 @@ def xpenses_calculator_rules(b):
     ctx.close()
 
 @test
+def workout_rings_rules(b):
+    ctx = new_context(b, FakeWorker())
+    pg, errs = open_page(ctx, 'workout_dashboard.html'); pg.wait_for_timeout(500)
+    parse = lambda lines: pg.evaluate("t => parseWorkoutText(t, '2026-10-20', 'Home')", "\n".join(lines))
+    lines = ["* 12 PU RG", "* 10 PU Wide RG", "* 10 DOM RG", "* 8 DOM Austr RG", "* 6 BIC RG", "* 8 DIP RG",
+             "* 5 DOM RG x3", "* 30s HOLD RG", "* 1m HOLD RG x2", "* 1m30s HOLD RG", "* 20 DOM", "* 15 PU"]
+    r = parse(lines); s = r['session']
+    plain = parse([l.replace(' RG', '') for l in lines if 'HOLD' not in l])['session']
+    for k in ('pu', 'dom', 'dip', 'dwp', 'dad', 'dbc'):
+        assert s[k] == plain[k], f'RG must not change {k}: {s[k]} vs {plain[k]}'
+    got = (s.get('rpu'), s.get('rdom'), s.get('rdip'), s.get('rhold'))
+    assert got == (22, 39, 8, 240), f'rings tallies wrong: {got}'
+    assert r['unrecognized'] == [], f"RG lines flagged as unrecognized: {r['unrecognized']}"
+    assert not any(k in plain for k in ('rpu', 'rdom', 'rdip', 'rhold')), 'sessions without rings must not store rings fields'
+    pg.evaluate("s => { sessions = [s, {...s, d: '2026-10-21'}]; rebuildMonthly(); }", s)
+    m = pg.evaluate("monthly[monthly.length - 1]")
+    got = (m['rg_pu'], m['rg_dom'], m['rg_dip'], m['rg_hold'])
+    assert got == (44, 78, 16, 480), f'monthly rings totals wrong: {got}'
+    assert not errs, errs
+    ctx.close()
+
+@test
 def fire_sim_rules(b):
     ctx = new_context(b, FakeWorker())
     pg, errs = open_page(ctx, 'FIRE_SIM.html'); pg.wait_for_timeout(500)
