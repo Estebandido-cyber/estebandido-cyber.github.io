@@ -26,4 +26,9 @@ After step 3, send phone/tablet/desktop screenshots for approval before continui
 10. Quick actions ("+ Expense", "+ Workout") opening widgets straight in add mode (small hook per widget).
 
 ## Devices to design and test for
-Phone (390 px), OnePlus tablet (both orientations — exact viewport to be confirmed by the owner), desktop (≥ 1200 px). Light and dark.
+- **Tablet — main secondary device, used a lot:** OnePlus Pad Go, OxygenOS 14 / Android 14, Chrome. 11.35", 2408×1720 px, 7:5 ratio. **Mostly landscape** → optimize for landscape, still check portrait.
+  CSS viewport (to confirm with whatismyviewport.com on the tablet): ~1204×860 if DPR 2, ~1376×983 if DPR 1.75; minus browser bars (~80 px tall). Until confirmed, screenshot both 1204×780 and 1376×900 landscape, plus 860×1124 portrait.
+  Landscape has room for 3–4 tiles per row — use it instead of stretching 2.
+- **Phone:** Android (no iPhone), 390 px wide.
+- **Desktop:** ≥ 1200 px.
+- Light and dark mode for every layout change.
