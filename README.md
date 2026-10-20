@@ -11,7 +11,7 @@ and can be backed up manually to Google Drive.
 
 | Widget | File | Cloud key | Drive backup file | Main localStorage key |
 |---|---|---|---|---|
-| Hub | `index.html` | reads all keys below | — | `lifehub_theme` |
+| Hub | `index.html` | `hub-layout` (+ reads `GET /hub`) | — | `lifehub_theme`, `lifehub_layout`, `lifehub_order` |
 | Life Command Center (DOit!) | `notes.html` | `doit-lcc` | `doit_lcc_data.json` | `doit_lcc_v1` |
 | Xpenser Tracker | `XPENSE_TRACKER.html` | `xpenser` | `xpenser_data.json` | `depenses_data_v1` (+ `_settings_v1`, `_cashflow_v1`, `_notes_v1`) |
 | Workout Insights | `workout_dashboard.html` | `workout` | `workout_insights_data.json` | `workout_insights_v3` |
@@ -58,6 +58,12 @@ Each widget adds a small `hub` object to its cloud payload (`hubSummary()` in th
 only, **no timestamps inside** (they would defeat the unchanged-save check in `lib/sync.js`), ≤ ~800 bytes.
 Period values are anchored to their period (`{ w: <Monday>, wT, m: 'YYYY-MM', mT, … }`) so the Hub shows 0
 for a past week/month instead of stale totals.
+
+**Hub layout** (`hub-layout` = `{ savedAt, pins, more, hub: { pins, more } }`): 📌 pinned tiles first in pin order,
+then the rest by last save (newest first), re-ordered only on load/Refresh or by the owner's own actions.
+Long-press (~0.45 s) then drag: onto a pinned tile → pinned at that spot; onto an unpinned tile → unpinned;
+onto "More" → collapsed section at the bottom, whose tiles get no full-payload fetch until expanded. The layout
+arrives through `/hub` (its `hub` copy is the KV metadata); the newer of cloud and this device's copy wins.
 
 The Hub calls `GET /hub` once and paints every tile from the summaries. For a widget that has not saved a
 summary yet it falls back to the old path (`cfFetch(key)` full payload, then localStorage). Pending offline

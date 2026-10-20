@@ -215,7 +215,44 @@
     margin: 0 0 14px;
   }
 
+  /* ── Pins, drag, More ── */
+  .tile { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  .tiles.settled .tile { animation: none; }
+  .tile-pin {
+    position: absolute; top: 10px; right: 10px; z-index: 2;
+    width: 34px; height: 34px; border: 0; border-radius: 50%; padding: 0;
+    background: transparent; font-size: 15px; line-height: 34px; cursor: pointer;
+    opacity: 0.22; filter: grayscale(1); transition: opacity 0.2s, filter 0.2s, background 0.2s;
+  }
+  .tile-pin:hover { opacity: 0.6; }
+  .tile.pinned .tile-pin { opacity: 1; filter: none; }
+  .tile-header { padding-right: 28px; }
+  body.dragging, body.dragging * { cursor: grabbing !important; -webkit-user-select: none; user-select: none; }
+  .tile.drag-src { opacity: 0.3; }
+  .tile.drag-ghost {
+    position: fixed; z-index: 1000; pointer-events: none; margin: 0;
+    transform: scale(1.03) rotate(-1deg); box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+    animation: none !important; opacity: 0.95;
+  }
+  .tile.drop-before { box-shadow: -4px 0 0 0 var(--accent-notes); }
+  .tile.drop-after  { box-shadow:  4px 0 0 0 var(--accent-notes); }
+  .tile.drop-auto   { outline: 1px dashed var(--muted); outline-offset: -1px; }
+  .more { margin-top: 14px; border-radius: 16px; transition: background 0.2s, outline-color 0.2s; outline: 1px dashed transparent; outline-offset: 4px; }
+  .more-head {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    background: none; border: 0; padding: 10px 2px; cursor: pointer;
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--subtle);
+  }
+  .more-chev { display: inline-block; transition: transform 0.2s; margin-left: 2px; }
+  .more.open .more-chev { transform: rotate(90deg); }
+  .more-drop { display: none; padding: 18px; text-align: center; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+  body.dragging .more { outline-color: var(--border-hover); }
+  body.dragging .more-drop { display: block; }
+  .more.drop-more { outline-color: var(--accent-notes); background: var(--surface); }
+  .more-tiles:empty { display: none; }
+
   .tiles {
+    grid-auto-flow: dense;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 14px;
@@ -287,7 +324,7 @@
   .tile-strat:hover { border-color: rgba(251,113,133,0.5); }
   .tile-strat .tile-icon { background: rgba(251,113,133,0.1); color: #e8c97a; font-size: 20px; }
   .tile-strat .tile-name { color: #fb7185; }
-  .tile-notes { border-color: rgba(129,140,248,0.3); grid-column: span 2; }
+  .tile-notes { border-color: rgba(129,140,248,0.3); }
   .tile-notes::before { background: radial-gradient(ellipse at top left, var(--accent-notes-dim), transparent 70%); }
   .tile-notes:hover { border-color: var(--accent-notes-glow); }
   .tile-notes .tile-icon { background: var(--accent-notes-dim); }
@@ -296,6 +333,13 @@
   .doit-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 0 10px; border-right: 1px solid var(--border); }
   .doit-col:first-child { padding-left: 0; }
   .doit-col:last-child { border-right: none; padding-right: 0; }
+  /* Do it! is a normal single tile: on narrow phones its two lists stack, 3 items each */
+  @media (max-width: 600px) {
+    .tile-notes .tile-stats { flex-direction: column; gap: 10px; }
+    .tile-notes .doit-col { padding: 0; border-right: none; }
+    .tile-notes .doit-col:first-child { padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .tile-notes .doit-item:nth-child(n+5) { display: none; }
+  }
   .doit-col-title { font-family: 'DM Mono', monospace; font-size: 9.5px; letter-spacing: 0.1em; color: var(--subtle); text-transform: uppercase; margin-bottom: 4px; flex-shrink: 0; }
   .tile-lukas { border-color: rgba(239,68,68,0.3); }
   .tile-lukas::before { background: radial-gradient(ellipse at top left, rgba(239,68,68,0.1), transparent 70%); }
@@ -536,7 +580,14 @@
 
   <div class="section-label">my apps</div>
 
-  <div class="tiles" id="tiles"></div>
+  <div id="board">
+    <div class="tiles" id="tiles"></div>
+    <section class="more" id="more" hidden>
+      <button class="more-head" id="more-head" type="button">More · <span id="more-count">0</span><span class="more-chev">▸</span></button>
+      <div class="more-drop">Drop here to move to More</div>
+      <div class="tiles more-tiles" id="more-tiles"></div>
+    </section>
+  </div>
 
   <div class="bottom-bar">
     <span class="bottom-label"><span class="live-dot" style="color:#00e5a0;"></span>synced across devices</span>
@@ -620,28 +671,243 @@ const TILES = [
 ];
 const DATA_TILES = TILES.filter(t => t.key);
 
-(function buildTiles() {
-  document.getElementById('tiles').innerHTML = TILES.map(t => `
-    <a class="tile tile-${t.id}" href="${t.file}">
+// ── LAYOUT — order, 📌 pins and "More" ──────────────────────────
+// Order: pinned tiles first (in pin order), then the rest by last save, newest first.
+// Re-ordered only on load / Refresh and on the owner's own pin / drag actions — never while data arrives.
+// Layout { pins, more } is synced across devices in cloud key 'hub-layout' (one write per change); the
+// Worker keeps it as the key's /hub summary, so it arrives with the tile summaries in the same request.
+const LAYOUT_KEY = 'hub-layout';
+const LAYOUT_LS  = 'lifehub_layout';      // { pins, more, at } — this device's copy
+const ORDER_LS   = 'lifehub_order';       // last computed order, so the first paint does not jump
+const LAYOUT_CLOUD = LifeSync.cloud(LAYOUT_KEY);
+const TILE_IDS = new Set(TILES.map(t => t.id));
+
+function cleanLayout(l) {
+  const ok = a => [...new Set((Array.isArray(a) ? a : []).filter(id => TILE_IDS.has(id)))];
+  const more = ok(l?.more);
+  return { pins: ok(l?.pins).filter(id => !more.includes(id)), more, at: typeof l?.at === 'string' ? l.at : '' };
+}
+let layout   = cleanLayout(safeParse(safeGet(LAYOUT_LS)));
+let savedAts = null;                       // id → ISO save time, known after loadAll
+let moreOpen = false;
+const views  = {};                         // id → [view, savedAt] last painted data (re-used when a tile is shown again)
+const tileEls = {};                        // id → element (created once, moved around)
+
+const saveLayoutCloud = LifeSync.debounce(() => {
+  const { pins, more, at } = layout;
+  LAYOUT_CLOUD.put({ savedAt: at, pins, more, hub: { pins, more } }).catch(e => console.warn('[Hub] layout sync', e));
+}, 1000);
+function setLayout(pins, more) {
+  const next = cleanLayout({ pins, more });
+  if (JSON.stringify([next.pins, next.more]) === JSON.stringify([layout.pins, layout.more])) return false;
+  layout = { ...next, at: new Date().toISOString() };
+  try { localStorage.setItem(LAYOUT_LS, JSON.stringify(layout)); } catch (_) {}
+  saveLayoutCloud();
+  return true;
+}
+// Cloud layout (from /hub) wins when it is newer than this device's copy
+function applyCloudLayout(entry) {
+  if (!entry?.hub || !entry.savedAt || entry.savedAt <= layout.at) return;
+  layout = { ...cleanLayout(entry.hub), at: entry.savedAt };
+  try { localStorage.setItem(LAYOUT_LS, JSON.stringify(layout)); } catch (_) {}
+}
+
+function computeOrder() {
+  const visible = TILES.filter(t => !layout.more.includes(t.id)).map(t => t.id);
+  const pinned  = layout.pins.filter(id => visible.includes(id));
+  const cached  = safeParse(safeGet(ORDER_LS)) || [];
+  const rank = id => {
+    const i = cached.indexOf(id);
+    return i < 0 ? 1e6 + TILES.findIndex(t => t.id === id) : i;
+  };
+  const rest = visible.filter(id => !pinned.includes(id)).sort((a, b) => {
+    if (savedAts) {
+      const sa = savedAts[a] || '', sb = savedAts[b] || '';
+      if (sa !== sb) return sa < sb ? 1 : -1;       // newest first; never saved (Strat) last
+      return TILES.findIndex(t => t.id === a) - TILES.findIndex(t => t.id === b);
+    }
+    return rank(a) - rank(b);
+  });
+  return { main: pinned.concat(rest), more: layout.more.slice() };
+}
+
+function makeTile(t) {
+  const a = document.createElement('a');
+  a.className = `tile tile-${t.id}`;
+  a.href = t.file;
+  a.dataset.id = t.id;
+  a.draggable = false;                     // native link drag would cancel our long-press drag
+  a.innerHTML = `
       <div class="tile-header">
         <div class="tile-icon">${t.icon}</div>
         <div class="tile-name">${t.name}</div>
       </div>
+      <button class="tile-pin" type="button" aria-label="Pin ${t.name}" title="Pin to top">📌</button>
       ${t.key ? `<div class="tile-stats" id="stats-${t.id}"><div class="no-data">Loading…</div></div>`
               : `<div class="tile-stats">${t.stats}</div>`}
-      <div class="tile-footer" id="footer-${t.id}"></div>
-      <div class="tile-arrow">↗</div>
-    </a>`).join('');
-})();
+      <div class="tile-footer" id="footer-${t.id}">${t.key ? '' : 'To update manually'}</div>
+      <div class="tile-arrow">↗</div>`;
+  return a;
+}
+
+// Paint a tile if it is on screen; always remember the data for when it is shown
+function show(t, view, savedAt) {
+  views[t.id] = [view, savedAt];
+  if (!document.getElementById('stats-' + t.id)) return;
+  try { t.paint(view, savedAt); } catch (e) { console.warn('[Hub] tile', t.key, e); }
+}
+
+let rendered = false;
+function renderLayout() {
+  const { main, more } = computeOrder();
+  const grid = document.getElementById('tiles'), moreGrid = document.getElementById('more-tiles');
+  const place = (parent, ids) => ids.forEach(id => {
+    const t = TILES.find(x => x.id === id);
+    let el = tileEls[id], fresh = false;
+    if (!el) { el = tileEls[id] = makeTile(t); fresh = true; }
+    el.classList.toggle('pinned', layout.pins.includes(id));
+    el.querySelector('.tile-pin').title = layout.pins.includes(id) ? 'Unpin' : 'Pin to top';
+    if (el.parentNode !== parent || parent.lastElementChild !== el) parent.appendChild(el);
+    if (fresh && t.key && views[id]) show(t, ...views[id]);
+  });
+  place(grid, main);
+  if (moreOpen) place(moreGrid, more);
+  else more.forEach(id => tileEls[id]?.remove());
+  // drop tiles that left the main grid / More
+  [...grid.children].forEach(el => { if (!main.includes(el.dataset.id)) el.remove(); });
+  [...moreGrid.children].forEach(el => { if (!moreOpen || !more.includes(el.dataset.id)) el.remove(); });
+  const sec = document.getElementById('more');
+  sec.hidden = more.length === 0 && !drag;
+  sec.classList.toggle('open', moreOpen);
+  document.getElementById('more-count').textContent = more.length;
+  if (savedAts) try { localStorage.setItem(ORDER_LS, JSON.stringify(main)); } catch (_) {}
+  if (rendered) grid.classList.add('settled');   // entrance animation only on first paint
+  rendered = true;
+}
+
+function togglePin(id) {
+  const pinned = layout.pins.includes(id);
+  if (setLayout(pinned ? layout.pins.filter(x => x !== id) : layout.pins.concat(id), layout.more.filter(x => x !== id))) renderLayout();
+}
+
+async function toggleMore() {
+  moreOpen = !moreOpen;
+  renderLayout();
+  if (moreOpen) await loadMore();
+}
+
+// ── Long-press + drag: reorder pins, move to / from More ──
+// Hold ~0.45 s, then drag. Drop on a pinned tile → pinned at that spot; on an unpinned tile → unpinned
+// (back to automatic order); on "More" → moved to More. A drag never opens the widget.
+const HOLD_MS = 450, MOVE_TOL = 10, EDGE = 70;
+let press = null, drag = null, suppressClick = false, lastPointer = 'mouse';
+
+function dropTarget(x, y) {
+  const el = document.elementFromPoint(x, y);
+  if (!el) return null;
+  if (el.closest('#more')) return { type: 'more' };
+  const tile = el.closest('#tiles .tile');
+  if (!tile) return null;
+  const id = tile.dataset.id;
+  if (layout.pins.includes(id)) {
+    const r = tile.getBoundingClientRect();
+    return { type: 'pin', id, after: x > r.left + r.width / 2, el: tile };
+  }
+  return { type: 'auto', el: tile };
+}
+function markTarget(t) {
+  document.querySelectorAll('.drop-before,.drop-after,.drop-auto').forEach(e => e.classList.remove('drop-before', 'drop-after', 'drop-auto'));
+  document.getElementById('more').classList.toggle('drop-more', t?.type === 'more');
+  if (!t || !t.el || t.el.dataset.id === drag.id) return;
+  t.el.classList.add(t.type === 'pin' ? (t.after ? 'drop-after' : 'drop-before') : 'drop-auto');
+}
+function startDrag() {
+  const el = press.el, r = el.getBoundingClientRect();
+  drag = { id: el.dataset.id, el, dx: press.x - r.left, dy: press.y - r.top, x: press.x, y: press.y, target: null };
+  press = null;
+  const ghost = drag.ghost = el.cloneNode(true);
+  ghost.removeAttribute('href'); ghost.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+  ghost.classList.add('drag-ghost');
+  Object.assign(ghost.style, { width: r.width + 'px', height: r.height + 'px', left: r.left + 'px', top: r.top + 'px' });
+  document.body.appendChild(ghost);
+  el.classList.add('drag-src');
+  document.body.classList.add('dragging');
+  document.getElementById('more').hidden = false;          // drop zone visible even when More is empty
+  if (navigator.vibrate) navigator.vibrate(20);
+  requestAnimationFrame(autoScroll);
+}
+function moveDrag(x, y) {
+  drag.x = x; drag.y = y;
+  drag.ghost.style.left = (x - drag.dx) + 'px';
+  drag.ghost.style.top  = (y - drag.dy) + 'px';
+  drag.target = dropTarget(x, y);
+  markTarget(drag.target);
+}
+function autoScroll() {
+  if (!drag) return;
+  const v = drag.y < EDGE ? -(EDGE - drag.y) / 4 : drag.y > innerHeight - EDGE ? (drag.y - innerHeight + EDGE) / 4 : 0;
+  if (v) { scrollBy(0, v); moveDrag(drag.x, drag.y); }
+  requestAnimationFrame(autoScroll);
+}
+function endDrag(drop) {
+  const d = drag; drag = null;
+  d.ghost.remove();
+  d.el.classList.remove('drag-src');
+  document.body.classList.remove('dragging');
+  markTarget(null);
+  suppressClick = true; setTimeout(() => { suppressClick = false; }, 400);
+  const t = drop ? d.target : null;
+  let pins = layout.pins.filter(x => x !== d.id), more = layout.more.filter(x => x !== d.id);
+  if (t?.type === 'pin' && t.id !== d.id) {
+    const i = pins.indexOf(t.id) + (t.after ? 1 : 0);
+    pins.splice(i, 0, d.id);
+  } else if (t?.type === 'more') {
+    more = more.concat(d.id);
+  } else if (t?.type !== 'auto') {
+    pins = layout.pins; more = layout.more;                 // dropped nowhere / on itself: no change
+  }
+  setLayout(pins, more);
+  renderLayout();
+  if (moreOpen) loadMore();
+}
+
+const board = document.getElementById('board');
+board.addEventListener('pointerdown', e => {
+  lastPointer = e.pointerType;
+  const el = e.target.closest('.tile');
+  if (!el || e.target.closest('.tile-pin') || e.button > 0 || !el.closest('#tiles, #more-tiles')) return;
+  hap();   // haptic before navigation, without blocking it
+  press = { el, x: e.clientX, y: e.clientY, timer: setTimeout(startDrag, HOLD_MS) };
+});
+addEventListener('pointermove', e => {
+  if (drag) { moveDrag(e.clientX, e.clientY); return; }
+  if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > MOVE_TOL) { clearTimeout(press.timer); press = null; }
+});
+addEventListener('pointerup', () => {
+  if (press) { clearTimeout(press.timer); press = null; }
+  if (drag) endDrag(true);
+});
+addEventListener('pointercancel', () => {
+  if (press) { clearTimeout(press.timer); press = null; }
+  if (drag) endDrag(false);
+});
+addEventListener('keydown', e => { if (e.key === 'Escape' && drag) endDrag(false); });
+// While dragging, the finger must move the tile, not scroll the page
+addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, { passive: false });
+board.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest('.tile')) e.preventDefault(); });
+// A long press on a link would open the browser's link menu
+board.addEventListener('contextmenu', e => { if (lastPointer !== 'mouse' && e.target.closest('.tile')) e.preventDefault(); });
+board.addEventListener('click', e => {
+  const pin = e.target.closest('.tile-pin');
+  if (pin) { e.preventDefault(); e.stopPropagation(); togglePin(pin.closest('.tile').dataset.id); return; }
+  if (e.target.closest('#more-head')) { e.preventDefault(); toggleMore(); return; }
+  if (suppressClick && e.target.closest('.tile')) { e.preventDefault(); e.stopPropagation(); }
+}, true);
 
 // ── HAPTIC FEEDBACK ──────────────────────────────────────────────
 function hap() {
   if (navigator.vibrate) navigator.vibrate(8);
 }
-// Use pointerdown so haptic fires before navigation, without blocking it
-document.querySelectorAll('.tile').forEach(t => {
-  t.addEventListener('pointerdown', hap);
-});
 
 // ── THEME TOGGLE ─────────────────────────────────────────────────
 function toggleTheme() {
@@ -949,6 +1215,32 @@ function buildLocalPlanner() {
 }
 
 // ── LOAD ALL — summaries first, per-widget fetch only for widgets without one ──
+let lastHub = {};
+const cloudDone = new Set();               // tiles painted from cloud data in the current load
+
+const hasSummary = t => !!(lastHub[t.key]?.hub && typeof lastHub[t.key].hub === 'object');
+
+// Paint tiles from cloud data: the summary if there is one, else the full payload (fetched here)
+async function loadCloud(tiles) {
+  const missing = tiles.filter(t => !hasSummary(t));
+  const fetched = await Promise.allSettled(missing.map(t => cfFetch(t.key)));
+  const cf = {};
+  missing.forEach((t, i) => { cf[t.key] = fetched[i].status === 'fulfilled' ? fetched[i].value : null; });
+  tiles.forEach(t => {
+    const entry = lastHub[t.key];
+    try {
+      if (!(t.key in cf)) { show(t, t.hub(entry.hub), entry.savedAt); savedAts[t.id] = entry.savedAt || ''; }
+      else {
+        const [view, localAt] = t.full(cf[t.key]);
+        const at = entry?.savedAt || localAt;   // cloud save time when the Worker has it
+        show(t, view, at);
+        savedAts[t.id] = at || '';
+      }
+      cloudDone.add(t.id);
+    } catch (e) { console.warn('[Hub] tile', t.key, e); }
+  });
+}
+
 async function loadAll() {
   // Show localStorage data immediately
   loadFromLocalStorage();
@@ -959,42 +1251,46 @@ async function loadAll() {
   // Local edits that never reached the cloud go first, so the summaries include them
   try { await LifeSync.flushPending(); } catch (_) {}
 
-  let hub = {};
+  lastHub = {};
   try {
     const r = await (await LifeSync.request('/hub')).json();
-    if (r && typeof r === 'object' && !Array.isArray(r)) hub = r;
+    if (r && typeof r === 'object' && !Array.isArray(r)) lastHub = r;
   } catch (_) {}   // old Worker or offline → per-widget path below
+  applyCloudLayout(lastHub[LAYOUT_KEY]);
 
-  const missing = DATA_TILES.filter(t => !(hub[t.key]?.hub && typeof hub[t.key].hub === 'object'));
-  const fetched = await Promise.allSettled(missing.map(t => cfFetch(t.key)));
-  const cf = {};
-  missing.forEach((t, i) => { cf[t.key] = fetched[i].status === 'fulfilled' ? fetched[i].value : null; });
+  // Tiles in a collapsed "More" are only summarised (free); their full payload waits until expanded
+  cloudDone.clear();
+  const prevAts = savedAts || {};
+  savedAts = {};
+  const now = DATA_TILES.filter(t => hasSummary(t) || moreOpen || !layout.more.includes(t.id));
+  DATA_TILES.forEach(t => { if (!now.includes(t)) savedAts[t.id] = prevAts[t.id] || ''; });
+  await loadCloud(now);
 
   // Remove shimmer
   setLoading(false);
 
-  DATA_TILES.forEach(t => {
-    const entry = hub[t.key];
-    try {
-      if (!(t.key in cf)) { t.paint(t.hub(entry.hub), entry.savedAt); return; }
-      const [view, localAt] = t.full(cf[t.key]);
-      t.paint(view, entry?.savedAt || localAt);   // cloud save time when the Worker has it
-    } catch (e) { console.warn('[Hub] tile', t.key, e); }
-  });
+  // Re-order once, now that save times are known
+  renderLayout();
+}
 
-  const stratFoot = document.getElementById('footer-strat');
-  if (stratFoot) stratFoot.textContent = 'To update manually';
+async function loadMore() {
+  const todo = DATA_TILES.filter(t => layout.more.includes(t.id) && !cloudDone.has(t.id));
+  if (!todo.length || !savedAts) return;
+  todo.forEach(t => tileEls[t.id]?.classList.add('loading'));
+  await loadCloud(todo);
+  todo.forEach(t => tileEls[t.id]?.classList.remove('loading'));
 }
 
 function loadFromLocalStorage() {
   DATA_TILES.forEach(t => {
     try {
       const [view, at] = t.noLocal ? [null, null] : t.full(null);
-      t.paint(view, at);
+      show(t, view, at);
     } catch (e) { console.warn('[Hub] local tile', t.key, e); }
   });
 }
 
+renderLayout();
 loadAll();
 </script>
 </body>

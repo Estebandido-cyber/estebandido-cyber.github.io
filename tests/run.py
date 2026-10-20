@@ -646,6 +646,113 @@ def lukas_hub_saves_on_100_eur_or_daily(b):
     ctx.close()
 
 
+# ── Hub layout: order, pins, More, drag (ROADMAP step 3) ──
+ORDER_JS = "[...document.querySelectorAll('#tiles .tile')].map(e => e.dataset.id)"
+def seed_ordered(worker, P, layout=None, layout_at='2026-10-20T08:00:00Z'):
+    seed_hub(worker, P)
+    order = ['kalstrack', 'xpenser', 'workout', 'lukas-flow', 'fire-sim', 'xpenses-calculator', 'weekplanner', 'doit-lcc']
+    for i, k in enumerate(order): worker.meta[k]['savedAt'] = '2026-10-20T%02d:00:00Z' % (12 - i)
+    if layout is not None: worker.meta['hub-layout'] = {'savedAt': layout_at, 'hub': layout}
+
+@test
+def hub_order_pins_and_more(b):
+    P = periods_now(); worker = FakeWorker(); seed_ordered(worker, P, {'pins': ['calc', 'notes'], 'more': ['planner', 'strat']})
+    del worker.meta['weekplanner']['hub']                                   # More tile without summary
+    worker.store['weekplanner'] = json.dumps({'curWeek': 0, 'weekPlaces': [{'a': {'d': 0, 'dur': 7}}], 'acts': [], 'weekNotes': []})
+    ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'index.html')
+    expect = ['calc', 'notes', 'kals', 'tracker', 'workout', 'lukas', 'fire']
+    assert wait_until(pg, lambda: pg.evaluate(ORDER_JS) == expect), f'order: {pg.evaluate(ORDER_JS)}'
+    assert pg.evaluate("document.querySelector('#more-count').textContent") == '2'
+    assert not pg.query_selector('#more-tiles .tile'), 'More must start collapsed'
+    assert 'weekplanner' not in worker.keys('GET'), 'collapsed More tile must not be fetched'
+    pg.click('#more-head')
+    assert wait_until(pg, lambda: '7h' in (pg.evaluate("document.getElementById('stats-planner')?.textContent") or '')), 'More tile not loaded on expand'
+    assert 'weekplanner' in worker.keys('GET')
+    assert pg.evaluate("[...document.querySelectorAll('#more-tiles .tile')].map(e => e.dataset.id)") == ['planner', 'strat']
+    assert pg.url.endswith('index.html'), 'More toggle must not navigate'
+    assert not errs, errs
+    ctx.close()
+
+@test
+def hub_pin_tap_never_opens_widget(b):
+    P = periods_now(); worker = FakeWorker(); seed_ordered(worker, P)
+    ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'index.html')
+    assert wait_until(pg, lambda: pg.evaluate(ORDER_JS)[0] == 'kals')
+    pg.click('.tile-fire .tile-pin')
+    pg.wait_for_timeout(200)
+    assert pg.url.endswith('index.html'), f'pin tap navigated to {pg.url}'
+    assert pg.evaluate(ORDER_JS)[0] == 'fire', 'pinned tile must go on top immediately'
+    assert wait_until(pg, lambda: 'hub-layout' in worker.store, 4), 'layout not synced'
+    assert worker.posted('hub-layout')['hub'] == {'pins': ['fire'], 'more': []}
+    pg.click('.tile-fire .tile-pin')
+    assert wait_until(pg, lambda: worker.posted('hub-layout')['hub']['pins'] == [], 4), 'unpin not synced'
+    assert pg.evaluate(ORDER_JS)[0] == 'kals'
+    writes = [1 for m, p, _ in worker.log if m == 'POST' and p == '/data/hub-layout']
+    assert len(writes) == 2, f'expected one write per change, got {len(writes)}'
+    assert not errs, errs
+    ctx.close()
+
+def long_drag(pg, src_sel, to):
+    pg.evaluate("s => document.querySelector(s).scrollIntoView({block: 'center'})", src_sel); pg.wait_for_timeout(100)
+    bx = pg.query_selector(src_sel).bounding_box()
+    pg.mouse.move(bx['x'] + 40, bx['y'] + 40); pg.mouse.down(); pg.wait_for_timeout(650)
+    pg.mouse.move(bx['x'] + 80, bx['y'] + 60, steps=4)
+    to(); pg.mouse.up(); pg.wait_for_timeout(300)
+
+@test
+def hub_long_press_drag(b):
+    P = periods_now(); worker = FakeWorker(); seed_ordered(worker, P, {'pins': ['notes'], 'more': []})
+    ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'index.html'); pg.set_viewport_size({'width': 1070, 'height': 596})
+    assert wait_until(pg, lambda: pg.evaluate(ORDER_JS)[0] == 'notes')
+    # Workout → right half of the pinned Do it! → pinned after it
+    def onto_notes_right():
+        r = pg.query_selector('.tile-notes').bounding_box()
+        pg.mouse.move(r['x'] + r['width'] * 0.8, r['y'] + r['height'] / 2, steps=8)
+    long_drag(pg, '.tile-workout', onto_notes_right)
+    assert pg.evaluate(ORDER_JS)[:2] == ['notes', 'workout'], pg.evaluate(ORDER_JS)
+    assert pg.url.endswith('index.html'), 'drag opened the widget'
+    # Kals → hold at the bottom edge (auto-scroll) → drop on More
+    def to_more():
+        for _ in range(40):
+            pg.mouse.move(500, 590); pg.wait_for_timeout(50)
+            r = pg.evaluate("(() => { const b = document.getElementById('more').getBoundingClientRect(); return b.top < innerHeight - 10 ? [b.left, b.top] : null; })()")
+            if r: break
+        assert r, 'auto-scroll did not reach the More drop zone'
+        pg.mouse.move(r[0] + 40, r[1] + 20, steps=4)
+    long_drag(pg, '.tile-kals', to_more)
+    assert 'kals' not in pg.evaluate(ORDER_JS) and pg.evaluate("document.querySelector('#more-count').textContent") == '1'
+    # Workout → onto an unpinned tile → unpinned (back to automatic order)
+    def onto_unpinned():
+        r = pg.query_selector('.tile-fire').bounding_box()
+        pg.mouse.move(r['x'] + 40, r['y'] + 40, steps=8)
+    long_drag(pg, '.tile-workout', onto_unpinned)
+    assert pg.evaluate(ORDER_JS)[0] == 'notes' and pg.evaluate(ORDER_JS).index('workout') > 1
+    assert wait_until(pg, lambda: worker.posted('hub-layout') and worker.posted('hub-layout')['hub'] == {'pins': ['notes'], 'more': ['kals']}, 4), worker.posted('hub-layout')
+    # A short tap still opens the widget
+    pg.evaluate("document.querySelector('.tile-fire').scrollIntoView({block: 'center'})")
+    pg.click('.tile-fire .tile-name'); pg.wait_for_url('**/FIRE_SIM.html', timeout=4000)
+    assert not errs, errs
+    ctx.close()
+
+@test
+def hub_layout_newest_copy_wins(b):
+    P = periods_now()
+    for local_at, cloud_at, want in (('2026-10-20T09:00:00Z', '2026-10-20T08:00:00Z', ['tracker']),
+                                     ('2026-10-20T07:00:00Z', '2026-10-20T08:00:00Z', ['lukas'])):
+        worker = FakeWorker(); seed_ordered(worker, P, {'pins': ['lukas'], 'more': []}, cloud_at)
+        ctx = new_context(b, worker)
+        ctx.add_init_script("localStorage.setItem('lifehub_layout', JSON.stringify({pins:['tracker'],more:[],at:'%s'}))" % local_at)
+        pg, errs = open_page(ctx, 'index.html')
+        assert wait_until(pg, lambda: pg.evaluate(ORDER_JS)[:1] == want), f'{local_at} vs {cloud_at}: {pg.evaluate(ORDER_JS)}'
+        pg.wait_for_timeout(300)
+        assert pg.evaluate(ORDER_JS)[:1] == want
+        assert not errs, errs
+        ctx.close()
+
+
 # ───────────────────────── runner ─────────────────────────
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else ''
