@@ -89,5 +89,5 @@ edits are flushed first (`LifeSync.flushPending()`).
 1. Create `my_widget.html`. In `<head>` add `<script src="lib/sync-auth.js"></script>` and `<script src="lib/sync.js"></script>` (+ `lib/drive.js` and the GIS script if it needs Drive backup).
 2. Pick a cloud key matching `^[a-z0-9-]{1,40}$` and use `const CLOUD = LifeSync.cloud('my-widget')`.
 3. Save locally first, then debounce `CLOUD.put(state)` (~3 s). On load, `await CLOUD.get()` and apply if non-empty.
-4. Add a tile in `index.html` and a `cfFetch('my-widget')` call in the Hub loader.
+4. Add one entry to `TILES` in `index.html` (id, name, icon, file, cloud key + `hub`/`full`/`paint` functions) and a `.tile-<id>` accent in its CSS. Have the widget send a `hub` summary (see Hub ↔ widget data).
 5. Add a row to the table above.

@@ -536,103 +536,7 @@
 
   <div class="section-label">my apps</div>
 
-  <div class="tiles">
-
-    <a class="tile tile-notes" href="notes.html">
-      <div class="tile-header">
-        <div class="tile-icon">📝</div>
-        <div class="tile-name">Do it!</div>
-      </div>
-      <div class="tile-stats" id="stats-notes"><div class="no-data">Loading…</div></div>
-      <div class="tile-footer" id="footer-notes"></div>
-      <div class="tile-arrow">↗</div>
-    </a>
-
-    <a class="tile tile-tracker" href="XPENSE_TRACKER.html">
-      <div class="tile-header">
-        <div class="tile-icon">💳</div>
-        <div class="tile-name">Xpenser</div>
-      </div>
-      <div class="tile-stats" id="stats-tracker"><div class="no-data">Loading…</div></div>
-      <div class="tile-footer" id="footer-tracker"></div>
-      <div class="tile-arrow">↗</div>
-    </a>
-
-    <a class="tile tile-workout" href="workout_dashboard.html">
-      <div class="tile-header">
-        <div class="tile-icon">💪</div>
-        <div class="tile-name">Workout</div>
-      </div>
-      <div class="tile-stats" id="stats-workout"><div class="no-data">Loading…</div></div>
-      <div class="tile-footer" id="footer-workout"></div>
-      <div class="tile-arrow">↗</div>
-    </a>
-
-    <a class="tile tile-kals" href="kals_track.html">
-      <div class="tile-header">
-        <div class="tile-icon">⚡</div>
-        <div class="tile-name">Kals</div>
-      </div>
-      <div class="tile-stats" id="stats-kals"><div class="no-data">Coming soon…</div></div>
-      <div class="tile-footer" id="footer-kals"></div>
-      <div class="tile-arrow">↗</div>
-    </a>
-
-    <a class="tile tile-lukas" href="lukas_analyzer.html">
-      <div class="tile-header">
-        <div class="tile-icon">📊</div>
-        <div class="tile-name">Lukas</div>
-      </div>
-      <div class="tile-stats" id="stats-lukas"><div class="no-data">Loading…</div></div>
-      <div class="tile-footer" id="footer-lukas"></div>
-      <div class="tile-arrow">↗</div>
-    </a>
-
-    <a class="tile tile-calc" href="XPENSES_CALCULATOR.html">
-      <div class="tile-header">
-        <div class="tile-icon">🧮</div>
-        <div class="tile-name">Calculator</div>
-      </div>
-      <div class="tile-stats" id="stats-calc"><div class="no-data">Loading…</div></div>
-      <div class="tile-footer" id="footer-calc"></div>
-      <div class="tile-arrow">↗</div>
-    </a>
-
-    <a class="tile tile-fire" href="FIRE_SIM.html">
-      <div class="tile-header">
-        <div class="tile-icon">🔥</div>
-        <div class="tile-name">FIRE Sim</div>
-      </div>
-      <div class="tile-stats" id="stats-fire"><div class="no-data">Loading…</div></div>
-      <div class="tile-footer" id="footer-fire"></div>
-      <div class="tile-arrow">↗</div>
-    </a>
-
-    <a class="tile tile-planner" href="WEEK_PLANNER.html">
-      <div class="tile-header">
-        <div class="tile-icon">📅</div>
-        <div class="tile-name">Week Plan</div>
-      </div>
-      <div class="tile-stats" id="stats-planner"><div class="no-data">Loading…</div></div>
-      <div class="tile-footer" id="footer-planner"></div>
-      <div class="tile-arrow">↗</div>
-    </a>
-
-    <a class="tile tile-strat" href="FIRE_strat.html">
-      <div class="tile-header">
-        <div class="tile-icon">♞</div>
-        <div class="tile-name">Strat</div>
-      </div>
-      <div class="tile-stats">
-        <div class="stat"><div class="stat-value" style="font-size:13px;line-height:1.3">Personal FIRE Roadmap</div></div>
-        <div class="stat-divider"></div>
-        <div class="stat"><div class="stat-label">Current Phase</div><div class="stat-value">Phase 0 · Accumulation Sprint</div></div>
-      </div>
-      <div class="tile-footer" id="footer-strat"></div>
-      <div class="tile-arrow">↗</div>
-    </a>
-
-  </div>
+  <div class="tiles" id="tiles"></div>
 
   <div class="bottom-bar">
     <span class="bottom-label"><span class="live-dot" style="color:#00e5a0;"></span>synced across devices</span>
@@ -678,6 +582,57 @@ function fmtAgo(iso) {
     return `Last logged: ${diffDays} days ago`;
   } catch(e) { return ''; }
 }
+
+// ── TILE REGISTRY — the one list that generates every Hub tile ───
+// id: element ids (stats-<id>, footer-<id>) and accent class (tile-<id>) · key: cloud key (null = static tile)
+// hub / full / paint: see TILE DATA below (summary reader, full-payload reader, painter)
+const TILES = [
+  { id: 'notes',   name: 'Do it!',     icon: '📝', file: 'notes.html',              key: 'doit-lcc',
+    hub: doitFromHub, paint: paintDoIt,
+    full: cf => { const d = cf || safeParse(safeGet('doit_lcc_v1')); return [doitFromData(d), d?.savedAt]; } },
+  { id: 'tracker', name: 'Xpenser',    icon: '💳', file: 'XPENSE_TRACKER.html',     key: 'xpenser',
+    hub: trackerFromHub, paint: paintTracker,
+    full: cf => [trackerFromData(cf || safeParse(safeGet('depenses_data_v1'))), safeGet('depenses_last_save')] },
+  { id: 'workout', name: 'Workout',    icon: '💪', file: 'workout_dashboard.html',  key: 'workout',
+    hub: workoutFromHub, paint: paintWorkout,
+    full: cf => { const d = cf || safeParse(safeGet('workout_insights_v3')); return [workoutFromData(d), d?.savedAt]; } },
+  { id: 'kals',    name: 'Kals',       icon: '⚡', file: 'kals_track.html',         key: 'kalstrack',
+    hub: kalsFromHub, paint: paintKals, noLocal: true,
+    full: cf => [kalsFromData(cf), null] },
+  { id: 'lukas',   name: 'Lukas',      icon: '📊', file: 'lukas_analyzer.html',     key: 'lukas-flow',
+    hub: lukasFromHub, paint: paintLukas,
+    full: cf => { const v = lukasFromLocal(); return [v, lukasSavedAt(v, cf)]; } },
+  { id: 'calc',    name: 'Calculator', icon: '🧮', file: 'XPENSES_CALCULATOR.html', key: 'xpenses-calculator',
+    hub: calcFromHub, paint: paintCalc,
+    full: cf => [calcFromLocal(), cf?.savedAt || safeParse(safeGet('xpenses_calculator_outputs'))?.savedAt] },
+  { id: 'fire',    name: 'FIRE Sim',   icon: '🔥', file: 'FIRE_SIM.html',           key: 'fire-sim',
+    hub: fireFromHub, paint: paintFire,
+    full: cf => { const d = cf || safeParse(safeGet('fire-sim-v1')); return [fireFromData(d), d?.savedAt]; } },
+  { id: 'planner', name: 'Week Plan',  icon: '📅', file: 'WEEK_PLANNER.html',       key: 'weekplanner',
+    hub: plannerFromHub, paint: paintPlanner,
+    full: cf => [plannerFromData(cf || buildLocalPlanner()), safeGet('weekplan_savedAt')] },
+  { id: 'strat',   name: 'Strat',      icon: '♞', file: 'FIRE_strat.html',         key: null,
+    stats: `
+        <div class="stat"><div class="stat-value" style="font-size:13px;line-height:1.3">Personal FIRE Roadmap</div></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><div class="stat-label">Current Phase</div><div class="stat-value">Phase 0 · Accumulation Sprint</div></div>
+      ` },
+];
+const DATA_TILES = TILES.filter(t => t.key);
+
+(function buildTiles() {
+  document.getElementById('tiles').innerHTML = TILES.map(t => `
+    <a class="tile tile-${t.id}" href="${t.file}">
+      <div class="tile-header">
+        <div class="tile-icon">${t.icon}</div>
+        <div class="tile-name">${t.name}</div>
+      </div>
+      ${t.key ? `<div class="tile-stats" id="stats-${t.id}"><div class="no-data">Loading…</div></div>`
+              : `<div class="tile-stats">${t.stats}</div>`}
+      <div class="tile-footer" id="footer-${t.id}"></div>
+      <div class="tile-arrow">↗</div>
+    </a>`).join('');
+})();
 
 // ── HAPTIC FEEDBACK ──────────────────────────────────────────────
 function hap() {
@@ -993,26 +948,6 @@ function buildLocalPlanner() {
   return { acts, weekPlaces, curWeek, weekNotes };
 }
 
-// key → summary reader, full-payload reader (cf = cloud payload or null), painter
-const TILE_DATA = [
-  { key: 'doit-lcc', hub: doitFromHub, paint: paintDoIt,
-    full: cf => { const d = cf || safeParse(safeGet('doit_lcc_v1')); return [doitFromData(d), d?.savedAt]; } },
-  { key: 'xpenser', hub: trackerFromHub, paint: paintTracker,
-    full: cf => [trackerFromData(cf || safeParse(safeGet('depenses_data_v1'))), safeGet('depenses_last_save')] },
-  { key: 'xpenses-calculator', hub: calcFromHub, paint: paintCalc,
-    full: cf => [calcFromLocal(), cf?.savedAt || safeParse(safeGet('xpenses_calculator_outputs'))?.savedAt] },
-  { key: 'weekplanner', hub: plannerFromHub, paint: paintPlanner,
-    full: cf => [plannerFromData(cf || buildLocalPlanner()), safeGet('weekplan_savedAt')] },
-  { key: 'fire-sim', hub: fireFromHub, paint: paintFire,
-    full: cf => { const d = cf || safeParse(safeGet('fire-sim-v1')); return [fireFromData(d), d?.savedAt]; } },
-  { key: 'workout', hub: workoutFromHub, paint: paintWorkout,
-    full: cf => { const d = cf || safeParse(safeGet('workout_insights_v3')); return [workoutFromData(d), d?.savedAt]; } },
-  { key: 'kalstrack', hub: kalsFromHub, paint: paintKals,
-    full: cf => [kalsFromData(cf), null] },
-  { key: 'lukas-flow', hub: lukasFromHub, paint: paintLukas,
-    full: cf => { const v = lukasFromLocal(); return [v, lukasSavedAt(v, cf)]; } },
-];
-
 // ── LOAD ALL — summaries first, per-widget fetch only for widgets without one ──
 async function loadAll() {
   // Show localStorage data immediately
@@ -1030,7 +965,7 @@ async function loadAll() {
     if (r && typeof r === 'object' && !Array.isArray(r)) hub = r;
   } catch (_) {}   // old Worker or offline → per-widget path below
 
-  const missing = TILE_DATA.filter(t => !(hub[t.key]?.hub && typeof hub[t.key].hub === 'object'));
+  const missing = DATA_TILES.filter(t => !(hub[t.key]?.hub && typeof hub[t.key].hub === 'object'));
   const fetched = await Promise.allSettled(missing.map(t => cfFetch(t.key)));
   const cf = {};
   missing.forEach((t, i) => { cf[t.key] = fetched[i].status === 'fulfilled' ? fetched[i].value : null; });
@@ -1038,7 +973,7 @@ async function loadAll() {
   // Remove shimmer
   setLoading(false);
 
-  TILE_DATA.forEach(t => {
+  DATA_TILES.forEach(t => {
     const entry = hub[t.key];
     try {
       if (!(t.key in cf)) { t.paint(t.hub(entry.hub), entry.savedAt); return; }
@@ -1052,9 +987,9 @@ async function loadAll() {
 }
 
 function loadFromLocalStorage() {
-  TILE_DATA.forEach(t => {
+  DATA_TILES.forEach(t => {
     try {
-      const [view, at] = t.key === 'kalstrack' ? [null, null] : t.full(null);
+      const [view, at] = t.noLocal ? [null, null] : t.full(null);
       t.paint(view, at);
     } catch (e) { console.warn('[Hub] local tile', t.key, e); }
   });
