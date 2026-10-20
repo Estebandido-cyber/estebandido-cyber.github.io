@@ -30,7 +30,7 @@ and can be backed up manually to Google Drive.
 |---|---|---|
 | `sync-auth.js` | Sync key, entered once per browser, stored in localStorage (`lifehub_sync_secret`). Clears itself on HTTP 401. | `getSyncSecret()`, `resetSyncSecret()` |
 | `pwa.js` | Registers the offline service worker `sw.js`. Per-device switch: `?nosw` turns offline mode off (and clears caches), `?sw` turns it back on. | — |
-| `sync.js` | Cloudflare Worker client. Failed uploads are kept as `lifesync_pending_<key>` and pushed first on the next `get()` or when the browser goes back online, so offline edits are never overwritten by older cloud data. | `LifeSync.cloud(key).get()` / `.put(obj)` (throw on error), `LifeSync.tryGet(key)` (null on error), `LifeSync.request(path, init)`, `LifeSync.debounce(fn, ms)`, `LifeSync.time()` |
+| `sync.js` | Cloudflare Worker client. Failed uploads are kept as `lifesync_pending_<key>` and pushed first on the next `get()` or when the browser goes back online, so offline edits are never overwritten by older cloud data. Saves whose content is unchanged since the last sync (ignoring `savedAt`/`exportedAt`/`updatedAt`) are skipped (`lifesync_synced_<key>` fingerprint), so opening a widget never uploads a stale copy. | `LifeSync.cloud(key).get()` / `.put(obj)` (throw on error), `LifeSync.tryGet(key)` (null on error), `LifeSync.request(path, init)`, `LifeSync.debounce(fn, ms)`, `LifeSync.time()` |
 | `drive.js` | Google Drive manual backup (Google Identity Services). | `LifeDrive.create({ filename, status, busy, payload, apply, types }).save() / .load()` |
 
 Load order in `<head>`: `pwa.js` → `sync-auth.js` → `sync.js` → `drive.js` (only if the widget has Drive buttons).

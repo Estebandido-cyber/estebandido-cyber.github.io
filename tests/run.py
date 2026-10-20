@@ -219,6 +219,7 @@ def wrong_key_fails_safely_and_keeps_edits(b):
     for f, w in widget_info().items():
         if not w['key']: continue
         worker = FakeWorker(); ctx = new_context(b, worker, secret='WRONG')
+        ctx.add_init_script(f"localStorage.setItem('lifesync_synced_{w['key']}', 'synced-before')")   # device synced earlier
         pg, errs = open_page(ctx, f); pg.wait_for_timeout(400)
         if f in SAVE_BY_CLICK: pg.click(SAVE_BY_CLICK[f])
         else: pg.evaluate('cloudSave()')
@@ -227,6 +228,43 @@ def wrong_key_fails_safely_and_keeps_edits(b):
         assert worker.store == {}, f'{f}: something was stored with a wrong key'
         assert not errs, f'{f}: {errs}'
         ctx.close()
+
+@test
+def no_write_when_opening_without_edits(b):
+    for f, w in widget_info().items():
+        if not w['key']: continue
+        worker = FakeWorker(); ctx = new_context(b, worker)              # 1st session: get a realistic payload
+        pg, _ = open_page(ctx, f); pg.wait_for_timeout(400)
+        if f in SAVE_BY_CLICK: pg.click(SAVE_BY_CLICK[f])
+        else: pg.evaluate('cloudSave()')
+        assert wait_until(pg, lambda: w['key'] in worker.store, 6), f'{f}: could not seed cloud data'
+        seed = worker.store[w['key']]; ctx.close()
+        worker = FakeWorker(); worker.store[w['key']] = seed              # another device opens it, touches nothing
+        ctx = new_context(b, worker)
+        pg, errs = open_page(ctx, f); pg.wait_for_timeout(6000)
+        writes = [p for m, p, _ in worker.log if m == 'POST']
+        assert not writes, f'{f}: wrote {len(writes)}× just by opening'
+        assert not errs, f'{f}: {errs}'
+        ctx.close()
+
+@test
+def stale_device_cannot_overwrite_newer_cloud(b):
+    worker = FakeWorker(); ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'FIRE_SIM.html'); pg.wait_for_timeout(400)
+    pg.evaluate("S.pea = 50; draw(); cloudSave()")                       # this device syncs PEA 50
+    assert wait_until(pg, lambda: 'fire-sim' in worker.store)
+    newer = json.loads(worker.store['fire-sim']); newer['S']['pea'] = 200
+    worker.store['fire-sim'] = json.dumps(newer)                           # another device saves PEA 200
+    worker.offline = True; pg.reload(); pg.wait_for_timeout(4500)          # open offline, no edits
+    assert pg.evaluate("localStorage.getItem('lifesync_pending_fire-sim')") is None, 'opening offline queued an old copy'
+    worker.offline = False; pg.reload(); pg.wait_for_timeout(4500)
+    assert json.loads(worker.store['fire-sim'])['S']['pea'] == 200, 'older device overwrote newer cloud data'
+    assert pg.evaluate('S.pea') == 200, 'device did not pick up the newer cloud data'
+    worker.offline = True; pg.evaluate("S.pea = 77; draw(); cloudSave()"); pg.wait_for_timeout(500)   # real offline edit
+    worker.offline = False; pg.reload(); pg.wait_for_timeout(4500)
+    assert json.loads(worker.store['fire-sim'])['S']['pea'] == 77, 'a real offline edit was lost'
+    assert not errs, errs
+    ctx.close()
 
 @test
 def drive_backup_save_overwrite_load(b):
@@ -259,6 +297,8 @@ def sync_offline_edits_are_never_lost(b):
         pg.add_script_tag(url='/lib/sync-auth.js'); pg.add_script_tag(url='/lib/sync.js')
         C = "LifeSync.cloud('fire-sim')"
         pend = lambda: pg.evaluate("localStorage.getItem('lifesync_pending_fire-sim')")
+        posts = lambda: sum(1 for m, _, _ in worker.log if m == 'POST')
+        assert pg.evaluate(f"{C}.get().then(d=>d.v)") == 'CLOUD-OLD'          # this device has synced once
         worker.offline = True
         assert pg.evaluate(f"{C}.put({{v:'OFFLINE'}}).then(()=>'ok',()=>'threw')") == 'threw'
         assert pend() == '{"v":"OFFLINE"}', 'failed upload not kept'
@@ -269,6 +309,12 @@ def sync_offline_edits_are_never_lost(b):
         worker.offline = True; pg.evaluate(f"{C}.put({{v:'A'}}).catch(()=>0)"); worker.offline = False
         pg.evaluate(f"Promise.all([LifeSync.flushPending(), {C}.put({{v:'B'}})])")
         assert worker.store['fire-sim'] == '{"v":"B"}' and pend() is None, f'out-of-order upload: {worker.store}'
+        n = posts()
+        pg.evaluate(f"{C}.put({{v:'B'}})")
+        pg.evaluate(f"{C}.put({{v:'B', savedAt: new Date().toISOString()}})")
+        assert posts() == n, 'unchanged content (only a timestamp differs) must not be uploaded'
+        pg.evaluate(f"{C}.put({{v:'C'}})")
+        assert posts() == n + 1 and worker.store['fire-sim'] == '{"v":"C"}', 'a real change must be uploaded'
         assert not errs, errs
         ctx.close()
 
