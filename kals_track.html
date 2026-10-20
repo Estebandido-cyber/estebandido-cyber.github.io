@@ -2725,9 +2725,23 @@ function scheduleCloudsave() {
   cfSaveTimer = setTimeout(cloudSave, 4000);
 }
 
+// Small summary for the Life Hub tile: the most recent day with entries + budget
+function hubSummary(state) {
+  const sum = arr => Math.round((arr || []).reduce((s, x) => s + (x?.kcal || 0), 0));
+  const keys = Object.keys(state.days || {}).filter(k => /^kals_day_\d{4}-\d{2}-\d{2}$/.test(k)).sort().reverse();
+  const hub = { budget: state.settings?.budget || 2650 };
+  for (const k of keys) {
+    const day = state.days[k] || {};
+    const c = sum(day.meals), b = sum(day.burned), w = day.waterTotal || 0;
+    if (c || b || w) { hub.d = k.slice(9); hub.c = c; hub.b = b; hub.w = w; break; }
+  }
+  return hub;
+}
+
 async function cloudSave() {
   try {
     const payload = getStateToSave();
+    payload.hub = hubSummary(payload);
     cfStatus('Syncing…', 'working');
     await CLOUD.put(payload);
     const t = new Date();

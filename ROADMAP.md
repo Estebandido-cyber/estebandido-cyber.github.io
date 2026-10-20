@@ -12,9 +12,10 @@ After step 3, send phone/tablet/desktop screenshots for approval before continui
 - Hub does not refresh when returning from a widget (back button / bfcache) → stale numbers (step 4).
 - Bottom bar says "live from local storage" (wrong since cloud sync).
 - There is NO tile reordering today; order is fixed in the HTML.
+- Found in step 1, NOT fixed (widget data change): `kals_track.html` keys days by UTC (`dateKey` uses `toISOString`), so food logged 00:00–02:00 Paris lands on the previous day. The Hub uses the Paris date.
 
 ## Steps
-1. **Tile summaries (#6)** — each widget adds a small `hub` object to its cloud payload (computed numbers only, NO timestamps inside, or the "skip unchanged saves" fingerprint breaks). Worker gets `GET /hub` returning all summaries + `savedAt` in one response. Hub renders from summaries, falls back to today's per-key fetch for widgets not yet updated. Hub download ~530 KB → ~2 KB. Needs Worker redeploy.
+1. ✅ **Tile summaries (#6)** (done 2026-10-20) — each widget adds a small `hub` object to its cloud payload (computed numbers only, NO timestamps inside, or the "skip unchanged saves" fingerprint breaks). Worker gets `GET /hub` returning all summaries + `savedAt` in one response. Hub renders from summaries, falls back to today's per-key fetch for widgets not yet updated. Hub download ~530 KB → ~2 KB. Needs Worker redeploy.
 2. **Tile registry** — one list (name, icon, file, cloud key, accent) generates the tiles; removes 9 hand-written tile blocks and duplicated load lists. Visual must stay identical (screenshot compare).
 3. **Ordering + pins + "More"** — last saved first (re-ordered on load only, never live); 📌 pinned tiles stay on top in pin order; "Move to More" → collapsed bottom section, not fetched until expanded. Layout synced across devices in new cloud key `hub-layout` (1 write per layout change). Pin/menu buttons must not trigger the tile link.
 4. **Auto-refresh + attention badges** — refresh on `pageshow`/`visibilitychange`; amber staleness ("12 days ago"); badges from summaries (budget ≥ 90%, no workout in 5 days, Do it! items left today…). No backend.

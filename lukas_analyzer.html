@@ -530,6 +530,8 @@ const REFERENCE_VALUES = {
 };
 
 let prices = {};
+let pricesOk = false;      // true once every live price loaded at least once (Hub summary is only trusted then)
+let pricedSnap = null;     // { totalValue, totalGL, totalGLPct } from the last fully priced render
 let currentFilter = 'ALL';
 let sortKey = 'value';
 let sortDir = -1;
@@ -810,6 +812,7 @@ async function fetchAllPrices() {
   const eur = await fetchPrice('EURUSD=X');
   if (eur) prices['EUR_USD'] = eur;
   document.getElementById('refreshBtn').disabled = false;
+  if (errors === 0) pricesOk = true;
   const now = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   setStatus(errors>0?'error':'live', errors>0?`Updated ${now} — ${errors} failed`:`Live — ${now}`);
   if (DEBUG) {
@@ -817,6 +820,7 @@ async function fetchAllPrices() {
     console.log(prices);
   }
   render();
+  maybeHubSave();
 }
 
 function setStatus(s,t) {
@@ -905,6 +909,7 @@ function render() {
   renderTable(allRows, totalValue);
 
   // Snapshot for Life Hub tile
+  if (pricesOk) pricedSnap = { totalValue, totalGL, totalGLPct };
   localStorage.setItem('lukas_flow_snapshot', JSON.stringify({
     totalValue, totalGL, totalGLPct,
     updatedAt: new Date().toISOString()
@@ -1137,9 +1142,42 @@ function debouncedCloudSave() {
   cfSaveTimer = setTimeout(cloudSave, 3000);
 }
 
+// ── Life Hub summary ──
+// Prices move all the time; the Hub only needs to be roughly current. After a price refresh
+// the summary is saved only if the value moved >= HUB_MIN_EUR since this device's last save,
+// or the last save is > 24 h old and something changed. Manual edits always save.
+const HUB_LAST_KEY = 'lukas_hub_last';
+const HUB_MIN_EUR  = 100;
+function hubFromSnap(sn) {
+  if (!sn || !isFinite(sn.totalValue)) return null;
+  const h = { v: Math.round(sn.totalValue) };
+  if (isFinite(sn.totalGL))    h.gl  = Math.round(sn.totalGL);
+  if (isFinite(sn.totalGLPct)) h.glp = Math.round(sn.totalGLPct * 10) / 10;
+  return h;
+}
+function readHubLast() { try { return JSON.parse(localStorage.getItem(HUB_LAST_KEY)) || null; } catch { return null; } }
+function hubToSend() {
+  const h = hubFromSnap(pricedSnap);
+  if (h) return h;
+  const last = readHubLast();             // prices not loaded yet: keep the last summary instead of a partial one
+  if (!last) return null;
+  const { at, ...keep } = last;
+  return keep;
+}
+function maybeHubSave() {
+  const h = hubFromSnap(pricedSnap);
+  if (!h) return;
+  const last = readHubLast();
+  const changed = !last || h.v !== last.v || h.gl !== last.gl;
+  const old = !last || Date.now() - (last.at || 0) > 24 * 3600 * 1000;
+  if (!last || Math.abs(h.v - (last.v || 0)) >= HUB_MIN_EUR || (old && changed)) debouncedCloudSave();
+}
+
 async function cloudSave() {
   try {
-    await CLOUD.put(getAllWidgetData());
+    const hub = hubToSend();
+    await CLOUD.put(hub ? { ...getAllWidgetData(), hub } : getAllWidgetData());
+    if (hub) localStorage.setItem(HUB_LAST_KEY, JSON.stringify({ ...hub, at: Date.now() }));
     const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     cfStatus('Synced at ' + t, 'ok');
   } catch(e) {

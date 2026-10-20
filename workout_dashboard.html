@@ -624,11 +624,23 @@ function setCfStatus(ok, msg) {
   txt.textContent = msg;
 }
 
+// Small summary for the Life Hub tile; the month count is anchored to its month
+function hubSummary() {
+  const now = new Date();
+  const m = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const mN = (monthly || []).find(x => x.month === m)?.sessions ?? 0;
+  const last = (sessions || []).filter(x => x && x.d).reduce((a, b) => (!a || b.d >= a.d ? b : a), null);
+  const kcals = (sessions || []).map(x => x.kcal || 0);
+  const hub = { m, mN, best: kcals.length ? Math.max(...kcals) : null };
+  if (last) { hub.last = last.d; if (last.dur) hub.dur = last.dur; }
+  return hub;
+}
+
 function cloudSave() {
   clearTimeout(_cfSaveTimer);
   _cfSaveTimer = setTimeout(async () => {
     try {
-      await CLOUD.put({ sessions, monthly });
+      await CLOUD.put({ sessions, monthly, hub: hubSummary() });
       setCfStatus(true, `Synced at ${fmtTime(new Date())}`);
     } catch(e) {
       console.warn('Cloud save failed', e);

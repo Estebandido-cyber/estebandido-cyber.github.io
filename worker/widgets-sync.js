@@ -12,6 +12,14 @@
  *   GET  /price?ticker=XXX    → Yahoo Finance chart JSON (used by Lukas)
  *   GET  /backups/<key>       → { key, dates: ['YYYY-MM-DD', …] } newest first
  *   GET  /backups/<key>/<date>→ the backed-up JSON for that day
+ *   GET  /hub                 → { <key>: { hub, savedAt } } for every widget (Hub tiles)
+ *
+ * Hub summaries: when a saved body is JSON with a top-level `hub` object, that
+ * object and the body's `savedAt` (or server time) are stored as KV metadata on
+ * the same put — no extra write. GET /hub reads them all with one list() call
+ * (eventually consistent: may lag a save by up to ~60 s). Metadata is capped at
+ * 1 KB by Cloudflare; a bigger summary, a non-JSON body or a body over
+ * HUB_PARSE_MAX (CPU budget) is saved normally with savedAt only.
  *
  * Daily backups: on the first save of each day (Europe/Paris), the value that
  * is about to be overwritten is copied to 'bak:<key>:<date>' and auto-deleted
@@ -25,6 +33,36 @@ const TICKER_RE = /^[A-Za-z0-9.=^_-]{1,20}$/;   // e.g. WPEA.PA, EURUSD=X
 const MAX_BODY  = 5_000_000;                    // 5 MB per widget (KV allows 25 MB); keep in sync with LifeSync.LIMIT
 const BACKUP_DAYS = 30;
 const DATE_RE   = /^\d{4}-\d{2}-\d{2}$/;
+const HUB_PARSE_MAX = 1_000_000;                // only parse bodies up to 1 MB for the summary
+const META_MAX  = 1000;                         // Cloudflare KV metadata limit is 1024 bytes
+
+// Metadata stored with a widget save: { savedAt, hub? }
+function hubMeta(body) {
+  let obj = null;
+  if (body.length <= HUB_PARSE_MAX) { try { obj = JSON.parse(body); } catch (_) {} }
+  const savedAt = (obj && typeof obj.savedAt === 'string' && obj.savedAt.length <= 40) ? obj.savedAt : new Date().toISOString();
+  const hub = obj && obj.hub && typeof obj.hub === 'object' && !Array.isArray(obj.hub) ? obj.hub : null;
+  if (hub) {
+    const meta = { savedAt, hub };
+    if (new TextEncoder().encode(JSON.stringify(meta)).length <= META_MAX) return meta;
+  }
+  return { savedAt };
+}
+
+// All widget summaries in one response (skips bak:* and keys saved before summaries existed)
+async function listHub(kv) {
+  const out = {};
+  let cursor;
+  for (let page = 0; page < 10; page++) {
+    const r = await kv.list(cursor ? { cursor } : {});
+    for (const k of r.keys) {
+      if (KEY_RE.test(k.name) && k.metadata && typeof k.metadata === 'object') out[k.name] = k.metadata;
+    }
+    if (r.list_complete !== false || !r.cursor) break;
+    cursor = r.cursor;
+  }
+  return out;
+}
 
 function today() {
   try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date()); }
@@ -85,6 +123,13 @@ export default {
       });
     }
 
+    // ── Hub summaries ──
+    if (url.pathname === '/hub' || url.pathname === '/hub/') {
+      if (request.method !== 'GET') return new Response('Method not allowed', { status: 405, headers: CORS });
+      return new Response(JSON.stringify(await listHub(env.WIDGET_DATA)),
+        { headers: { ...CORS, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+    }
+
     // ── Daily backups (read-only) ──
     if (url.pathname.startsWith('/backups/')) {
       if (request.method !== 'GET') return new Response('Method not allowed', { status: 405, headers: CORS });
@@ -116,7 +161,7 @@ export default {
       if (body.length > MAX_BODY) return new Response('Too large', { status: 413, headers: CORS });
       try { await backupBeforeWrite(env.WIDGET_DATA, key); }
       catch (e) { console.warn('backup failed', key, e); }   // never block the save
-      await env.WIDGET_DATA.put(key, body);
+      await env.WIDGET_DATA.put(key, body, { metadata: hubMeta(body) });
       return new Response('OK', { headers: CORS });
     }
 

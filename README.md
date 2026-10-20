@@ -44,6 +44,7 @@ Same-origin files are **network-first** (a deploy is visible on the next normal 
 Cloudflare Worker `widgets-sync` (`https://widgets-sync.estebandido80.workers.dev`), bound to KV namespace `WIDGET_DATA`.
 
 - `GET /data/<key>` → stored JSON (`{}` if empty) · `POST /data/<key>` → store body (max 5 MB; `LifeSync.LIMIT` in `lib/sync.js` must match)
+- `GET /hub` → `{ <key>: { savedAt, hub } }` for every widget, in one small response (Hub tiles). Built from **KV metadata**: on each `POST /data/<key>` whose body has a top-level `hub` object, the Worker stores `{ savedAt, hub }` as metadata on the same put (no extra write). Metadata max 1 KB; bigger summaries, non-JSON bodies or bodies > 1 MB are saved with `savedAt` only. `list()` is eventually consistent (can lag a save by ~60 s).
 - `GET /price?ticker=XXX` → Yahoo Finance chart JSON, 5-min edge cache (used by LUKAS)
 - **Daily backups**: the first save of each day (Paris time) copies the previous value to `bak:<key>:<YYYY-MM-DD>`, kept 30 days. Read-only: `GET /backups/<key>` lists dates, `GET /backups/<key>/<date>` returns that copy.
 - Auth: header `X-Secret` must equal the Worker secret `SYNC_SECRET` (Settings → Variables and Secrets). **The secret is never committed.**
@@ -53,9 +54,25 @@ The file in this repo is the source of truth; deploy by pasting it into the Clou
 
 ## Hub ↔ widget data
 
-The Hub fetches every cloud key (falling back to localStorage) and renders summary tiles.
-Some widgets also write a small summary for the Hub, e.g. Xpenses Calculator → `xpenses_calculator_outputs`
-(`{ now|fire: { leftover, net, income } }`).
+Each widget adds a small `hub` object to its cloud payload (`hubSummary()` in the widget): computed numbers
+only, **no timestamps inside** (they would defeat the unchanged-save check in `lib/sync.js`), ≤ ~800 bytes.
+Period values are anchored to their period (`{ w: <Monday>, wT, m: 'YYYY-MM', mT, … }`) so the Hub shows 0
+for a past week/month instead of stale totals.
+
+The Hub calls `GET /hub` once and paints every tile from the summaries. For a widget that has not saved a
+summary yet it falls back to the old path (`cfFetch(key)` full payload, then localStorage). Pending offline
+edits are flushed first (`LifeSync.flushPending()`).
+
+| Widget | `hub` fields |
+|---|---|
+| Do it! | `nToday`, `nWeek`, `today[]`, `week[]` (≤ 5 open items each, ≤ 40 chars, trimmed to fit) |
+| Xpenser | `w`, `wT`, `m`, `mT`, `mInc`, `y`, `yT` |
+| Xpenses Calculator | `now`/`fire`: `{ leftover, net, income }` |
+| Week Plan | `week`, `hours`, `free` (weekdays with < 2 h) |
+| FIRE Sim | `total`, `fr`, `co` (live COP/EUR, ticked Colombian assets only), `scen` |
+| Workout | `m`, `mN`, `last`, `dur`, `best` |
+| Kals | `budget`, and the most recent day with entries: `d`, `c`, `b`, `w` |
+| LUKAS | `v`, `gl`, `glp` — only from fully priced renders; after a price refresh saved only if the value moved ≥ €100 since this device's last save (`lukas_hub_last`) or that save is > 24 h old and something changed |
 
 ## External services
 

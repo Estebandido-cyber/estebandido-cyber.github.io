@@ -371,6 +371,9 @@
     line-height: 1.15;
   }
   .stat-value.big { font-size: 20px; }
+  .stat-pair { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  .stat-pair .stat { flex: 1 0 auto; }
+  .stat-pair .stat-value { white-space: nowrap; }
 
   .stat-divider {
     width: 100%;
@@ -632,7 +635,7 @@
   </div>
 
   <div class="bottom-bar">
-    <span class="bottom-label"><span class="live-dot" style="color:#00e5a0;"></span>live from local storage</span>
+    <span class="bottom-label"><span class="live-dot" style="color:#00e5a0;"></span>synced across devices</span>
     <button class="refresh-btn" onclick="loadAll()">↺ Refresh</button>
   </div>
 
@@ -709,315 +712,278 @@ function setLoading(on) {
 // ── CLOUDFLARE SYNC ──────────────────────────────────────────────
 const cfFetch = key => LifeSync.tryGet(key); // shared client in lib/sync.js
 
-// ── RENDER FUNCTIONS (called after data is resolved) ─────────────
+// ── TILE DATA ────────────────────────────────────────────────────
+// Each tile is painted from a small "view" object. The view comes from the widget's
+// summary (GET /hub, ~2 KB for all widgets) or, for a widget that has not saved a
+// summary yet, from its full cloud payload / this device's localStorage as before.
 
-function renderDoIt(data) {
-  const el = document.getElementById('stats-notes');
-  const foot = document.getElementById('footer-notes');
-  if (!data || !data.postits) { el.innerHTML = noData('Open Do it! to start'); return; }
-
-  // Cloudflare returns postits.today as array, localStorage as object with .items
-  const toArr = v => Array.isArray(v) ? v : (v?.items || []);
-  const todayItems = toArr(data.postits.today).filter(i => !i.done).slice(0, 5);
-  const weekItems  = toArr(data.postits.week).filter(i => !i.done).slice(0, 5);
-
-  const renderItems = items => items.length > 0
-    ? items.map(i => `<div class="doit-item">◦ ${i.text}</div>`).join('')
-    : `<div class="doit-item" style="opacity:0.4">All clear ✓</div>`;
-
-  el.innerHTML = `
-    <div class="doit-col"><div class="doit-col-title">Today</div>${renderItems(todayItems)}</div>
-    <div class="doit-col"><div class="doit-col-title">This week</div>${renderItems(weekItems)}</div>`;
-
-  if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+const p2 = n => String(n).padStart(2, '0');
+function localISO(d) { return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`; }   // device-local date (Paris)
+function periods() {
+  const now = new Date();
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (now.getDay() + 6) % 7);
+  const today = localISO(now);
+  return { today, week: localISO(monday), month: today.slice(0, 7), year: today.slice(0, 4) };
+}
+function setFoot(id, savedAt) {
+  const foot = document.getElementById(id);
+  if (foot && savedAt) foot.textContent = fmtAgo(savedAt);
 }
 
-function renderTracker(data) {
-  const el = document.getElementById('stats-tracker');
-  const foot = document.getElementById('footer-tracker');
+// ── Do it! ──
+function doitFromData(data) {
+  if (!data || !data.postits) return null;
+  // Cloudflare returns postits.today as array, localStorage as object with .items
+  const toArr = v => Array.isArray(v) ? v : (v?.items || []);
+  const open = k => toArr(data.postits[k]).filter(i => i && !i.done).slice(0, 5).map(i => i.text);
+  return { today: open('today'), week: open('week') };
+}
+function doitFromHub(h) { return { today: h.today || [], week: h.week || [] }; }
+function paintDoIt(v, savedAt) {
+  const el = document.getElementById('stats-notes');
+  if (!v) { el.innerHTML = noData('Open Do it! to start'); return; }
+  const renderItems = items => items.length > 0
+    ? items.map(t => `<div class="doit-item">◦ ${esc(t)}</div>`).join('')
+    : `<div class="doit-item" style="opacity:0.4">All clear ✓</div>`;
+  el.innerHTML = `
+    <div class="doit-col"><div class="doit-col-title">Today</div>${renderItems(v.today)}</div>
+    <div class="doit-col"><div class="doit-col-title">This week</div>${renderItems(v.week)}</div>`;
+  setFoot('footer-notes', savedAt);
+}
+
+// ── Xpenser ──
+function trackerFromData(data) {
   // Cloudflare wraps in { data, settings, cashflow } — localStorage is flat
   const entries = data?.data || data;
-  if (!entries || typeof entries !== 'object') { el.innerHTML = noData('Open tracker to start'); return; }
-
-  const now = new Date();
-  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const curYear  = String(now.getFullYear());
-  const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
-  const monday = new Date(now); monday.setDate(now.getDate() - dayOfWeek); monday.setHours(0,0,0,0);
-  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23,59,59,999);
-
-  let weekTotal = 0, monthTotal = 0, yearTotal = 0;
+  if (!entries || typeof entries !== 'object') return null;
+  const P = periods();
+  const mon = new Date(P.week + 'T00:00:00');
+  const sun = localISO(new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6));
+  let wT = 0, mT = 0, yT = 0;
   Object.entries(entries).forEach(([k, dayEntries]) => {
     if (!Array.isArray(dayEntries)) return;
     const sum = dayEntries.reduce((s, e) => s + (parseFloat(e.amt)||0), 0);
-    if (k.startsWith(curYear))  yearTotal  += sum;
-    if (k.startsWith(curMonth)) monthTotal += sum;
-    const d = new Date(k + 'T00:00:00');
-    if (d >= monday && d <= sunday) weekTotal += sum;
+    if (k.startsWith(P.year))  yT += sum;
+    if (k.startsWith(P.month)) mT += sum;
+    if (k >= P.week && k <= sun) wT += sum;
   });
-
   // Monthly budget from cashflow (Cloudflare or localStorage)
   const cashflow = data?.cashflow || safeParse(safeGet('depenses_cashflow_v1')) || {};
-  const cf = cashflow[curMonth] || {};
-  const monthBudget = (parseFloat(cf.salary)||0) + (parseFloat(cf.partner)||0) +
-                      (parseFloat(cf.extra)||0)  + (parseFloat(cf.extra2)||0);
-  const budgetPct = monthBudget > 0 ? Math.min(100, Math.round((monthTotal / monthBudget) * 100)) : 0;
+  const cf = cashflow[P.month] || {};
+  const mInc = (parseFloat(cf.salary)||0) + (parseFloat(cf.partner)||0) + (parseFloat(cf.extra)||0) + (parseFloat(cf.extra2)||0);
+  return { wT, mT, yT, mInc };
+}
+function trackerFromHub(h) {
+  // Totals are anchored to their period: a total from an older week/month/year counts as 0
+  const P = periods();
+  return { wT: h.w === P.week ? h.wT : 0, mT: h.m === P.month ? h.mT : 0,
+           yT: h.y === P.year ? h.yT : 0, mInc: h.m === P.month ? h.mInc : 0 };
+}
+function paintTracker(v, savedAt) {
+  const el = document.getElementById('stats-tracker');
+  if (!v) { el.innerHTML = noData('Open tracker to start'); return; }
+  const { wT, mT, yT, mInc } = v;
+  const budgetPct = mInc > 0 ? Math.min(100, Math.round((mT / mInc) * 100)) : 0;
   const barColor  = budgetPct < 70 ? '#00e5a0' : budgetPct < 90 ? '#ffd166' : '#ff6b6b';
-  const barHTML   = monthBudget > 0
+  const barHTML   = mInc > 0
     ? `<div class="budget-bar-wrap"><div class="budget-bar-fill" style="width:${budgetPct}%;background:${barColor}"></div></div>`
     : '';
-
   el.innerHTML =
-    statHTML('This week',  fmt(weekTotal),  true) +
+    statHTML('This week',  fmt(wT),  true) +
     '<div class="stat-divider"></div>' +
-    `<div class="stat"><div class="stat-label">This month${monthBudget > 0 ? ' · '+budgetPct+'% of income' : ''}</div><div class="stat-value">${fmt(monthTotal)}</div>${barHTML}</div>` +
+    `<div class="stat"><div class="stat-label">This month${mInc > 0 ? ' · '+budgetPct+'% of income' : ''}</div><div class="stat-value">${fmt(mT)}</div>${barHTML}</div>` +
     '<div class="stat-divider"></div>' +
-    statHTML('This year',  fmt(yearTotal));
-  foot.textContent = fmtAgo(safeGet('depenses_last_save'));
+    statHTML('This year',  fmt(yT));
+  setFoot('footer-tracker', savedAt);
 }
 
-function renderCalc(data) {
-  const el   = document.getElementById('stats-calc');
-  const foot = document.getElementById('footer-calc');
+// ── Xpenses Calculator ──
+function calcFromLocal() {
   const outputs = safeParse(safeGet('xpenses_calculator_outputs'));
-  const nowLeft  = outputs?.now?.leftover  ?? null;
-  const fireLeft = outputs?.fire?.leftover ?? null;
-  if (nowLeft === null && fireLeft === null) { el.innerHTML = noData('Open calculator to start'); return; }
+  return { now: outputs?.now?.leftover ?? null, fire: outputs?.fire?.leftover ?? null };
+}
+function calcFromHub(h) { return { now: h.now?.leftover ?? null, fire: h.fire?.leftover ?? null }; }
+function paintCalc(v, savedAt) {
+  const el = document.getElementById('stats-calc');
+  if (!v || (v.now === null && v.fire === null)) { el.innerHTML = noData('Open calculator to start'); return; }
   el.innerHTML =
-    statHTML('Left / month · now',  nowLeft  !== null ? fmt(nowLeft)  : '—', true) +
+    statHTML('Left / month · now',  v.now  !== null ? fmt(v.now)  : '—', true) +
     '<div class="stat-divider"></div>' +
-    statHTML('Left / month · FIRE', fireLeft !== null ? fmt(fireLeft) : '—');
-  // Use savedAt from Cloudflare data first, fall back to local outputs
-  const savedAt = data?.savedAt || outputs?.savedAt || null;
-  if (savedAt) foot.textContent = fmtAgo(savedAt);
+    statHTML('Left / month · FIRE', v.fire !== null ? fmt(v.fire) : '—');
+  setFoot('footer-calc', savedAt);
 }
 
-function renderPlanner(data) {
-  const el = document.getElementById('stats-planner');
-  if (!data) { el.innerHTML = noData('Open planner to start'); return; }
-
-  // Cloudflare: { acts, weekPlaces, curWeek, weekNotes }
-  // weekPlaces is array of week objects; each value has dur field
-  const curWeek   = data.curWeek ?? 0;
-  const curPlaces = data.weekPlaces?.[curWeek] || {};
-  const blocks    = Object.values(curPlaces);
-  const totalHours = blocks.reduce((s, b) => s + (b && typeof b==='object' ? (parseFloat(b.dur)||0) : 0), 0);
-
-  // Free weekdays: group by d field (0=Mon..4=Fri)
-  const hoursByDay = {0:0,1:0,2:0,3:0,4:0};
-  // Map string day names from CF to numbers
-  const dayMap = {mon:0,tue:1,wed:2,thu:3,fri:4};
+// ── Week Plan ──
+function plannerFromData(data) {
+  if (!data) return null;
+  // Cloudflare: { acts, weekPlaces, curWeek, weekNotes } — weekPlaces is array of week objects; each value has dur field
+  const curWeek = data.curWeek ?? 0;
+  const blocks  = Object.values(data.weekPlaces?.[curWeek] || {});
+  const dayMap  = {mon:0,tue:1,wed:2,thu:3,fri:4};
+  const byDay   = [0,0,0,0,0];
+  let hours = 0;
   blocks.forEach(b => {
     if (!b || typeof b !== 'object') return;
+    const dur = parseFloat(b.dur)||0;
+    hours += dur;
     const d = typeof b.d === 'number' ? b.d : (dayMap[b.d] ?? -1);
-    if (d >= 0 && d <= 4) hoursByDay[d] += (parseFloat(b.dur)||0);
+    if (d >= 0 && d <= 4) byDay[d] += dur;
   });
-  const free = Object.values(hoursByDay).filter(h => h < 2).length;
-  const freeLabel = free === 1 ? '1 free day' : `${free} free days`;
-
+  return { week: curWeek, hours, free: byDay.filter(h => h < 2).length };
+}
+function plannerFromHub(h) { return { week: h.week ?? 0, hours: h.hours ?? 0, free: h.free ?? 0 }; }
+function paintPlanner(v, savedAt) {
+  const el = document.getElementById('stats-planner');
+  if (!v) { el.innerHTML = noData('Open planner to start'); return; }
   el.innerHTML =
-    statHTML('Current week', 'Week ' + (curWeek + 1)) +
+    statHTML('Current week', 'Week ' + (v.week + 1)) +
     '<div class="stat-divider"></div>' +
-    statHTML('Hours planned', totalHours + 'h', true) +
+    statHTML('Hours planned', v.hours + 'h', true) +
     '<div class="stat-divider"></div>' +
-    statHTML('Available this week', freeLabel);
-
-  const plannerSavedAt = safeGet('weekplan_savedAt');
-  const foot = document.getElementById('footer-planner');
-  if (plannerSavedAt) foot.textContent = fmtAgo(plannerSavedAt);
+    statHTML('Available this week', v.free === 1 ? '1 free day' : `${v.free} free days`);
+  setFoot('footer-planner', savedAt);
 }
 
-function renderFire(data) {
-  const el   = document.getElementById('stats-fire');
-  const foot = document.getElementById('footer-fire');
-  if (!data) { el.innerHTML = noData('Open FIRE sim to start'); return; }
-
+// ── FIRE Sim ──
+function fireFromData(data) {
+  if (!data) return null;
   // Use active scenario if available, else top-level S
-  let S = data.S;
-  let scenarioName = '';
+  let S = data.S, scen = '', checks = data.colChecks;
   if (Array.isArray(data.scenarios) && typeof data.activeScenario === 'number') {
     const snap = data.scenarios[data.activeScenario];
-    if (snap && snap.snap && snap.snap.S) { S = snap.snap.S; scenarioName = snap.name || ''; }
+    if (snap && snap.snap && snap.snap.S) { S = snap.snap.S; scen = snap.name || ''; checks = snap.snap.colChecks || checks; }
   }
-  if (!S) { el.innerHTML = noData('Run a simulation first'); return; }
-
-  const frEur  = ((S.pea||0)+(S.av||0)+(S.cto||0)+(S.liv||0)+(S.cash||0)) * 1000;
-  const coEur  = ((S.cop1||0)+(S.cop2||0)+(S.cop3||0)+(S.cop4||0)) * 1_000_000 / 4500;
-  const totEur = frEur + coEur;
-
+  if (!S) return { empty: true };
+  // Same as the widget as far as possible: its cached live rate, unticked Colombian assets excluded
+  const rate = safeParse(safeGet('fire-sim-cop-eur-rate'))?.rate || 4500;
+  const fr = ((S.pea||0)+(S.av||0)+(S.cto||0)+(S.liv||0)+(S.cash||0)) * 1000;
+  const co = ['cop1','cop2','cop3','cop4'].reduce((s, id) => s + (checks && checks[id] === false ? 0 : (S[id]||0)), 0) * 1_000_000 / rate;
+  return { total: fr + co, fr, co, scen };
+}
+function fireFromHub(h) { return { total: h.total, fr: h.fr, co: h.co, scen: h.scen || '' }; }
+function paintFire(v, savedAt) {
+  const el = document.getElementById('stats-fire');
+  if (!v) { el.innerHTML = noData('Open FIRE sim to start'); return; }
+  if (v.empty) { el.innerHTML = noData('Run a simulation first'); return; }
   el.innerHTML =
-    statHTML('Total' + (scenarioName ? ` · ${scenarioName}` : ''), fmt(totEur), true) +
+    statHTML('Total' + (v.scen ? ` · ${esc(v.scen)}` : ''), fmt(v.total), true) +
     '<div class="stat-divider"></div>' +
-    statHTML('🇫🇷 French',    fmt(frEur)) +
+    statHTML('🇫🇷 French',    fmt(v.fr)) +
     '<div class="stat-divider"></div>' +
-    statHTML('🇨🇴 Colombian', fmt(coEur));
-
-  if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
+    statHTML('🇨🇴 Colombian', fmt(v.co));
+  setFoot('footer-fire', savedAt);
 }
 
-function renderWorkout(data) {
-  const el   = document.getElementById('stats-workout');
-  const foot = document.getElementById('footer-workout');
-  if (!data || !data.sessions) { el.innerHTML = noData('Open workout to start'); return; }
-
+// ── Workout ──
+function workoutFromData(data) {
+  if (!data || !data.sessions) return null;
   const { sessions, monthly } = data;
-  const now = new Date();
-  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const monthEntry = (monthly||[]).find(m => m.month === curMonth);
-  const monthCount = monthEntry?.sessions ?? 0;
-
-  const sorted  = sessions.slice().sort((a,b) => new Date(a.d) - new Date(b.d));
-  const last    = sorted.length > 0 ? sorted[sorted.length-1] : null;
-  const lastDate = last?.d ? new Date(last.d+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '—';
-  const lastDur  = last?.dur ?? null;
-  const maxKcal  = sessions.length > 0 ? Math.max(...sessions.map(s => s.kcal||0)) : null;
-
+  const mN   = (monthly||[]).find(m => m.month === periods().month)?.sessions ?? 0;
+  const last = sessions.filter(s => s && s.d).reduce((a, b) => (!a || b.d >= a.d ? b : a), null);
+  return { mN, last: last?.d || null, dur: last?.dur ?? null,
+           best: sessions.length > 0 ? Math.max(...sessions.map(s => s.kcal||0)) : null };
+}
+function workoutFromHub(h) {
+  return { mN: h.m === periods().month ? (h.mN ?? 0) : 0, last: h.last || null, dur: h.dur ?? null, best: h.best ?? null };
+}
+function paintWorkout(v, savedAt) {
+  const el = document.getElementById('stats-workout');
+  if (!v) { el.innerHTML = noData('Open workout to start'); return; }
+  const lastDate = v.last ? new Date(v.last+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '—';
   el.innerHTML =
-    statHTML('This month', monthCount+(monthCount===1?' session':' sessions'), true) +
+    statHTML('This month', v.mN+(v.mN===1?' session':' sessions'), true) +
     '<div class="stat-divider"></div>' +
-    statHTML('Last workout', lastDate+(lastDur?' · '+lastDur+'min':'')) +
+    statHTML('Last workout', lastDate+(v.dur?' · '+v.dur+'min':'')) +
     '<div class="stat-divider"></div>' +
-    statHTML('Best kcal ever', maxKcal !== null ? maxKcal+' kcal' : '—');
-
-  if (data.savedAt) foot.textContent = fmtAgo(data.savedAt);
+    statHTML('Best kcal ever', v.best !== null ? v.best+' kcal' : '—');
+  setFoot('footer-workout', savedAt);
 }
 
-function renderKals(data) {
-  const el   = document.getElementById('stats-kals');
-  const foot = document.getElementById('footer-kals');
-
-  // Cloudflare returns { settings, days: { kals_day_YYYY-MM-DD: {...} } }
-  // localStorage returns per-day objects directly
-  let dayData, settings, savedAt;
-
-  if (data?.days) {
-    // Cloudflare format
-    settings = data.settings || { budget: 2650 };
-    const todayKey = 'kals_day_' + new Date().toISOString().slice(0,10);
-    dayData = data.days[todayKey];
-    if (!dayData) {
-      // Fall back to most recent day
-      const keys = Object.keys(data.days).sort().reverse();
-      if (keys.length > 0) dayData = data.days[keys[0]];
-    }
-    savedAt = dayData?.savedAt || null;
-  } else {
-    // localStorage format (fallback)
-    settings = safeParse(safeGet('kals_settings')) || { budget: 2650 };
-    dayData = data;
-    savedAt = data?.savedAt || null;
+// ── Kals ──
+// View = the most recent day with entries; `today` says whether that day is today (device-local date).
+function kalsFromData(data) {
+  if (!data?.days) return null;
+  const sum = arr => Math.round((arr || []).reduce((s, x) => s + (x?.kcal || 0), 0));
+  const keys = Object.keys(data.days).filter(k => /^kals_day_\d{4}-\d{2}-\d{2}$/.test(k)).sort().reverse();
+  for (const k of keys) {
+    const day = data.days[k] || {};
+    const c = sum(day.meals), b = sum(day.burned), w = day.waterTotal || 0;
+    if (c || b || w) return kalsView({ d: k.slice(9), c, b, w, budget: data.settings?.budget }, day.savedAt);
   }
-
-  if (!dayData) { el.innerHTML = noData('Open Kals to start'); return; }
-
-  const consumed = Math.round((dayData.meals||[]).reduce((s,m) => s+(m.kcal||0), 0));
-  const burned   = Math.round((dayData.burned||[]).reduce((s,b) => s+(b.kcal||0), 0));
-  const budget   = settings.budget || 2650;
-  const left     = (budget + burned) - consumed;
-  const waterL   = ((dayData.waterTotal||0)/1000).toFixed(1) + 'L';
+  return null;
+}
+function kalsFromHub(h) { return h.d ? kalsView(h) : null; }
+function kalsView(h, savedAt) {
+  return { d: h.d, c: h.c || 0, b: h.b || 0, w: h.w || 0, budget: h.budget || 2650, today: h.d === periods().today, savedAt };
+}
+function paintKals(v, savedAt) {
+  const el = document.getElementById('stats-kals');
+  if (!v) { el.innerHTML = noData('Open Kals to start'); return; }
+  const left      = (v.budget + v.b) - v.c;
   const leftColor = left >= 0 ? 'var(--text)' : '#ff6b6b';
-
-  const kalsPct   = Math.min(100, Math.round((consumed / budget) * 100));
+  const kalsPct   = Math.min(100, Math.round((v.c / v.budget) * 100));
   const kalsColor = kalsPct < 70 ? '#00e5a0' : kalsPct < 90 ? '#ffd166' : '#ff6b6b';
   const kalsBar   = `<div class="budget-bar-wrap"><div class="budget-bar-fill" style="width:${kalsPct}%;background:${kalsColor}"></div></div>`;
-
-  el.innerHTML =
-    `<div class="stat"><div class="stat-label">Consumed · ${kalsPct}% of budget</div><div class="stat-value stat-value-big">${consumed} kcal</div>${kalsBar}</div>` +
-    '<div class="stat-divider"></div>' +
-    `<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${leftColor}">${left} kcal</div></div>` +
-    '<div class="stat-divider"></div>' +
-    statHTML('Water', waterL);
-
-  if (savedAt) foot.textContent = fmtAgo(savedAt);
+  const waterL    = (v.w/1000).toFixed(1) + 'L';
+  if (v.today) {
+    el.innerHTML =
+      `<div class="stat"><div class="stat-label">Consumed · ${kalsPct}% of budget</div><div class="stat-value stat-value-big">${v.c} kcal</div>${kalsBar}</div>` +
+      '<div class="stat-divider"></div>' +
+      `<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${leftColor}">${left} kcal</div></div>` +
+      '<div class="stat-divider"></div>' +
+      statHTML('Water', waterL);
+  } else {
+    // Nothing today: say so, then the last logged day (same height: remaining + water share a row)
+    const dt = new Date(v.d + 'T12:00:00');
+    const dayLbl = dt.toLocaleDateString('en-GB', { weekday:'short' }) + ' ' + dt.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+    el.innerHTML =
+      `<div class="no-data">Nothing logged today</div>` +
+      '<div class="stat-divider"></div>' +
+      `<div class="stat"><div class="stat-label">Last log · ${dayLbl}</div><div class="stat-value">${v.c} kcal</div>${kalsBar}</div>` +
+      '<div class="stat-divider"></div>' +
+      `<div class="stat-pair">` +
+        `<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${leftColor}">${left} kcal</div></div>` +
+        statHTML('Water', waterL) +
+      `</div>`;
+  }
+  setFoot('footer-kals', savedAt || v.savedAt);
 }
 
-function renderLukas(data) {
-  const el   = document.getElementById('stats-lukas');
-  const foot = document.getElementById('footer-lukas');
-
-  // The localStorage snapshot is the authoritative source — it includes
-  // both manual positions AND live Yahoo Finance prices computed by the widget.
-  // Cloudflare only stores manual positions, so totalValue from CF is always incomplete.
-  const snapshot = safeParse(safeGet('lukas_flow_snapshot'));
-
-  if (!snapshot || snapshot.totalValue === undefined) {
-    el.innerHTML = noData('Open LUKAS Flow to sync'); return;
-  }
-
-  const { totalValue, totalGL, totalGLPct } = snapshot;
-
-  // Use most recent updatedAt from CF manual_values if available, else snapshot
-  let updatedAt = snapshot.updatedAt || null;
-  if (data?.manual_values) {
-    const timestamps = Object.values(data.manual_values).map(v => v.updatedAt).filter(Boolean);
-    const cfLatest = timestamps.sort().pop();
-    if (cfLatest && cfLatest > (updatedAt || '')) updatedAt = cfLatest;
-  }
-
-  const glPositive = (totalGL ?? 0) >= 0;
+// ── LUKAS Flow ──
+function lukasFromLocal() {
+  // This device's snapshot includes live prices computed by the widget (the full cloud payload has manual positions only)
+  const s = safeParse(safeGet('lukas_flow_snapshot'));
+  if (!s || s.totalValue === undefined) return null;
+  return { v: s.totalValue, gl: s.totalGL, glp: s.totalGLPct, updatedAt: s.updatedAt || null };
+}
+function lukasFromHub(h) { return isFinite(h.v) ? { v: h.v, gl: h.gl, glp: h.glp } : null; }
+function paintLukas(v, savedAt) {
+  const el = document.getElementById('stats-lukas');
+  if (!v) { el.innerHTML = noData('Open LUKAS Flow to sync'); return; }
+  const glPositive = (v.gl ?? 0) >= 0;
   const glSign     = glPositive ? '+' : '';
   const glColor    = glPositive ? '#00e5a0' : '#ff6b6b';
-
-  let html = statHTML('Portfolio value', fmt(totalValue), true) + '<div class="stat-divider"></div>';
-
-  if (totalGL !== null && totalGL !== undefined) {
-    html += `<div class="stat"><div class="stat-label">Unrealized G/L</div><div class="stat-value" style="color:${glColor}">${glSign}${fmt(totalGL)} (${glSign}${totalGLPct?.toFixed(1)}%)</div></div>`;
+  let html = statHTML('Portfolio value', fmt(v.v), true) + '<div class="stat-divider"></div>';
+  if (v.gl !== null && v.gl !== undefined) {
+    html += `<div class="stat"><div class="stat-label">Unrealized G/L</div><div class="stat-value" style="color:${glColor}">${glSign}${fmt(v.gl)} (${glSign}${v.glp?.toFixed(1)}%)</div></div>`;
   } else {
     html += statHTML('G/L', 'Open widget to compute');
   }
-
   el.innerHTML = html;
-  if (updatedAt) foot.textContent = fmtAgo(updatedAt);
+  setFoot('footer-lukas', savedAt);
 }
 
-// ── LOAD ALL — fetch from Cloudflare, fall back to localStorage ──
-async function loadAll() {
-  // Show localStorage data immediately
-  loadFromLocalStorage();
-
-  // Show shimmer while fetching from Cloudflare
-  setLoading(true);
-
-  const [doItCF, trackerCF, calcCF, plannerCF, fireCF, workoutCF, kalsCF, lukasCF] = await Promise.allSettled([
-    cfFetch('doit-lcc'),
-    cfFetch('xpenser'),
-    cfFetch('xpenses-calculator'),
-    cfFetch('weekplanner'),
-    cfFetch('fire-sim'),
-    cfFetch('workout'),
-    cfFetch('kalstrack'),
-    cfFetch('lukas-flow')
-  ]);
-
-  // Remove shimmer
-  setLoading(false);
-
-  const get = r => r.status === 'fulfilled' ? r.value : null;
-
-  renderDoIt(    get(doItCF)    || safeParse(safeGet('doit_lcc_v1')));
-  renderTracker( get(trackerCF) || safeParse(safeGet('depenses_data_v1')));
-  renderCalc(    get(calcCF)    || safeParse(safeGet('xpenses_calculator_v1')));
-  renderPlanner( get(plannerCF) || buildLocalPlanner());
-  renderFire(    get(fireCF)    || safeParse(safeGet('fire-sim-v1')));
-  renderWorkout( get(workoutCF) || safeParse(safeGet('workout_insights_v3')));
-  renderKals(    get(kalsCF)    || null);
-  renderLukas(   get(lukasCF)   || safeParse(safeGet('lukas_flow_snapshot')));
-
-  const stratFoot = document.getElementById('footer-strat');
-  if (stratFoot) stratFoot.textContent = 'To update manually';
+// ── Old per-widget path (full payload or localStorage), used until a widget has saved a summary ──
+function lukasSavedAt(v, cf) {
+  // Most recent of the snapshot time and the cloud manual_values timestamps
+  let at = v?.updatedAt || null;
+  const ts = Object.values(cf?.manual_values || {}).map(x => x?.updatedAt).filter(Boolean).sort().pop();
+  if (ts && ts > (at || '')) at = ts;
+  return at;
 }
-
-function loadFromLocalStorage() {
-  renderDoIt(    safeParse(safeGet('doit_lcc_v1')));
-  renderTracker( safeParse(safeGet('depenses_data_v1')));
-  renderCalc(    null);
-  renderPlanner( buildLocalPlanner());
-  renderFire(    safeParse(safeGet('fire-sim-v1')));
-  renderWorkout( safeParse(safeGet('workout_insights_v3')));
-  renderKals(    null);
-  renderLukas(   safeParse(safeGet('lukas_flow_snapshot')));
-}
-
 function buildLocalPlanner() {
   const curWeek   = parseInt(safeGet('weekplan_curweek')||'0')||0;
   const weekPlaces = [];
@@ -1025,6 +991,73 @@ function buildLocalPlanner() {
   const acts      = safeParse(safeGet('weekplan_acts')) || [];
   const weekNotes = safeParse(safeGet('weekplan_notes')) || [];
   return { acts, weekPlaces, curWeek, weekNotes };
+}
+
+// key → summary reader, full-payload reader (cf = cloud payload or null), painter
+const TILE_DATA = [
+  { key: 'doit-lcc', hub: doitFromHub, paint: paintDoIt,
+    full: cf => { const d = cf || safeParse(safeGet('doit_lcc_v1')); return [doitFromData(d), d?.savedAt]; } },
+  { key: 'xpenser', hub: trackerFromHub, paint: paintTracker,
+    full: cf => [trackerFromData(cf || safeParse(safeGet('depenses_data_v1'))), safeGet('depenses_last_save')] },
+  { key: 'xpenses-calculator', hub: calcFromHub, paint: paintCalc,
+    full: cf => [calcFromLocal(), cf?.savedAt || safeParse(safeGet('xpenses_calculator_outputs'))?.savedAt] },
+  { key: 'weekplanner', hub: plannerFromHub, paint: paintPlanner,
+    full: cf => [plannerFromData(cf || buildLocalPlanner()), safeGet('weekplan_savedAt')] },
+  { key: 'fire-sim', hub: fireFromHub, paint: paintFire,
+    full: cf => { const d = cf || safeParse(safeGet('fire-sim-v1')); return [fireFromData(d), d?.savedAt]; } },
+  { key: 'workout', hub: workoutFromHub, paint: paintWorkout,
+    full: cf => { const d = cf || safeParse(safeGet('workout_insights_v3')); return [workoutFromData(d), d?.savedAt]; } },
+  { key: 'kalstrack', hub: kalsFromHub, paint: paintKals,
+    full: cf => [kalsFromData(cf), null] },
+  { key: 'lukas-flow', hub: lukasFromHub, paint: paintLukas,
+    full: cf => { const v = lukasFromLocal(); return [v, lukasSavedAt(v, cf)]; } },
+];
+
+// ── LOAD ALL — summaries first, per-widget fetch only for widgets without one ──
+async function loadAll() {
+  // Show localStorage data immediately
+  loadFromLocalStorage();
+
+  // Show shimmer while fetching from Cloudflare
+  setLoading(true);
+
+  // Local edits that never reached the cloud go first, so the summaries include them
+  try { await LifeSync.flushPending(); } catch (_) {}
+
+  let hub = {};
+  try {
+    const r = await (await LifeSync.request('/hub')).json();
+    if (r && typeof r === 'object' && !Array.isArray(r)) hub = r;
+  } catch (_) {}   // old Worker or offline → per-widget path below
+
+  const missing = TILE_DATA.filter(t => !(hub[t.key]?.hub && typeof hub[t.key].hub === 'object'));
+  const fetched = await Promise.allSettled(missing.map(t => cfFetch(t.key)));
+  const cf = {};
+  missing.forEach((t, i) => { cf[t.key] = fetched[i].status === 'fulfilled' ? fetched[i].value : null; });
+
+  // Remove shimmer
+  setLoading(false);
+
+  TILE_DATA.forEach(t => {
+    const entry = hub[t.key];
+    try {
+      if (!(t.key in cf)) { t.paint(t.hub(entry.hub), entry.savedAt); return; }
+      const [view, localAt] = t.full(cf[t.key]);
+      t.paint(view, entry?.savedAt || localAt);   // cloud save time when the Worker has it
+    } catch (e) { console.warn('[Hub] tile', t.key, e); }
+  });
+
+  const stratFoot = document.getElementById('footer-strat');
+  if (stratFoot) stratFoot.textContent = 'To update manually';
+}
+
+function loadFromLocalStorage() {
+  TILE_DATA.forEach(t => {
+    try {
+      const [view, at] = t.key === 'kalstrack' ? [null, null] : t.full(null);
+      t.paint(view, at);
+    } catch (e) { console.warn('[Hub] local tile', t.key, e); }
+  });
 }
 
 loadAll();

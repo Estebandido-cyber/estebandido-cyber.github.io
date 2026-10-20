@@ -833,12 +833,22 @@ function cfSetStatus(ok) {
   text.textContent = ok ? 'Synced at ' + time : 'Sync failed at ' + time;
 }
 
+// Small summary for the Life Hub tile (both tabs, so it is the same on every device)
+function hubSummary() {
+  const hub = {};
+  ['now', 'fire'].forEach(tab => {
+    const d = derived(states[tab]);
+    hub[tab] = { leftover: Math.round(d.leftover), net: Math.round(d.net), income: Math.round(d.income) };
+  });
+  return hub;
+}
+
 let cfSaveTimer = null;
 async function cloudSave() {
   clearTimeout(cfSaveTimer);
   cfSaveTimer = setTimeout(async () => {
     try {
-      await CLOUD.put({ savedAt: new Date().toISOString(), ...states });
+      await CLOUD.put({ savedAt: new Date().toISOString(), ...states, hub: hubSummary() });
       cfSetStatus(true);
     } catch (e) {
       cfSetStatus(false);

@@ -11,13 +11,14 @@ writeFileSync(tmp, readFileSync(join(here, '..', 'worker', 'widgets-sync.js')));
 const worker = (await import(pathToFileURL(tmp))).default;
 
 function makeEnv() {
-  const store = new Map(), puts = [];
+  const store = new Map(), meta = new Map(), puts = [];
   const kv = {
     get: async k => (store.has(k) ? store.get(k) : null),
-    put: async (k, v, o = {}) => { puts.push({ k, o }); store.set(k, v); },
-    list: async ({ prefix }) => ({ keys: [...store.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })) }),
+    put: async (k, v, o = {}) => { puts.push({ k, o }); store.set(k, v); if (o.metadata) meta.set(k, o.metadata); else meta.delete(k); },
+    list: async ({ prefix = '' } = {}) => ({ list_complete: true, keys: [...store.keys()].filter(k => k.startsWith(prefix))
+      .map(name => (meta.has(name) ? { name, metadata: meta.get(name) } : { name })) }),
   };
-  return { env: { SYNC_SECRET: 'K', WIDGET_DATA: kv }, store, puts, kv };
+  return { env: { SYNC_SECRET: 'K', WIDGET_DATA: kv }, store, meta, puts, kv };
 }
 const call = (env, method, path, { key = 'K', body } = {}) =>
   worker.fetch(new Request('https://x.dev' + path, { method, headers: key ? { 'X-Secret': key } : {}, body }), env)
@@ -84,6 +85,31 @@ await t('backups: a failing backup never blocks the save', async () => {
   console.warn = warn;
   assert.equal(r.status, 200);
   assert.equal(store.get('fire-sim'), '{"v":"NEW"}');
+});
+
+await t('hub: summaries saved as metadata on the same put, listed by GET /hub', async () => {
+  const { env, puts } = makeEnv();
+  setDay('2026-10-20');
+  await call(env, 'POST', '/data/fire-sim', { body: JSON.stringify({ savedAt: '2026-10-19T08:00:00Z', S: {}, hub: { total: 1 } }) });
+  await call(env, 'POST', '/data/fire-sim', { body: JSON.stringify({ savedAt: '2026-10-20T09:00:00Z', S: {}, hub: { total: 2 } }) }); // + backup
+  await call(env, 'POST', '/data/workout', { body: JSON.stringify({ sessions: [], hub: { n: 3 } }) });          // no savedAt → server time
+  await call(env, 'POST', '/data/kalstrack', { body: JSON.stringify({ days: {} }) });                           // no hub yet
+  await call(env, 'POST', '/data/notes', { body: 'not json' });
+  await call(env, 'POST', '/data/xpenser', { body: JSON.stringify({ hub: { t: 'x'.repeat(1200) } }) });         // too big for metadata
+  assert.equal(puts.filter(p => !p.k.startsWith('bak:')).length, 6, 'summary must not cost extra writes');
+  const r = await call(env, 'GET', '/hub');
+  assert.equal(r.status, 200);
+  const hub = JSON.parse(r.text);
+  assert.deepEqual(hub['fire-sim'], { savedAt: '2026-10-20T09:00:00Z', hub: { total: 2 } });
+  assert.deepEqual(hub.workout.hub, { n: 3 });
+  assert.equal(hub.workout.savedAt, '2026-10-20T10:00:00.000Z');
+  assert.equal(hub.kalstrack.hub, undefined);
+  assert.ok(hub.kalstrack.savedAt && hub.notes.savedAt && hub.xpenser.savedAt);
+  assert.equal(hub.xpenser.hub, undefined, 'oversized summary dropped, save kept');
+  assert.ok(!Object.keys(hub).some(k => k.startsWith('bak:')), 'backups excluded');
+  assert.equal((await call(env, 'GET', '/hub', { key: null })).status, 401);
+  assert.equal((await call(env, 'POST', '/hub', { body: '{}' })).status, 405);
+  globalThis.Date = RealDate;
 });
 
 await t('price proxy: ticker validated', async () => {

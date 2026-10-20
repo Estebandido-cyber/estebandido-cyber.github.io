@@ -69,7 +69,15 @@ def wait_until(pg, fn, timeout=6.0):
 
 
 class FakeWorker:
-    def __init__(self): self.store, self.log, self.offline, self.max_body = {}, [], False, None
+    """Mock of worker/widgets-sync.js: /data/<key>, and /hub built from each save's `hub` (KV metadata)."""
+    def __init__(self): self.store, self.meta, self.log, self.offline, self.max_body = {}, {}, [], False, None
+    def save_meta(self, k, body):
+        try: obj = json.loads(body or '')
+        except Exception: obj = None
+        obj = obj if isinstance(obj, dict) else {}
+        meta = {'savedAt': obj.get('savedAt') or time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
+        if isinstance(obj.get('hub'), dict): meta['hub'] = obj['hub']
+        self.meta[k] = meta
     def handle(self, route):
         rq = route.request
         if self.offline: return route.abort('internetdisconnected')
@@ -84,9 +92,12 @@ class FakeWorker:
                 if self.max_body and len(rq.post_data or '') > self.max_body:
                     return route.fulfill(status=413, body='Too large', headers=CORS)
                 self.store[k] = rq.post_data
+                self.save_meta(k, rq.post_data)
                 return route.fulfill(status=200, body='OK', headers=CORS)
             return route.fulfill(status=200, body=self.store.get(k, '{}'), headers=JSONH)
+        if path == '/hub': return route.fulfill(status=200, body=json.dumps(self.meta), headers=JSONH)
         return route.fulfill(status=200, body='{}', headers=JSONH)   # /price etc.
+    def posted(self, k): return json.loads(self.store[k]) if k in self.store else None
     def keys(self, method): return {p[6:] for m, p, _ in self.log if m == method and p.startswith('/data/')}
 
 
@@ -470,6 +481,167 @@ def fire_sim_rules(b):
     pg, errs = open_page(ctx, 'FIRE_SIM.html'); pg.wait_for_timeout(500)
     r = pg.evaluate("[S['pea-r1'], S['pea-r9'], S['cto-r5'], 'pea-r' in S, scenarios[0].snap.S['pea-r4']]")
     assert r == [6, 6, 4, False, 3], f'old single-rate save not migrated: {r}'
+    assert not errs, errs
+    ctx.close()
+
+
+# ── Hub summaries (ROADMAP step 1) ──
+import datetime
+def periods_now():
+    t = datetime.date.today(); mon = t - datetime.timedelta(days=t.weekday())
+    return dict(today=t.isoformat(), week=mon.isoformat(), month=t.isoformat()[:7], year=t.isoformat()[:4])
+
+def stats_text(pg, key): return pg.evaluate("id => document.getElementById(id).textContent", 'stats-' + key)
+
+@test
+def widgets_send_small_hub_summary(b):
+    """Every widget's cloud save carries a `hub` object that fits Cloudflare's 1 KB metadata, without timestamps."""
+    for f, w in widget_info().items():
+        if not w['key'] or w['key'] == 'lukas-flow': continue      # LUKAS: only with live prices (own test)
+        worker = FakeWorker(); ctx = new_context(b, worker)
+        pg, errs = open_page(ctx, f)
+        wait_until(pg, lambda: w['key'] in worker.keys('GET'))
+        if f in SAVE_BY_CLICK: pg.click(SAVE_BY_CLICK[f])
+        else: pg.evaluate('cloudSave()')
+        assert wait_until(pg, lambda: w['key'] in worker.store, 6), f'{f}: no save'
+        hub = worker.posted(w['key']).get('hub')
+        assert isinstance(hub, dict), f'{f}: payload has no hub summary'
+        size = len(json.dumps({'savedAt': '2026-10-20T10:00:00.000Z', 'hub': hub}, ensure_ascii=False, separators=(',', ':')).encode())
+        assert size <= 1000, f'{f}: summary too big for KV metadata ({size} B)'
+        assert not re.search(r'savedAt|updatedAt|exportedAt|"at"', json.dumps(hub)), f'{f}: timestamp inside hub breaks the unchanged-save check'
+        assert not errs, f'{f}: {errs}'
+        ctx.close()
+
+@test
+def hub_summary_values(b):
+    P = periods_now()
+    def saved(f, init, key, save='cloudSave()'):
+        worker = FakeWorker(); ctx = new_context(b, worker); ctx.add_init_script(init)
+        pg, errs = open_page(ctx, f); wait_until(pg, lambda: key in worker.keys('GET')); pg.wait_for_timeout(300)
+        pg.evaluate(save)
+        assert wait_until(pg, lambda: key in worker.store, 6), f'{f}: no save'
+        assert not errs, f'{f}: {errs}'
+        h = worker.posted(key)['hub']; ctx.close(); return h
+    # Do it!: open items only, long text cut, everything escaped later by the Hub
+    long = 'x' * 80
+    h = saved('notes.html', "localStorage.setItem('doit_lcc_v1', JSON.stringify({postits:{today:{items:[{text:'A',done:false},{text:'B',done:true},{text:'%s',done:false}]},week:{items:[]},later:{items:[]}},notes:[]}));" % long, 'doit-lcc')
+    assert h['nToday'] == 2 and h['today'][0] == 'A' and len(h['today'][1]) == 40 and h['week'] == [], h
+    many = json.dumps([{'text': 'é' * 60 + str(i), 'done': False} for i in range(10)])
+    h = saved('notes.html', "localStorage.setItem('doit_lcc_v1', JSON.stringify({postits:{today:{items:%s},week:{items:%s},later:{items:[]}},notes:[]}));" % (many, many), 'doit-lcc')
+    assert len(json.dumps(h, ensure_ascii=False, separators=(',', ':')).encode()) <= 800 and h['nToday'] == 10, 'Do it! summary not trimmed to fit'
+    # Xpenser: totals anchored to this week / month / year
+    data = {P['today']: [{'amt': '10.5'}], P['month'] + '-01': [{'amt': '100'}], P['year'] + '-01-01': [{'amt': '1000'}], '2001-01-01': [{'amt': '5'}]}
+    cf = {P['month']: {'salary': 2000, 'partner': '500'}}
+    h = saved('XPENSE_TRACKER.html', "localStorage.setItem('depenses_data_v1', %s); localStorage.setItem('depenses_cashflow_v1', %s);" % (json.dumps(json.dumps(data)), json.dumps(json.dumps(cf))), 'xpenser')
+    exp_m = 10.5 + (100 if P['month'] + '-01' != P['today'] else 0)
+    assert (h['w'], h['m'], h['y'], h['mInc']) == (P['week'], P['month'], P['year'], 2500), h
+    assert h['mT'] == exp_m and h['yT'] == exp_m + (1000 if P['year'] + '-01-01' < P['month'] + '-01' else 0), h
+    # Workout: month count anchored, last session, best kcal
+    h = saved('workout_dashboard.html', "localStorage.setItem('workout_insights_v3', JSON.stringify({sessions:[{d:'2026-01-02',dur:30,kcal:700},{d:'2026-03-04',dur:45,kcal:300}],monthly:[{month:'%s',sessions:7}],ts:Date.now()}));" % P['month'], 'workout')
+    assert (h['m'], h['mN'], h['last'], h['dur'], h['best']) == (P['month'], 7, '2026-03-04', 45, 700), h
+    # Kals: most recent day WITH entries (empty newer days skipped)
+    h = saved('kals_track.html', "localStorage.setItem('kals_settings', JSON.stringify({budget:2000})); localStorage.setItem('kals_day_2026-01-05', JSON.stringify({meals:[{kcal:500.4},{kcal:300}],burned:[{kcal:100}],waterTotal:1500})); localStorage.setItem('kals_day_2026-01-06', JSON.stringify({meals:[],burned:[]}));", 'kalstrack')
+    assert h == {'budget': 2000, 'd': '2026-01-05', 'c': 800, 'b': 100, 'w': 1500}, h
+
+@test
+def fire_summary_matches_widget(b):
+    worker = FakeWorker(); ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'FIRE_SIM.html'); wait_until(pg, lambda: 'fire-sim' in worker.keys('GET')); pg.wait_for_timeout(300)
+    pg.evaluate("COP_EUR = 5000; Object.assign(S, {pea:100,av:10,cto:20,liv:5,cash:1,cop1:50,cop2:0,cop3:100,cop4:0}); document.getElementById('cb-cop1').checked = true; document.getElementById('cb-cop3').checked = false; cloudSave();")
+    assert wait_until(pg, lambda: 'fire-sim' in worker.store, 6)
+    h = worker.posted('fire-sim')['hub']
+    assert (h['fr'], h['co'], h['total']) == (136000, 10000, 146000), f'FIRE summary must use live rate and only ticked assets: {h}'
+    assert not errs, errs
+    ctx.close()
+
+def seed_hub(worker, P, kals_day=None):
+    """Summaries for every widget, as the Worker would return them from /hub."""
+    at = '2026-10-20T08:00:00Z'
+    hubs = {
+        'doit-lcc': {'nToday': 2, 'nWeek': 0, 'today': ['<b>bold</b> & co', 'Call bank'], 'week': []},
+        'xpenser': {'w': P['week'], 'wT': 42.5, 'm': P['month'], 'mT': 900, 'mInc': 1000, 'y': P['year'], 'yT': 9000},
+        'xpenses-calculator': {'now': {'leftover': 850, 'net': 0, 'income': 0}, 'fire': {'leftover': -120, 'net': 0, 'income': 0}},
+        'weekplanner': {'week': 1, 'hours': 4.5, 'free': 3},
+        'fire-sim': {'total': 216667, 'fr': 150000, 'co': 66667, 'scen': 'Plan <A>'},
+        'workout': {'m': P['month'], 'mN': 5, 'best': 520, 'last': '2026-10-18', 'dur': 45},
+        'kalstrack': {'budget': 2000, 'd': kals_day or P['today'], 'c': 900, 'b': 200, 'w': 1500},
+        'lukas-flow': {'v': 123456, 'gl': -5432, 'glp': -4.2},
+    }
+    worker.meta = {k: {'savedAt': at, 'hub': h} for k, h in hubs.items()}
+
+@test
+def hub_renders_from_summaries_only(b):
+    P = periods_now(); worker = FakeWorker(); seed_hub(worker, P)
+    ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'index.html')
+    assert wait_until(pg, lambda: '850' in stats_text(pg, 'calc')), 'Hub did not render summaries'
+    pg.wait_for_timeout(300)
+    assert worker.keys('GET') == set(), f'Hub fetched full payloads although summaries exist: {worker.keys("GET")}'
+    t = {k: stats_text(pg, k) for k in ('notes', 'tracker', 'calc', 'planner', 'fire', 'workout', 'kals', 'lukas')}
+    assert '<b>bold</b> & co' in t['notes'] and not pg.query_selector('#stats-notes b'), 'Do it! text must be escaped'
+    assert '43' in t['tracker'], t['tracker']
+    assert '90% of income' in t['tracker'], t['tracker']
+    assert 'Week 2' in t['planner'] and '4.5h' in t['planner'] and '3 free days' in t['planner'], t['planner']
+    assert 'Plan <A>' in t['fire'] and not pg.query_selector('#stats-fire a'), t['fire']
+    assert '5 sessions' in t['workout'] and '520 kcal' in t['workout'], t['workout']
+    assert '900 kcal' in t['kals'] and '1300 kcal' in t['kals'] and 'Nothing logged' not in t['kals'], t['kals']
+    assert '-4.2%' in t['lukas'], t['lukas']
+    foot = pg.evaluate("document.getElementById('footer-tracker').textContent")
+    assert foot.startswith('Last logged'), f'footer must come from the cloud save time: {foot!r}'
+    assert not errs, errs
+    ctx.close()
+
+@test
+def hub_old_periods_and_kals_last_day(b):
+    P = periods_now(); worker = FakeWorker(); seed_hub(worker, P, kals_day='2026-01-05')
+    worker.meta['xpenser']['hub'].update(w='2000-01-03', m='2000-01', y='2000')
+    worker.meta['workout']['hub']['m'] = '2000-01'
+    ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'index.html')
+    assert wait_until(pg, lambda: 'Nothing logged today' in stats_text(pg, 'kals')), stats_text(pg, 'kals')
+    k = stats_text(pg, 'kals')
+    assert re.search(r'Mon,? 5 Jan', k) and '900 kcal' in k and '1300 kcal' in k, f'Kals must show the last logged day: {k}'
+    tr = stats_text(pg, 'tracker').replace(' ', ' ').replace('\xa0', ' ')
+    assert tr.count('0 €') == 3 and 'of income' not in tr, f'old-period totals must count as 0: {tr}'
+    assert '0 sessions' in stats_text(pg, 'workout')
+    assert not errs, errs
+    ctx.close()
+
+@test
+def hub_falls_back_per_widget(b):
+    P = periods_now(); worker = FakeWorker(); seed_hub(worker, P)
+    del worker.meta['kalstrack']; worker.meta['weekplanner'] = {'savedAt': '2026-10-20T08:00:00Z'}   # saved before summaries existed
+    worker.store['kalstrack'] = json.dumps({'settings': {'budget': 2000}, 'days': {'kals_day_' + P['today']: {'meals': [{'kcal': 700}], 'burned': [], 'waterTotal': 500}}})
+    worker.store['weekplanner'] = json.dumps({'curWeek': 0, 'weekPlaces': [{'a': {'d': 0, 'dur': 3}}], 'acts': [], 'weekNotes': []})
+    ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'index.html')
+    assert wait_until(pg, lambda: '700 kcal' in stats_text(pg, 'kals')), stats_text(pg, 'kals')
+    assert worker.keys('GET') == {'kalstrack', 'weekplanner'}, worker.keys('GET')
+    assert '3h' in stats_text(pg, 'planner')
+    assert pg.evaluate("document.getElementById('footer-planner').textContent").startswith('Last logged'), 'planner footer must use the cloud save time'
+    assert not errs, errs
+    ctx.close()
+
+@test
+def lukas_hub_saves_on_100_eur_or_daily(b):
+    worker = FakeWorker(); ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'lukas_analyzer.html'); wait_until(pg, lambda: 'lukas-flow' in worker.keys('GET')); pg.wait_for_timeout(500)
+    ev = pg.evaluate
+    posts = lambda: len([1 for m, p, _ in worker.log if m == 'POST' and p == '/data/lukas-flow'])
+    ev("localStorage.setItem('lukas_hub_last', JSON.stringify({v:10000, gl:500, glp:5, at: Date.now()}))")
+    ev("pricedSnap = {totalValue: 10099.4, totalGL: 520, totalGLPct: 5.2}; maybeHubSave()")
+    pg.wait_for_timeout(3600)
+    assert posts() == 0, 'a move under €100 within 24 h must not save'
+    ev("pricedSnap = {totalValue: 9900, totalGL: 400, totalGLPct: 4}; maybeHubSave()")
+    assert wait_until(pg, lambda: posts() == 1, 6), 'a €100 move must save'
+    assert worker.posted('lukas-flow')['hub'] == {'v': 9900, 'gl': 400, 'glp': 4}, worker.posted('lukas-flow')
+    ev("localStorage.setItem('lukas_hub_last', JSON.stringify({v:9900, gl:400, glp:4, at: Date.now() - 25*3600*1000}))")
+    ev("pricedSnap = {totalValue: 9910, totalGL: 410, totalGLPct: 4.1}; maybeHubSave()")
+    assert wait_until(pg, lambda: posts() == 2, 6), 'after 24 h any change must save'
+    ev("pricedSnap = null; localStorage.setItem('lukas_hub_last', JSON.stringify({v:1, gl:2, glp:3, at: 0}))")
+    ev("updateCash(12345)")     # manual edit before prices loaded: keeps the last summary, never a partial one
+    assert wait_until(pg, lambda: posts() == 3, 6), 'manual edit must save'
+    assert worker.posted('lukas-flow')['hub'] == {'v': 1, 'gl': 2, 'glp': 3}, worker.posted('lukas-flow')
     assert not errs, errs
     ctx.close()
 

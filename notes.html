@@ -1187,10 +1187,24 @@ function scheduleCfSave() {
   cfSaveTimer = setTimeout(() => cloudSave(), 3000);
 }
 
+// Small summary for the Life Hub tile (stored by the Worker as KV metadata, ≤ 1 KB):
+// open items of Today / This week, text trimmed, dropped from the end until it fits.
+function hubSummary() {
+  const open = k => (state.postits[k]?.items || []).filter(i => i && !i.done).map(i => String(i.text || '').trim()).filter(Boolean);
+  const cut = t => t.length > 40 ? t.slice(0, 39) + '\u2026' : t;
+  const allT = open('today'), allW = open('week');
+  const hub = { nToday: allT.length, nWeek: allW.length, today: allT.slice(0, 5).map(cut), week: allW.slice(0, 5).map(cut) };
+  const size = () => new TextEncoder().encode(JSON.stringify(hub)).length;
+  while (size() > 800 && (hub.today.length || hub.week.length)) {
+    (hub.week.length >= hub.today.length ? hub.week : hub.today).pop();
+  }
+  return hub;
+}
+
 async function cloudSave() {
   cfStatus('Syncing\u2026', 'working');
   try {
-    await CLOUD.put(state);
+    await CLOUD.put({ ...state, hub: hubSummary() });
     const t = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
     cfStatus('\u2b24 Synced at ' + t, 'ok');
   } catch(e) {

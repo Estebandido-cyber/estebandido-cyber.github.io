@@ -1055,11 +1055,23 @@ function cfStatus(type) {
   }
 }
 
+// Small summary for the Life Hub tile — same totals as the widget: live COP/EUR rate,
+// Colombian assets only when ticked (colOn).
+function hubSummary() {
+  const fr = (S.pea + S.av + S.cto + S.liv + S.cash) * 1000;
+  const co = COL_ENTRIES.reduce((s, e) => s + (colOn(e.id) ? (S[e.id] * 1e6) / COP_EUR : 0), 0);
+  const hub = { total: Math.round(fr + co), fr: Math.round(fr), co: Math.round(co) };
+  const sc = typeof activeScenario === 'number' ? scenarios[activeScenario] : null;
+  if (sc && sc.name) hub.scen = String(sc.name).slice(0, 30);
+  return hub;
+}
+
 async function cloudSave() {
   try {
     const payload = {
       version: 1, appName: 'FIRE Sim', savedAt: new Date().toISOString(),
-      S: { ...S }, colChecks: getColChecks(), scenarios, activeScenario
+      S: { ...S }, colChecks: getColChecks(), scenarios, activeScenario,
+      hub: hubSummary()
     };
     await CLOUD.put(payload);
     cfStatus('ok');

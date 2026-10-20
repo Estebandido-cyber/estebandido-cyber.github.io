@@ -821,9 +821,25 @@ function scheduleCloudsave(){
   cfSaveTimer=setTimeout(cloudSave,3000);
 }
 
+// Small summary for the Life Hub tile: hours planned this week and weekdays with < 2 h planned
+function hubSummary(){
+  const blocks=Object.values((weekPlaces&&weekPlaces[curWeek])||{});
+  const dayMap={mon:0,tue:1,wed:2,thu:3,fri:4};
+  const byDay=[0,0,0,0,0];
+  let hours=0;
+  blocks.forEach(b=>{
+    if(!b||typeof b!=='object')return;
+    const dur=parseFloat(b.dur)||0;
+    hours+=dur;
+    const d=typeof b.d==='number'?b.d:(dayMap[b.d]??-1);
+    if(d>=0&&d<=4)byDay[d]+=dur;
+  });
+  return {week:curWeek,hours:Math.round(hours*100)/100,free:byDay.filter(h=>h<2).length};
+}
+
 async function cloudSave(){
   try{
-    const payload={acts,weekPlaces,weekNotes,curWeek};
+    const payload={acts,weekPlaces,weekNotes,curWeek,hub:hubSummary()};
     await CLOUD.put(payload);
     const t=new Date();
     cfStatus('Synced at '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0'),'ok');

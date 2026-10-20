@@ -2711,9 +2711,32 @@ function gdriveLoad() { DRIVE.load(); }
 // ═══════════════════════════════════════════════
 const CLOUD = LifeSync.cloud('xpenser');
 
+// Small summary for the Life Hub tile. Totals are anchored to their period
+// (week = its Monday, month, year) so the Hub never shows last week's total as this week's.
+function hubSummary() {
+  const p2 = n => String(n).padStart(2, '0');
+  const iso = d => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  const now = new Date();
+  const m = iso(now).slice(0, 7), y = m.slice(0, 4);
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (now.getDay() + 6) % 7);
+  const w = iso(monday), sunday = iso(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6));
+  let wT = 0, mT = 0, yT = 0;
+  Object.entries(data || {}).forEach(([k, day]) => {
+    if (!Array.isArray(day)) return;
+    const sum = day.reduce((s, e) => s + (parseFloat(e.amt) || 0), 0);
+    if (k.startsWith(y)) yT += sum;
+    if (k.startsWith(m)) mT += sum;
+    if (k >= w && k <= sunday) wT += sum;
+  });
+  const cf = (cfData || {})[m] || {};
+  const mInc = ['salary', 'partner', 'extra', 'extra2'].reduce((s, f) => s + (parseFloat(cf[f]) || 0), 0);
+  const r2 = n => Math.round(n * 100) / 100;
+  return { w, wT: r2(wT), m, mT: r2(mT), mInc: r2(mInc), y, yT: r2(yT) };
+}
+
 async function cloudSave() {
   try {
-    const payload = { data, settings, cashflow: cfData, notes: notesData };
+    const payload = { data, settings, cashflow: cfData, notes: notesData, hub: hubSummary() };
     await CLOUD.put(payload);
     updateLastSaveBar(true);
   } catch(e) { console.warn('Cloud save failed', e); }
