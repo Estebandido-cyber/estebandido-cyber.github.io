@@ -63,6 +63,10 @@ Some widgets also write a small summary for the Hub, e.g. Xpenses Calculator →
 - Frankfurter API (ECB rates, COP/EUR) — no key
 - Google Drive API (`drive.file` scope), OAuth client ID in `lib/drive.js` — public by design; only works from the authorized JavaScript origins set in Google Cloud Console
 
+## Tests
+
+`python3 tests/run.py` — full suite (~1 min, mocked network, needs Python Playwright + Node). See CLAUDE.md.
+
 ## Adding a widget
 
 1. Create `my_widget.html`. In `<head>` add `<script src="lib/sync-auth.js"></script>` and `<script src="lib/sync.js"></script>` (+ `lib/drive.js` and the GIS script if it needs Drive backup).

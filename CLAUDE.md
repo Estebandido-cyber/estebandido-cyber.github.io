@@ -27,12 +27,12 @@ This repo is published as-is by GitHub Pages: **everything committed is public**
 4. Commit with a descriptive message and push to `main`. Pages deploys in ~1 min; tell the owner to hard-reload (Ctrl/Cmd+Shift+R).
 
 ## Testing
-No test suite yet. Use headless Chromium (Python Playwright is available):
-- `file://` load of the widget, collect `pageerror` events — must be empty.
-- Mock network: Chart.js CDN → local `chart.js` from npm; `widgets-sync` → fake 200/401; `accounts.google.com` → empty; `www.googleapis.com` → fake Drive for `lib/drive.js`.
-- Pre-seed `localStorage.lifehub_sync_secret` in `add_init_script` to skip the key prompt.
-- Assert computed values via `page.evaluate` (e.g. `derived(states.now)`, `S`, `shadowRun(0)`), and screenshot at 390 px and 800 px for layout changes.
-- Check light and dark mode when touching CSS.
+**Run `python3 tests/run.py` before every push — it must end with `ALL PASSED`.** (~1 min; `python3 tests/run.py xpenses` runs a subset.)
+- `tests/run.py`: Playwright checks (all pages load, cloud sync per widget, wrong key, Drive backup, offline edits, service worker, Xpenses and FIRE calculation rules). `tests/worker.test.mjs`: Worker unit tests.
+- Network is fully mocked by one catch-all route; the real Worker/Google/CDNs are never contacted. Chart.js is fetched once into `tests/.cache` (gitignored).
+- Tests use their own inputs and check rules, not defaults or labels. Adding/renaming rows or changing defaults needs no test change; changing how money is calculated does — update the rule in the same commit and say so in the commit message.
+- New feature with math → add a rule test. For layout changes still screenshot at 390 px and 800 px, light and dark.
+- In the harness, wait with `wait_until(pg, …)` / `pg.wait_for_timeout`, never `time.sleep` (it freezes the mocked network).
 
 ## Widget notes
 - **FIRE_SIM.html** — state `S`, limits `LIM`, render `draw()`, save `saveState()`. PEA/CTO returns are 9 five-year periods `pea-r1..9`, `cto-r1..9` (`cto-sync` copies PEA); horizon 44 years; summary uses CAGR via `cagr()`. Old `pea-r`/`cto-r` migrated by `migrateReturns()`.
