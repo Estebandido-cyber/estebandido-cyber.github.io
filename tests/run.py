@@ -721,9 +721,18 @@ def hub_long_press_drag(b):
             r = pg.evaluate("(() => { const b = document.getElementById('more').getBoundingClientRect(); return b.top < innerHeight - 10 ? [b.left, b.top] : null; })()")
             if r: break
         assert r, 'auto-scroll did not reach the More drop zone'
-        pg.mouse.move(r[0] + 40, r[1] + 20, steps=4)
+        # The page keeps auto-scrolling while the finger is near the bottom edge, so follow the zone
+        # until it is under the pointer (highlighted) — as a person would — then drop.
+        for _ in range(40):
+            box = pg.evaluate("(() => { const b = document.getElementById('more').getBoundingClientRect(); return [b.left + 40, Math.min(b.top + 20, innerHeight - 5)]; })()")
+            pg.mouse.move(box[0], box[1], steps=2); pg.wait_for_timeout(80)
+            if pg.evaluate("document.getElementById('more').classList.contains('drop-more')"):
+                pg.wait_for_timeout(150)
+                if pg.evaluate("document.getElementById('more').classList.contains('drop-more')"): break
+        assert pg.evaluate("document.getElementById('more').classList.contains('drop-more')"), 'More drop zone never highlighted'
     long_drag(pg, '.tile-kals', to_more)
-    assert 'kals' not in pg.evaluate(ORDER_JS) and pg.evaluate("document.querySelector('#more-count').textContent") == '1'
+    assert 'kals' not in pg.evaluate(ORDER_JS) and pg.evaluate("document.querySelector('#more-count').textContent") == '1', \
+        f'Kals not moved to More: {pg.evaluate(ORDER_JS)}'
     # Workout → onto an unpinned tile → unpinned (back to automatic order)
     def onto_unpinned():
         r = pg.query_selector('.tile-fire').bounding_box()
@@ -749,6 +758,67 @@ def hub_layout_newest_copy_wins(b):
         assert wait_until(pg, lambda: pg.evaluate(ORDER_JS)[:1] == want), f'{local_at} vs {cloud_at}: {pg.evaluate(ORDER_JS)}'
         pg.wait_for_timeout(300)
         assert pg.evaluate(ORDER_JS)[:1] == want
+        assert not errs, errs
+        ctx.close()
+
+
+# ── Leaving a widget right after an edit (bug 2026-10-21: edit not in the Hub / lost on reopen) ──
+DEBOUNCED = {'notes.html': "scheduleCfSave()", 'XPENSES_CALCULATOR.html': "cloudSave()", 'FIRE_SIM.html': "cloudSaveDebounced()",
+             'workout_dashboard.html': "cloudSave()", 'kals_track.html': "scheduleCloudsave()",
+             'lukas_analyzer.html': "debouncedCloudSave()", 'WEEK_PLANNER.html': "#clearbtn"}
+
+# Over http like the real site: under file:// Chromium sometimes does not show the next page a
+# localStorage write made just before navigating (measured ~1/30), which made these tests flaky.
+@test
+def edit_then_leave_at_once_reaches_cloud(b):
+    keys = {f: w['key'] for f, w in widget_info().items()}
+    assert set(DEBOUNCED) | {'XPENSE_TRACKER.html'} == {f for f, k in keys.items() if k}, 'new widget with cloud sync: add it to DEBOUNCED'
+    with Server() as srv:
+      for f, trig in DEBOUNCED.items():
+        worker = FakeWorker(); ctx = new_context(b, worker)
+        pg, errs = open_page(ctx, srv.base + f)
+        assert wait_until(pg, lambda: keys[f] in worker.keys('GET')), f'{f}: no load'
+        pg.wait_for_timeout(300)
+        if trig.startswith('#'): pg.click(trig)
+        else: pg.evaluate(trig)                                   # a save is now waiting ~3 s
+        assert pg.evaluate(f"localStorage.getItem('lifesync_pending_{keys[f]}')") is not None, f'{f}: edit not kept as pending at once'
+        pg.wait_for_timeout(300)
+        pg.goto(srv.base + 'index.html')                          # the owner taps the Hub icon
+        assert wait_until(pg, lambda: keys[f] in worker.keys('POST'), 5), f'{f}: edit lost when leaving before the save delay'
+        assert not errs, f'{f}: {errs}'
+        ctx.close()
+
+@test
+def edit_left_offline_is_kept_and_pushed(b):
+  with Server() as srv:
+    worker = FakeWorker(); ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, srv.base + 'XPENSES_CALCULATOR.html'); wait_until(pg, lambda: 'xpenses-calculator' in worker.keys('GET'))
+    pg.evaluate("states.now.salary = 1000; saveLocal('now'); render('now')")
+    assert wait_until(pg, lambda: (worker.posted('xpenses-calculator') or {}).get('now', {}).get('salary') == 1000, 6)
+    pg.evaluate("states.now.salary = 7777; saveLocal('now'); render('now')")
+    worker.offline = True                                        # the request made while leaving never arrives
+    pg.click('a.home-link'); pg.wait_for_url('**/index.html'); pg.wait_for_timeout(800)
+    assert '6' in stats_text(pg, 'calc') and pg.evaluate("LifeSync.localHub('xpenses-calculator').hub.now.leftover") > 0, \
+        'Hub must show the unsynced edit from this device'
+    worker.offline = False
+    pg.goto(srv.base + 'XPENSES_CALCULATOR.html'); pg.wait_for_timeout(1500)
+    assert pg.evaluate("states.now.salary") == 7777, 'reopening the widget loaded the older cloud copy over the edit'
+    assert worker.posted('xpenses-calculator')['now']['salary'] == 7777, 'edit not pushed after reconnect'
+    assert not errs, errs
+    ctx.close()
+
+@test
+def hub_prefers_newer_summary_of_this_device(b):
+    P = periods_now()
+    for local_at, want, other in (('2026-10-20T09:00:00Z', '999', '111'), ('2026-10-20T07:00:00Z', '111', '999')):
+        worker = FakeWorker(); seed_hub(worker, P)
+        worker.meta['xpenses-calculator'] = {'savedAt': '2026-10-20T08:00:00Z', 'hub': {'now': {'leftover': 111}, 'fire': {'leftover': 0}}}
+        ctx = new_context(b, worker)
+        ctx.add_init_script("localStorage.setItem('lifesync_hub_xpenses-calculator', JSON.stringify({savedAt:'%s', hub:{now:{leftover:999},fire:{leftover:0}}}))" % local_at)
+        pg, errs = open_page(ctx, 'index.html')
+        assert wait_until(pg, lambda: not pg.query_selector('.tile.loading') and want in stats_text(pg, 'calc')), f'{local_at}: {stats_text(pg, "calc")}'
+        pg.wait_for_timeout(300)
+        assert want in stats_text(pg, 'calc') and other not in stats_text(pg, 'calc'), stats_text(pg, 'calc')
         assert not errs, errs
         ctx.close()
 

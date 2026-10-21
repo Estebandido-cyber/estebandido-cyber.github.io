@@ -33,6 +33,8 @@ This repo is published as-is by GitHub Pages: **everything committed is public**
 - Tests use their own inputs and check rules, not defaults or labels. Adding/renaming rows or changing defaults needs no test change; changing how money is calculated does — update the rule in the same commit and say so in the commit message.
 - New feature with math → add a rule test. For layout changes screenshot at the owner's real viewports: **tablet 1070×596 landscape (main)** and ~764×900 portrait (OnePlus Pad Go), **phone 411×784** (Pixel 8), desktop ≥ 1200 px — light and dark. The tablet is only 596 px tall in landscape.
 - In the harness, wait with `wait_until(pg, …)` / `pg.wait_for_timeout`, never `time.sleep` (it freezes the mocked network).
+- Tests that navigate between pages and rely on localStorage must run over http (`with Server() as srv`), not `file://`: under file:// Chromium sometimes hides a write made just before navigating from the next page (~1/30), which makes tests flaky.
+- Check new tests for flakiness: run them 10–20× in a loop before pushing.
 
 ## Widget notes
 - **FIRE_SIM.html** — state `S`, limits `LIM`, render `draw()`, save `saveState()`. PEA/CTO returns are 9 five-year periods `pea-r1..9`, `cto-r1..9` (`cto-sync` copies PEA); horizon 44 years; summary uses CAGR via `cagr()`. Old `pea-r`/`cto-r` migrated by `migrateReturns()`.

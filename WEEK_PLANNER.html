@@ -818,8 +818,12 @@ function cfStatus(msg,type){
 
 function scheduleCloudsave(){
   clearTimeout(cfSaveTimer);
-  cfSaveTimer=setTimeout(cloudSave,3000);
+  CLOUD.stage(cloudPayload());   // kept as pending now, so leaving before the upload loses nothing
+  cfSaveTimer=setTimeout(() => { cfSaveTimer = null; cloudSave(); },3000);
 }
+
+// Leaving the page (Hub link, app switch): send a waiting save now instead of losing it
+LifeSync.onLeave(() => { if (cfSaveTimer) { clearTimeout(cfSaveTimer); cfSaveTimer = null; cloudSave(); } });
 
 // Small summary for the Life Hub tile: hours planned this week and weekdays with < 2 h planned
 function hubSummary(){
@@ -837,9 +841,10 @@ function hubSummary(){
   return {week:curWeek,hours:Math.round(hours*100)/100,free:byDay.filter(h=>h<2).length};
 }
 
+function cloudPayload(){return {acts,weekPlaces,weekNotes,curWeek,hub:hubSummary()};}
 async function cloudSave(){
   try{
-    const payload={acts,weekPlaces,weekNotes,curWeek,hub:hubSummary()};
+    const payload=cloudPayload();
     await CLOUD.put(payload);
     const t=new Date();
     cfStatus('Synced at '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0'),'ok');

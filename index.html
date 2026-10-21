@@ -1219,6 +1219,18 @@ let lastHub = {};
 const cloudDone = new Set();               // tiles painted from cloud data in the current load
 
 const hasSummary = t => !!(lastHub[t.key]?.hub && typeof lastHub[t.key].hub === 'object');
+const timeOf = iso => { const n = Date.parse(iso || ''); return isNaN(n) ? 0 : n; };
+
+// This device's own latest summary (written by the widget on save) wins when it is newer than the
+// cloud's: the cloud summary list can lag a save by up to ~1 min, and a save may still be on its way.
+function mergeLocalSummaries() {
+  DATA_TILES.forEach(t => {
+    const local = LifeSync.localHub(t.key);
+    if (!local?.hub || typeof local.hub !== 'object') return;
+    const cloud = lastHub[t.key];
+    if (!cloud?.hub || timeOf(local.savedAt) > timeOf(cloud.savedAt)) lastHub[t.key] = local;
+  });
+}
 
 // Paint tiles from cloud data: the summary if there is one, else the full payload (fetched here)
 async function loadCloud(tiles) {
@@ -1257,6 +1269,7 @@ async function loadAll() {
     if (r && typeof r === 'object' && !Array.isArray(r)) lastHub = r;
   } catch (_) {}   // old Worker or offline → per-widget path below
   applyCloudLayout(lastHub[LAYOUT_KEY]);
+  mergeLocalSummaries();
 
   // Tiles in a collapsed "More" are only summarised (free); their full payload waits until expanded
   cloudDone.clear();
@@ -1284,6 +1297,8 @@ async function loadMore() {
 function loadFromLocalStorage() {
   DATA_TILES.forEach(t => {
     try {
+      const local = LifeSync.localHub(t.key);
+      if (local?.hub && typeof local.hub === 'object') { show(t, t.hub(local.hub), local.savedAt); return; }
       const [view, at] = t.noLocal ? [null, null] : t.full(null);
       show(t, view, at);
     } catch (e) { console.warn('[Hub] local tile', t.key, e); }

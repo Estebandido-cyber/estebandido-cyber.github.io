@@ -844,18 +844,24 @@ function hubSummary() {
 }
 
 let cfSaveTimer = null;
+function cloudPayload() { return { savedAt: new Date().toISOString(), ...states, hub: hubSummary() }; }
 async function cloudSave() {
   clearTimeout(cfSaveTimer);
-  cfSaveTimer = setTimeout(async () => {
-    try {
-      await CLOUD.put({ savedAt: new Date().toISOString(), ...states, hub: hubSummary() });
-      cfSetStatus(true);
-    } catch (e) {
-      cfSetStatus(false);
-      console.warn('Cloud save failed', e);
-    }
-  }, 3000);
+  CLOUD.stage(cloudPayload());   // kept as pending now, so leaving before the upload loses nothing
+  cfSaveTimer = setTimeout(cloudPush, 3000);
 }
+async function cloudPush() {
+  cfSaveTimer = null;
+  try {
+    await CLOUD.put(cloudPayload());
+    cfSetStatus(true);
+  } catch (e) {
+    cfSetStatus(false);
+    console.warn('Cloud save failed', e);
+  }
+}
+// Leaving the page (Hub link, app switch): send a waiting save now instead of losing it
+LifeSync.onLeave(() => { if (cfSaveTimer) { clearTimeout(cfSaveTimer); cloudPush(); } });
 
 async function cloudLoad() {
   try {

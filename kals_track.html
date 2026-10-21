@@ -2722,8 +2722,12 @@ function cfStatus(msg, type) {
 
 function scheduleCloudsave() {
   clearTimeout(cfSaveTimer);
-  cfSaveTimer = setTimeout(cloudSave, 4000);
+  CLOUD.stage(cloudPayload());   // kept as pending now, so leaving before the upload loses nothing
+  cfSaveTimer = setTimeout(() => { cfSaveTimer = null; cloudSave(); }, 4000);
 }
+
+// Leaving the page (Hub link, app switch): send a waiting save now instead of losing it
+LifeSync.onLeave(() => { if (cfSaveTimer) { clearTimeout(cfSaveTimer); cfSaveTimer = null; cloudSave(); } });
 
 // Small summary for the Life Hub tile: the most recent day with entries + budget
 function hubSummary(state) {
@@ -2738,10 +2742,14 @@ function hubSummary(state) {
   return hub;
 }
 
+function cloudPayload() {
+  const payload = getStateToSave();
+  payload.hub = hubSummary(payload);
+  return payload;
+}
 async function cloudSave() {
   try {
-    const payload = getStateToSave();
-    payload.hub = hubSummary(payload);
+    const payload = cloudPayload();
     cfStatus('Syncing…', 'working');
     await CLOUD.put(payload);
     const t = new Date();

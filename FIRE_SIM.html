@@ -1066,13 +1066,16 @@ function hubSummary() {
   return hub;
 }
 
+function cloudPayload() {
+  return {
+    version: 1, appName: 'FIRE Sim', savedAt: new Date().toISOString(),
+    S: { ...S }, colChecks: getColChecks(), scenarios, activeScenario,
+    hub: hubSummary()
+  };
+}
 async function cloudSave() {
   try {
-    const payload = {
-      version: 1, appName: 'FIRE Sim', savedAt: new Date().toISOString(),
-      S: { ...S }, colChecks: getColChecks(), scenarios, activeScenario,
-      hub: hubSummary()
-    };
+    const payload = cloudPayload();
     await CLOUD.put(payload);
     cfStatus('ok');
   } catch(e) { console.warn('Cloud save failed', e); cfStatus('err'); }
@@ -1080,8 +1083,12 @@ async function cloudSave() {
 
 function cloudSaveDebounced() {
   if (cfSaveTimer) clearTimeout(cfSaveTimer);
-  cfSaveTimer = setTimeout(cloudSave, 3000);
+  CLOUD.stage(cloudPayload());   // kept as pending now, so leaving before the upload loses nothing
+  cfSaveTimer = setTimeout(() => { cfSaveTimer = null; cloudSave(); }, 3000);
 }
+
+// Leaving the page (Hub link, app switch): send a waiting save now instead of losing it
+LifeSync.onLeave(() => { if (cfSaveTimer) { clearTimeout(cfSaveTimer); cfSaveTimer = null; cloudSave(); } });
 
 async function cloudLoad() {
   try {

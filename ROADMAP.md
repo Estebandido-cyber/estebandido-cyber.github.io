@@ -14,6 +14,8 @@ After step 3, send phone/tablet/desktop screenshots for approval before continui
 - There is NO tile reordering today; order is fixed in the HTML.
 - Found in step 1, NOT fixed (widget data change): `kals_track.html` keys days by UTC (`dateKey` uses `toISOString`), so food logged 00:00–02:00 Paris lands on the previous day. The Hub uses the Paris date.
 
+- Fixed 2026-10-21 (before step 4): an edit followed by tapping the Hub icon within the 3–4 s upload delay never reached the cloud, the Hub showed the old value, and reopening the widget loaded the older cloud copy over the edit (lost). Now uploads are staged as pending at edit time and sent on leave; the Hub prefers this device's newer summary (the cloud summary list can lag ~1 min).
+
 ## Steps
 1. ✅ **Tile summaries (#6)** (done 2026-10-20) — each widget adds a small `hub` object to its cloud payload (computed numbers only, NO timestamps inside, or the "skip unchanged saves" fingerprint breaks). Worker gets `GET /hub` returning all summaries + `savedAt` in one response. Hub renders from summaries, falls back to today's per-key fetch for widgets not yet updated. Hub download ~530 KB → ~2 KB. Needs Worker redeploy.
 2. ✅ **Tile registry** (done 2026-10-20) — one list (name, icon, file, cloud key, accent) generates the tiles; removes 9 hand-written tile blocks and duplicated load lists. Visual must stay identical (screenshot compare).

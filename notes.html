@@ -500,11 +500,6 @@ function _writeSave() {
   } catch(e) { console.warn('Save error', e); }
 }
 
-// Flush CF save immediately when navigating away
-window.addEventListener('beforeunload', () => {
-  clearTimeout(cfSaveTimer);
-  cloudSave();
-});
 
 function loadFromLS() {
   try {
@@ -1184,8 +1179,12 @@ function cfStatus(msg, type) {
 
 function scheduleCfSave() {
   clearTimeout(cfSaveTimer);
-  cfSaveTimer = setTimeout(() => cloudSave(), 3000);
+  CLOUD.stage(cloudPayload());   // kept as pending now, so leaving before the upload loses nothing
+  cfSaveTimer = setTimeout(() => { cfSaveTimer = null; cloudSave(); }, 3000);
 }
+
+// Leaving the page (Hub link, app switch): send a waiting save now instead of losing it
+LifeSync.onLeave(() => { if (cfSaveTimer) { clearTimeout(cfSaveTimer); cfSaveTimer = null; cloudSave(); } });
 
 // Small summary for the Life Hub tile (stored by the Worker as KV metadata, ≤ 1 KB):
 // open items of Today / This week, text trimmed, dropped from the end until it fits.
@@ -1201,10 +1200,11 @@ function hubSummary() {
   return hub;
 }
 
+function cloudPayload() { return { ...state, hub: hubSummary() }; }
 async function cloudSave() {
   cfStatus('Syncing\u2026', 'working');
   try {
-    await CLOUD.put({ ...state, hub: hubSummary() });
+    await CLOUD.put(cloudPayload());
     const t = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
     cfStatus('\u2b24 Synced at ' + t, 'ok');
   } catch(e) {

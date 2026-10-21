@@ -1139,8 +1139,12 @@ function cfStatus(msg, type) {
 
 function debouncedCloudSave() {
   clearTimeout(cfSaveTimer);
-  cfSaveTimer = setTimeout(cloudSave, 3000);
+  CLOUD.stage(cloudPayload());   // kept as pending now, so leaving before the upload loses nothing
+  cfSaveTimer = setTimeout(() => { cfSaveTimer = null; cloudSave(); }, 3000);
 }
+
+// Leaving the page (Hub link, app switch): send a waiting save now instead of losing it
+LifeSync.onLeave(() => { if (cfSaveTimer) { clearTimeout(cfSaveTimer); cfSaveTimer = null; cloudSave(); } });
 
 // ── Life Hub summary ──
 // Prices move all the time; the Hub only needs to be roughly current. After a price refresh
@@ -1173,10 +1177,14 @@ function maybeHubSave() {
   if (!last || Math.abs(h.v - (last.v || 0)) >= HUB_MIN_EUR || (old && changed)) debouncedCloudSave();
 }
 
+function cloudPayload() {
+  const hub = hubToSend();
+  return hub ? { ...getAllWidgetData(), hub } : getAllWidgetData();
+}
 async function cloudSave() {
   try {
-    const hub = hubToSend();
-    await CLOUD.put(hub ? { ...getAllWidgetData(), hub } : getAllWidgetData());
+    const payload = cloudPayload(), hub = payload.hub;
+    await CLOUD.put(payload);
     if (hub) localStorage.setItem(HUB_LAST_KEY, JSON.stringify({ ...hub, at: Date.now() }));
     const t = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     cfStatus('Synced at ' + t, 'ok');
