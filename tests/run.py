@@ -429,6 +429,24 @@ def xpenses_calculator_rules(b):
         pg.locator(f"#{tab}-spin-{first['key']} button").last.click()
         la = pg.evaluate("tab => derived(states[tab]).leftover", tab)
         approx(lb - la, first['step'] / 2, 'a shared stepper moves Left at end of month by half its step')
+        # Info-only tracker: its total is the sum of its rows, and its steppers change nothing else
+        tb = pg.evaluate("tab => ({ d: derived(states[tab]), donut: charts[tab].data.datasets[0].data.reduce((a, b) => a + b, 0) })", tab)
+        tk = pg.evaluate("() => TRACKER_DEF[0]")
+        pg.locator(f"#{tab}-spin-{tk['key']} button").last.click()
+        ta = pg.evaluate("""tab => ({ d: derived(states[tab]), donut: charts[tab].data.datasets[0].data.reduce((a, b) => a + b, 0),
+            total: document.getElementById(tab + '-total-tracker').textContent,
+            want: fmt(TRACKER_DEF.reduce((s, x) => s + states[tab][x.key], 0)) })""", tab)
+        assert ta['d'] == tb['d'], f'[{tab}] tracker stepper changed totals'
+        approx(ta['donut'], tb['donut'], 'tracker stepper must not change the donut')
+        assert ta['total'] == ta['want'], f'[{tab}] tracker total {ta["total"]!r} ≠ {ta["want"]!r}'
+        # Every expense box collapses (rows hidden) and expands again
+        for box in ('shared', 'personal', 'tracker'):
+            first_row = f"#{tab}-box-{box} .erow:not(.erow-head):not(.erow-total) >> nth=0"
+            assert pg.locator(first_row).is_visible(), f'[{tab}] {box} rows hidden before collapse'
+            pg.locator(f"#{tab}-box-{box} .box-title").click()
+            assert not pg.locator(first_row).is_visible(), f'[{tab}] {box} box did not collapse'
+            pg.locator(f"#{tab}-box-{box} .box-title").click()
+            assert pg.locator(first_row).is_visible(), f'[{tab}] {box} box did not expand'
     assert not errs, errs
     ctx.close()
 
