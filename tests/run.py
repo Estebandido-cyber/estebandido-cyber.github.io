@@ -439,6 +439,9 @@ def xpenses_calculator_rules(b):
         assert ta['d'] == tb['d'], f'[{tab}] tracker stepper changed totals'
         approx(ta['donut'], tb['donut'], 'tracker stepper must not change the donut')
         assert ta['total'] == ta['want'], f'[{tab}] tracker total {ta["total"]!r} ≠ {ta["want"]!r}'
+        sub = pg.evaluate("""tab => TRACKER_GROUPS.map(g => [document.getElementById(tab + '-sub-tracker-' + g.id).textContent,
+            fmt(g.rows.reduce((s, x) => s + states[tab][x.key], 0))])""", tab)
+        assert all(a == b for a, b in sub), f'[{tab}] tracker subtotals wrong: {sub}'
         # Every expense box collapses (rows hidden) and expands again
         for box in ('shared', 'personal', 'tracker'):
             first_row = f"#{tab}-box-{box} .erow:not(.erow-head):not(.erow-total) >> nth=0"
