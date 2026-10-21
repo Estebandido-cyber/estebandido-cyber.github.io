@@ -502,6 +502,7 @@ body {
 .box-shared .section-total   { color: var(--blue);  border-top-color: rgba(26,95,168,0.15); }
 .box-personal .section-total { color: var(--green); border-top-color: rgba(10,122,94,0.15); }
 .box-tracker .section-total  { color: var(--amber); border-top-color: rgba(196,122,0,0.20); }
+.box-tracker .ename { white-space: normal; line-height: 1.25; }
 .trk-group-title { font-size: 13px; font-weight: 700; color: var(--amber); padding: 8px 6px 2px; }
 .trk-group-title:first-child { padding-top: 0; }
 .trk-subtotal { display: flex; justify-content: space-between; padding: 3px 6px 6px; font-size: 12px; font-weight: 600; color: var(--amber); opacity: .85; border-bottom: 1px dashed rgba(196,122,0,0.25); }
@@ -738,18 +739,22 @@ const PERSONAL_DEF = [
 // Each group shows its rows + a subtotal; the box total sums all groups.
 const TRACKER_GROUPS = [
   { id: 'mercado', title: 'Mercado', rows: [
-    { key: 'trkSaumon',   label: 'Saumon',    step: 1 },
+    { key: 'trkSaumon',   label: 'Saumon / Poulet', step: 1 },
     { key: 'trkLait',     label: 'Lait',      step: 1 },
     { key: 'trkLegumes',  label: 'Légumes',   step: 1 },
+    { key: 'trkSmoothieNoix',   label: 'Smoothie noix',   step: 5 },
+    { key: 'trkSmoothiePoudre', label: 'Smoothie poudre', step: 2 },
+    { key: 'trkMercadoExtras',  label: 'Extras (prot bar, choco, bonbon)', step: 2 },
   ]},
   { id: 'restos', title: 'Restos', rows: [
     { key: 'trkSat',      label: 'SAT',       step: 5 },
     { key: 'trkDelivMel', label: 'Deliv Mel', step: 2 },
     { key: 'trkDelivSolo',label: 'Deliv solo',step: 2 },
   ]},
-  { id: 'beer', title: 'Beer', rows: [
-    { key: 'trkBar',      label: 'Bar',       step: 2 },
-    { key: 'trkSuperM',   label: 'Super M',   step: 2 },
+  { id: 'beer', title: 'Beer / Bar', rows: [
+    { key: 'trkBar',      label: 'Pola Bar',     step: 2 },
+    { key: 'trkSuperM',   label: 'Pola Super M', step: 2 },
+    { key: 'trkBarBouffe',label: 'Bar Bouffe',   step: 2 },
   ]},
 ];
 const TRACKER_DEF = TRACKER_GROUPS.flatMap(g => g.rows);
@@ -782,7 +787,7 @@ const DEFAULTS = {
     phone: 10, claude: 20, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
     billar: 150, billarMonth: 10, lunch: 100, extras: 100,
     health: 120, drums: 10, savings: 50,
-    trkSaumon: 20, trkLait: 10, trkLegumes: 10, trkSat: 100, trkDelivMel: 50, trkDelivSolo: 50, trkBar: 30, trkSuperM: 30,
+    trkSaumon: 20, trkLait: 10, trkLegumes: 10, trkSmoothieNoix: 20, trkSmoothiePoudre: 30, trkMercadoExtras: 20, trkSat: 100, trkDelivMel: 50, trkDelivSolo: 50, trkBar: 30, trkSuperM: 30, trkBarBouffe: 30,
   },
   fire: {
     salary: 0, tickets: 500, mel: 40,
@@ -792,7 +797,7 @@ const DEFAULTS = {
     phone: 10, claude: 20, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
     billar: 150, billarMonth: 10, lunch: 60, extras: 150,
     health: 120, drums: 10, savings: 0,
-    trkSaumon: 20, trkLait: 10, trkLegumes: 10, trkSat: 100, trkDelivMel: 50, trkDelivSolo: 50, trkBar: 30, trkSuperM: 30,
+    trkSaumon: 20, trkLait: 10, trkLegumes: 10, trkSmoothieNoix: 20, trkSmoothiePoudre: 30, trkMercadoExtras: 20, trkSat: 100, trkDelivMel: 50, trkDelivSolo: 50, trkBar: 30, trkSuperM: 30, trkBarBouffe: 30,
   },
 };
 
