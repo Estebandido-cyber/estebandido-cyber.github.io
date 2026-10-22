@@ -628,7 +628,8 @@ def fire_sim_rules(b):
               for (let a = S.startAge + 1; a <= 59; a++) { S['p2s_' + a] = p2s; S['p2i_' + a] = p2i; }
               COL_ENTRIES.forEach(e => { document.getElementById('cb-' + e.id).checked = cols.includes(e.id); }); draw(); }""", [extra, p2s, p2i, list(cols)])
     base = {'pea': 120, 'cto': 40, 'av': 20, 'liv': 30, 'cash': 25, 'salary': 3000, 'lock': 2, 'infl': 3,
-            'partner1': 150, 'spend2': 1900, 'side2': 300, 'partner2': 100, 'spend3': 1700, 'side3': 0, 'partner3': 0, 'retraite': 900}
+            'partner1': 150, 'spend2': 1900, 'side2': 300, 'partner2': 100, 'spend3': 1700, 'side3': 0, 'partner3': 0, 'retraite': 900,
+            'are2': 1500, 'areM': 12, 'areDelay': 0, 'pensionAge': 65, 'per': 0}
     # One engine: break-even search, summary and table agree
     setup(base, 1800, 400)
     r = ev("() => ({ shadow: shadowRun(400), last: simulate().lastsUntil, shown: document.getElementById('m-age').textContent })")
@@ -657,6 +658,23 @@ def fire_sim_rules(b):
         near(d['netReceived'], 1000, 'net covers the need'); near(d['taxPaid'], d['drawn'] * 0.6 * rate, 'tax on the gain share')
         near(d['newBasis'], 4000 - d['drawn'] * 0.4, 'basis reduced by the principal part')
     assert ev("() => [TAX.pea, TAX.cto]") == [0.186, 0.314], 'tax rates 2026'
+    # Old saves load with identical results: ARE 6 × full + 6 × half, no latent gains, no PER, pension at 65
+    m = ev("() => migrateState({ pea: 90, cto: 30, salary: 3000 })")
+    assert (m['are2'], m['areM'], m['areDelay'], m['pea-basis'], m['cto-basis'], m['per'], m['pensionAge']) == (1500, 12, 0, 90, 30, 0, 65), m
+    # ARE: month k of the entitlement is paid in month delay + k; months 1–6 at the first amount
+    ev("() => Object.assign(S, { salary: 2700, are2: 2450, areM: 18, areDelay: 5 })")
+    y0, y1, y2 = ev("() => [areInYear(0), areInYear(1), areInYear(2)]")
+    assert (y0, y1, y2) == (6 * 2700 + 2450, 11 * 2450, 0), (y0, y1, y2)
+    # Latent gains: only the share above what was paid in is taxed
+    setup({**base, 'pea': 0, 'av': 0, 'liv': 0, 'cash': 0, 'lock': 0, 'infl': 0, 'cto': 100, 'cto-basis': 40, 'per': 0, 'salary': 0, 'are2': 0}, 2000, 0)
+    r = ev("() => { const x = allRows[0]; return { tax: x.taxPaid, drawn: x.sources.reduce((t, s) => t + s.amount, 0), r: rateFor('cto', 0) }; }")
+    near(r['tax'], r['drawn'] * (1 - 40 / (100 * (1 + r['r']))) * 0.314, 'CTO tax on the gain share')
+    # PER: never drawn before the pension age, drawn after; phases follow the pension age
+    setup({**base, 'pea': 0, 'cto': 0, 'av': 0, 'liv': 0, 'cash': 50, 'lock': 0, 'infl': 0, 'per': 100, 'pensionAge': 64, 'retraite': 500}, 2000, 0)
+    rows = ev("() => allRows.map(x => ({ age: x.age, phase: x.phase, per: x.sources.some(s => s.label.startsWith('PER')), short: x.shortfall, inflow: x.inflow }))")
+    assert not any(x['per'] for x in rows if x['age'] < 64) and any(x['per'] for x in rows if x['age'] >= 64), rows
+    assert [x['phase'] for x in rows if x['age'] in (63, 64)] == [3, 4] and next(x for x in rows if x['age'] == 64)['inflow'] == 500 * 12 + 0, rows
+    assert ev("() => simulate().lastsUntil") < 64, 'without accessible money before the pension age the plan must fail then, PER untouched'
     assert not errs, errs
     ctx.close()
 

@@ -365,6 +365,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
 .bk-col2 { background: rgba(245,160,32,0.22); color: var(--color-text-warning); }
 .bk-col3 { background: rgba(245,100,32,0.22); color: var(--color-text-danger); }
 .bk-col4 { background: rgba(160,200,48,0.22); color: var(--color-text-success); }
+.bk-per  { background: rgba(176,124,224,0.18); color: #8a55c4; }
 .bk-short { background: var(--color-bg-danger, rgba(224,69,69,0.15)); color: var(--color-text-danger); font-weight: 500; }
 
 /* ── NUMERIC RENDERING FIX — all header/block totals ── */
@@ -666,6 +667,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
           <span class="tax-tag tax-pea">18.6% prélèvements sociaux on gains</span>
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('pea',-5)">−</button><span class="sval" id="pea-v">100K</span><button onclick="step('pea',5)">+</button></div></div>
+        <div class="row"><label>of which paid in (€K)</label><div class="stepper"><button onclick="step('pea-basis',-5)">−</button><span class="sval" id="pea-basis-v">100</span><button onclick="step('pea-basis',5)">+</button></div></div>
         <div class="ret-sum" onclick="toggleRet('pea')"><span class="ret-lbl">Annual return by period</span><span class="ret-avg" id="pea-cagr">5.0%/yr avg</span><span class="ret-chev" id="pea-ret-chev">▸</span></div>
         <div class="ret-body hidden" id="pea-ret-body">
           <div class="ret-presets"><button onclick="applyRetPreset('pea','base')">Base</button><button onclick="applyRetPreset('pea','crash')">Crash early</button><button onclick="applyRetPreset('pea','lost')">Lost decade</button></div>
@@ -679,6 +681,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
           <span class="tax-tag tax-cto">31.4% PFU on gains</span>
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('cto',-5)">−</button><span class="sval" id="cto-v">45K</span><button onclick="step('cto',5)">+</button></div></div>
+        <div class="row"><label>of which paid in (€K)</label><div class="stepper"><button onclick="step('cto-basis',-5)">−</button><span class="sval" id="cto-basis-v">45</span><button onclick="step('cto-basis',5)">+</button></div></div>
         <div class="ret-sum" onclick="toggleRet('cto')"><span class="ret-lbl">Annual return by period</span><span class="ret-avg" id="cto-cagr">5.0%/yr avg</span><span class="ret-chev" id="cto-ret-chev">▸</span></div>
         <div class="ret-body hidden" id="cto-ret-body">
           <div class="col-switch-row"><span class="csl" id="lbl-cto-sync">Same periods as PEA</span><label class="switch"><input type="checkbox" id="cb-cto-sync" onchange="toggleCtoSync(this.checked)"><span class="slider-sw"></span></label></div>
@@ -692,12 +695,21 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
       </div>
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">PERO + PERE + AV</span>
+          <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">Assurance Vie</span>
           <span class="tax-tag tax-av">~18% effective on gains</span>
         </div>
-        <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('av',-5)">−</button><span class="sval" id="av-v">20K</span><button onclick="step('av',5)">+</button></div></div>
+        <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('av',-1)">−</button><span class="sval" id="av-v">20K</span><button onclick="step('av',1)">+</button></div></div>
         <div class="row"><label>Annual return (%)</label><div class="stepper"><button onclick="step('av-r',-0.5)">−</button><span class="sval" id="av-r-v">4%</span><button onclick="step('av-r',0.5)">+</button></div></div>
         <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">After 8 yrs: €4 600/yr gains tax-free. Above: ~18% effective.</p>
+      </div>
+      <div class="sub-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">PER (PERO + PERE)</span>
+          <span class="tax-tag tax-pea">Locked until pension</span>
+        </div>
+        <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('per',-1)">−</button><span class="sval" id="per-v">0</span><button onclick="step('per',1)">+</button></div></div>
+        <div class="row"><label>Annual return (%)</label><div class="stepper"><button onclick="step('per-r',-0.5)">−</button><span class="sval" id="per-r-v">5%</span><button onclick="step('per-r',0.5)">+</button></div></div>
+        <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0" id="per-note"></p>
       </div>
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -831,7 +843,10 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
   <!-- PHASE 1 -->
   <div class="ph ph1" id="ph1-label">Phase 1 — Chômage: age 46</div>
   <div class="panel panel-chomage" style="margin-top:8px">
-    <div class="row" style="margin:0"><label>Monthly salary (€)</label><div class="stepper"><button onclick="step('salary',-100)">−</button><span class="sval" id="salary-v">3 500</span><button onclick="step('salary',100)">+</button></div></div>
+    <div class="row" style="margin:0 0 4px"><label>ARE net, months 1–6 (€/mo)</label><div class="stepper"><button onclick="step('salary',-50)">−</button><span class="sval" id="salary-v">2 700</span><button onclick="step('salary',50)">+</button></div></div>
+    <div class="row" style="margin:0 0 4px"><label>ARE net, from month 7 (€/mo)</label><div class="stepper"><button onclick="step('are2',-50)">−</button><span class="sval" id="are2-v">2 450</span><button onclick="step('are2',50)">+</button></div></div>
+    <div class="row" style="margin:0 0 4px"><label>Duration (months)</label><div class="stepper"><button onclick="step('areM',-1)">−</button><span class="sval" id="areM-v">18 mo</span><button onclick="step('areM',1)">+</button></div></div>
+    <div class="row" style="margin:0"><label>Starts after (months)</label><div class="stepper"><button onclick="step('areDelay',-1)">−</button><span class="sval" id="areDelay-v">0 mo</span><button onclick="step('areDelay',1)">+</button></div></div>
     <p style="font-size:11px;color:var(--ph1-fg);margin:6px 0 0" id="chomage-desc"></p>
   </div>
 
@@ -839,7 +854,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
   <div id="ph2-container"></div>
 
   <!-- PHASE 3 -->
-  <div class="ph ph3" style="margin-top:14px">Phase 3 — Winding down: age 60–64</div>
+  <div class="ph ph3" style="margin-top:14px" id="ph3-label">Phase 3 — Winding down: age 60–64</div>
   <div class="row"><label>Monthly spend (€)</label><div class="stepper"><button onclick="step('spend2',-50)">−</button><span class="sval" id="spend2-v">1 800</span><button onclick="step('spend2',50)">+</button></div></div>
   <div class="row"><label>Monthly side income (€)</label><div class="stepper"><button onclick="step('side2',-50)">−</button><span class="sval" id="side2-v">200</span><button onclick="step('side2',50)">+</button></div></div>
   <div class="partner-block">
@@ -848,11 +863,12 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
   </div>
 
   <!-- PHASE 4 -->
-  <div class="ph ph4" style="margin-top:14px">Phase 4 — Retirement: age 65+</div>
+  <div class="ph ph4" style="margin-top:14px" id="ph4-label">Phase 4 — Retirement: age 65+</div>
+  <div class="row"><label>Pension starts at</label><div class="stepper"><button onclick="step('pensionAge',-1)">−</button><span class="sval" id="pensionAge-v">Age 64</span><button onclick="step('pensionAge',1)">+</button></div></div>
   <div class="row"><label>Monthly spend (€)</label><div class="stepper"><button onclick="step('spend3',-50)">−</button><span class="sval" id="spend3-v">1 800</span><button onclick="step('spend3',50)">+</button></div></div>
   <div class="row"><label>Monthly side income (€)</label><div class="stepper"><button onclick="step('side3',-50)">−</button><span class="sval" id="side3-v">200</span><button onclick="step('side3',50)">+</button></div></div>
   <div class="row"><label>Monthly retraite (€)</label><div class="stepper"><button onclick="step('retraite',-50)">−</button><span class="sval" id="retraite-v">400</span><button onclick="step('retraite',50)">+</button></div></div>
-  <p style="font-size:11px;color:var(--color-text-tertiary);margin:-4px 0 4px 182px">French state pension from age 65</p>
+  <p style="font-size:11px;color:var(--color-text-tertiary);margin:-4px 0 4px 182px" id="pension-note">French state pension from age 65</p>
   <div class="partner-block">
     <p class="partner-title">Partner's monthly contribution (€)</p>
     <div class="row" style="margin:0"><label>Phase 4 contribution</label><div class="stepper"><button onclick="step('partner3',-50)">−</button><span class="sval" id="partner3-v">0</span><button onclick="step('partner3',50)">+</button></div></div>
@@ -915,7 +931,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
 let COP_EUR = 3500;
 let copEurSavedAt = null; // timestamp of last successful fetch
 // Tax on gains at withdrawal (2026): PEA 18.6% prélèvements sociaux, CTO 31.4% PFU, AV ~18% effective after 8 yrs
-const TAX     = { pea: 0.186, av: 0.18, cto: 0.314 };
+const TAX     = { pea: 0.186, av: 0.18, cto: 0.314, per: 0.186 };
 const LS_KEY  = 'fire-sim-v1';
 
 const COL_ENTRIES = [
@@ -933,7 +949,8 @@ const S = {
   'cto-sync':0,
   liv:37, 'liv-r':1.75, cash:30,
   cop1:130, 'cop1-r':5, cop2:300, 'cop2-r':3, cop3:150, 'cop3-r':2, cop4:30, 'cop4-r':2,
-  salary:3500, lock:3, infl:2, startAge:46,
+  salary:2700, are2:2450, areM:18, areDelay:0, lock:3, infl:2, startAge:46, pensionAge:64,
+  'pea-basis':100, 'cto-basis':45, per:0, 'per-r':5,
   partner1:0, spend2:1800, side2:200, partner2:0,
   spend3:1800, side3:200, partner3:0, retraite:400,
 };
@@ -942,7 +959,8 @@ const LIM = {
   cto:[0,200], liv:[0,40], 'liv-r':[0,5], cash:[0,100],
   cop1:[10,500], 'cop1-r':[0,15], cop2:[10,1000], 'cop2-r':[0,15],
   cop3:[10,500], 'cop3-r':[1,5],  cop4:[10,200],  'cop4-r':[1,5],
-  salary:[1000,8000], lock:[0,10], infl:[0,6], startAge:[46,52],
+  salary:[0,8000], are2:[0,8000], areM:[0,24], areDelay:[0,6], lock:[0,10], infl:[0,6], startAge:[46,52], pensionAge:[62,67],
+  'pea-basis':[0,200], 'cto-basis':[0,200], per:[0,200], 'per-r':[0,10],
   partner1:[0,2000], spend2:[500,3000], side2:[0,3000], partner2:[0,2000],
   spend3:[500,3000], side3:[0,1000], partner3:[0,2000], retraite:[0,1500],
 };
@@ -985,6 +1003,18 @@ function applyColChecks(cc) {
 }
 
 // Upgrade old saves: a single 'pea-r'/'cto-r' becomes the value of every period
+// Upgrade saves made before the audit (Oct 2026). Values chosen so old results stay identical
+// until edited: ARE 6 × full + 6 × half, no latent gains, no separate PER, pension at 65.
+function migrateState(src) {
+  if (!src) return src;
+  migrateReturns(src);
+  if (src.areM === undefined) { const sal = src.salary ?? 3500; src.are2 = sal * 0.5; src.areM = 12; src.areDelay = 0; }
+  if (src['pea-basis'] === undefined) src['pea-basis'] = src.pea ?? S.pea;
+  if (src['cto-basis'] === undefined) src['cto-basis'] = src.cto ?? S.cto;
+  if (src.per === undefined) { src.per = 0; src['per-r'] = 5; }
+  if (src.pensionAge === undefined) src.pensionAge = 65;
+  return src;
+}
 function migrateReturns(src) {
   if (!src) return src;
   ['pea','cto'].forEach(a => {
@@ -1013,7 +1043,7 @@ function loadState() {
     if (!raw) return false;
     const p = JSON.parse(raw);
     if (p.S) {
-      migrateReturns(p.S);
+      migrateState(p.S);
       Object.keys(p.S).forEach(k => {
         S[k] = p.S[k];
         if (!(k in LIM)) LIM[k] = [0, 1e9];
@@ -1023,7 +1053,7 @@ function loadState() {
       });
     }
     applyColChecks(p.colChecks);
-    if (p.scenarios)      p.scenarios.forEach((s, i) => { if (s?.snap?.S) migrateReturns(s.snap.S); scenarios[i] = s || null; });
+    if (p.scenarios)      p.scenarios.forEach((s, i) => { if (s?.snap?.S) migrateState(s.snap.S); scenarios[i] = s || null; });
     if (p.activeScenario !== undefined) activeScenario = p.activeScenario;
     return true;
   } catch(e) { console.warn('Load failed', e); return false; }
@@ -1060,7 +1090,7 @@ function cfStatus(type) {
 // Small summary for the Life Hub tile — same totals as the widget: live COP/EUR rate,
 // Colombian assets only when ticked (colOn).
 function hubSummary() {
-  const fr = (S.pea + S.av + S.cto + S.liv + S.cash) * 1000;
+  const fr = (S.pea + S.av + S.cto + S.liv + S.cash + (S.per || 0)) * 1000;
   const co = COL_ENTRIES.reduce((s, e) => s + (colOn(e.id) ? (S[e.id] * 1e6) / COP_EUR : 0), 0);
   const hub = { total: Math.round(fr + co), fr: Math.round(fr), co: Math.round(co) };
   const sc = typeof activeScenario === 'number' ? scenarios[activeScenario] : null;
@@ -1097,10 +1127,10 @@ async function cloudLoad() {
     const p = await CLOUD.get();
     if (!p || !p.S) return;
     p2Init.clear();
-    migrateReturns(p.S);
+    migrateState(p.S);
     Object.keys(p.S).forEach(k => { S[k] = p.S[k]; if (!(k in LIM)) LIM[k] = [0, 1e9]; });
     applyColChecks(p.colChecks);
-    if (p.scenarios)      p.scenarios.forEach((s, i) => { if (s?.snap?.S) migrateReturns(s.snap.S); scenarios[i] = s || null; });
+    if (p.scenarios)      p.scenarios.forEach((s, i) => { if (s?.snap?.S) migrateState(s.snap.S); scenarios[i] = s || null; });
     if (p.activeScenario !== undefined) activeScenario = p.activeScenario;
     saveState();
     draw();
@@ -1116,12 +1146,12 @@ function captureSnapshot() {
 }
 function applySnapshot(snap) {
   p2Init.clear();
-  migrateReturns(snap.S);
+  migrateState(snap.S);
   Object.keys(snap.S).forEach(k => { S[k] = snap.S[k]; if (!(k in LIM)) LIM[k] = [0,1e9]; });
   applyColChecks(snap.colChecks);
 }
 function buildScenMeta(snap) {
-  const fr = (snap.S.pea + snap.S.av + snap.S.cto + snap.S.liv + snap.S.cash) * 1000;
+  const fr = (snap.S.pea + snap.S.av + snap.S.cto + snap.S.liv + snap.S.cash + (snap.S.per || 0)) * 1000;
   return '🇫🇷 €' + Math.round(fr / 1000) + 'K  ·  depart ' + snap.S.startAge;
 }
 function saveScenario(idx) {
@@ -1177,6 +1207,17 @@ function rateFor(a, y) { return S[retKey(a, Math.min(RET_N, Math.floor(y / RET_L
 // Annualised equivalent (geometric mean / CAGR) over the full horizon
 function cagr(a) { let g = 1; for (let y = 0; y < HORIZON; y++) g *= 1 + rateFor(a, y); return Math.pow(g, 1 / HORIZON) - 1; }
 
+// ARE (chômage) received in simulation year y: month k of the entitlement (1..areM) is paid in month
+// areDelay + k after departure; months 1–6 at `salary`, then `are2` (dégressivité). Net €/month, not indexed.
+function areInYear(y) {
+  let t = 0;
+  for (let m = 12*y + 1; m <= 12*y + 12; m++) {
+    const k = m - S.areDelay;
+    if (k >= 1 && k <= S.areM) t += k <= 6 ? S.salary : S.are2;
+  }
+  return t;
+}
+
 // ── Simulation engine — the ONLY place the year-by-year projection is computed ──
 // p2Side: optional uniform Phase 2 side income (break-even search); null = per-year values.
 // All monthly amounts are in today's euros and grow with inflation (spend AND income).
@@ -1185,19 +1226,19 @@ function cagr(a) { let g = 1; for (let y = 0; y < HORIZON; y++) g *= 1 + rateFor
 // not be fully paid because the capital is gone; null = lasts the horizon.
 function simulate(p2Side = null) {
   const sa = S.startAge, infl = S.infl/100, lockYrs = S.lock;
-  const avR = S['av-r']/100, livR = S['liv-r']/100;
-  const chomageY1 = S.salary * 9; // 6 × full + 6 × half
-  let bPea=S.pea*1000, bAv=S.av*1000, bCto=S.cto*1000, bLiv=S.liv*1000, bCash=S.cash*1000;
-  let basePea=bPea, baseAv=bAv, baseCto=bCto;
+  const avR = S['av-r']/100, livR = S['liv-r']/100, perR = S['per-r']/100;
+  let bPea=S.pea*1000, bAv=S.av*1000, bCto=S.cto*1000, bLiv=S.liv*1000, bCash=S.cash*1000, bPer=S.per*1000;
+  // Cost basis = what was paid in (latent gains are taxed when drawn); never above the balance
+  let basePea=Math.min(bPea, S['pea-basis']*1000), baseAv=bAv, baseCto=Math.min(bCto, S['cto-basis']*1000), basePer=bPer;
   const col = {};
   COL_ENTRIES.forEach(e => {
     const on = colOn(e.id), v = on ? (S[e.id]*1e6)/COP_EUR : 0;
     col[e.id] = { bal:v, basis:v, rD:S[e.id+'-r']/100, active:on, everDrawn:false };
   });
   const colSum = () => COL_ENTRIES.reduce((t,e) => t + (col[e.id].active ? col[e.id].bal : 0), 0);
-  const initTotal = bPea+bAv+bCto+bLiv+bCash + colSum();
-  const everDrawn = { cto:false, pea:false, av:false, liv:false };
-  const hist = { pea:[], av:[], cto:[], liv:[], cash:[], col:{} };
+  const initTotal = bPea+bAv+bCto+bLiv+bCash+bPer + colSum();
+  const everDrawn = { cto:false, pea:false, av:false, liv:false, per:false };
+  const hist = { pea:[], av:[], cto:[], liv:[], cash:[], per:[], col:{} };
   COL_ENTRIES.forEach(e => { hist.col[e.id] = []; });
   const rows = [], shortYears = [], earlyYears = [];
   let depleteAge = null, firstShortAge = null, atLock = null;
@@ -1212,8 +1253,8 @@ function simulate(p2Side = null) {
 
     const idx       = Math.pow(1+infl, y);
     const inflSpend = spend * idx;
-    const chomage   = phase===1 ? chomageY1 : 0;
-    bPea*=(1+rateFor('pea',y)); bAv*=(1+avR); bCto*=(1+rateFor('cto',y)); bLiv*=(1+livR);
+    const chomage   = areInYear(y);
+    bPea*=(1+rateFor('pea',y)); bAv*=(1+avR); bCto*=(1+rateFor('cto',y)); bLiv*=(1+livR); bPer*=(1+perR);
     COL_ENTRIES.forEach(e => { if (col[e.id].active) col[e.id].bal *= (1+col[e.id].rD); });
 
     const inflow     = chomage + (side + partner + ret) * 12 * idx;
@@ -1228,7 +1269,7 @@ function simulate(p2Side = null) {
       if (r.drawn <= 1) return null;
       const seen = colEntry ? colEntry.everDrawn : everDrawn[key];
       if (!seen) { unlocks.push({ label, bal }); if (colEntry) colEntry.everDrawn = true; else everDrawn[key] = true; }
-      const isEarly = locked && !colEntry;
+      const isEarly = locked && !colEntry && key !== 'per';
       sources.push({ cls, label: (colEntry ? label.replace('🇨🇴 ', '') : label) + (isEarly ? ' (early)' : ''), amount: r.drawn });
       if (isEarly) early += r.drawn;
       yearTaxPaid += r.taxPaid; need -= r.netReceived;
@@ -1249,6 +1290,8 @@ function simulate(p2Side = null) {
         if (bCto > 0 && need > 0) { const r = take('CTO','bk-cto',bCto,baseCto,TAX.cto,'cto'); if (r) { bCto=r.newBal; baseCto=r.newBasis; } }
         if (bPea > 0 && need > 0) { const r = take('PEA','bk-pea',bPea,basePea,TAX.pea,'pea'); if (r) { bPea=r.newBal; basePea=r.newBasis; } }
         if (bAv  > 0 && need > 0) { const r = take('AV','bk-av',bAv,baseAv,TAX.av,'av');       if (r) { bAv=r.newBal;  baseAv=r.newBasis;  } }
+        // PER: legally locked until the pension age — never drawn early
+        if (age >= S.pensionAge && bPer > 0 && need > 0) { const r = take('PER','bk-per',bPer,basePer,TAX.per,'per'); if (r) { bPer=r.newBal; basePer=r.newBasis; } }
       };
       const drawCol = () => {
         for (const e of COL_ENTRIES) {
@@ -1265,10 +1308,10 @@ function simulate(p2Side = null) {
     }
 
     if (y === lockYrs && atLock === null) atLock = bPea+bAv+bCto;
-    bPea=Math.max(0,bPea); bAv=Math.max(0,bAv); bCto=Math.max(0,bCto); bLiv=Math.max(0,bLiv); bCash=Math.max(0,bCash);
+    bPea=Math.max(0,bPea); bAv=Math.max(0,bAv); bCto=Math.max(0,bCto); bLiv=Math.max(0,bLiv); bCash=Math.max(0,bCash); bPer=Math.max(0,bPer);
     COL_ENTRIES.forEach(e => { col[e.id].bal = Math.max(0, col[e.id].bal); });
 
-    const totalAfter = bPea+bAv+bCto+bLiv+bCash + colSum();
+    const totalAfter = bPea+bAv+bCto+bLiv+bCash+bPer + colSum();
     if (early > 0) earlyYears.push({ age, amount: early });
     if (shortfall > 0) {
       shortYears.push({ age, amount: shortfall });
@@ -1277,7 +1320,7 @@ function simulate(p2Side = null) {
     if (totalAfter <= 0 && depleteAge === null) depleteAge = age;
 
     hist.pea.push(Math.round(bPea/1000)); hist.av.push(Math.round(bAv/1000)); hist.cto.push(Math.round(bCto/1000));
-    hist.liv.push(Math.round(bLiv/1000)); hist.cash.push(Math.round(bCash/1000));
+    hist.liv.push(Math.round(bLiv/1000)); hist.cash.push(Math.round(bCash/1000)); hist.per.push(Math.round(bPer/1000));
     COL_ENTRIES.forEach(e => { hist.col[e.id].push(col[e.id].active ? Math.round(col[e.id].bal/1000) : null); });
     rows.push({ year:y+1, age, phase, locked, inflow, spend:inflSpend*12, taxPaid:yearTaxPaid, net:netCash-yearTaxPaid,
                 shortfall, early, sources, unlocks, total:Math.max(0,totalAfter), initTotal });
@@ -1346,14 +1389,15 @@ const getPhase = age => {
   const sa = S.startAge;
   if (age === sa)           return 1;
   if (age > sa && age <= 59) return 2;
-  if (age >= 60 && age <= 64) return 3;
+  if (age >= 60 && age < S.pensionAge) return 3;
   return 4;
 };
 const getP2Ages = () => { const a=[],sa=S.startAge; for(let i=sa+1;i<=59;i++) a.push(i); return a; };
 
 function fmtLabel(k, v) {
   if (k === 'lock')    return v + ' yr' + (v !== 1 ? 's' : '');
-  if (k === 'startAge') return 'Age ' + v;
+  if (k === 'startAge' || k === 'pensionAge') return 'Age ' + v;
+  if (k === 'areM' || k === 'areDelay') return v + ' mo';
   if (/-r\d$/.test(k)) return (v < 0 ? '−' + Math.abs(v) : v) + '%';
   if (/-(r)$/.test(k) || k === 'infl') return v + '%';
   if (['cop1','cop2','cop3','cop4'].includes(k)) return fmt(v) + 'M';
@@ -1528,7 +1572,7 @@ function buildTotalProjGrid(elId, entries) {
 function buildLegend(activeColEntries) {
   const items = [
     {color:'#5B9BD5',label:'PEA'}, {color:'#4DC79A',label:'AV'}, {color:'#E8A040',label:'CTO'},
-    {color:'#7DC94E',label:'Livrets'}, {color:'#9E9D97',label:'Cash'},
+    {color:'#7DC94E',label:'Livrets'}, {color:'#B07CE0',label:'PER'}, {color:'#9E9D97',label:'Cash'},
   ];
   activeColEntries.forEach(e => items.push({color:e.chartColor, label:'🇨🇴 '+e.label}));
   document.getElementById('chart-legend').innerHTML =
@@ -1601,7 +1645,7 @@ function draw() {
 
   // ── Phase labels ──
   document.getElementById('ph1-label').textContent   = `Phase 1 — Chômage: age ${sa}`;
-  document.getElementById('phase-summary').textContent = `P1: ${sa}  ·  P2: ${sa+1}–59  ·  P3: 60–64  ·  P4: 65+`;
+  document.getElementById('phase-summary').textContent = `P1: ${sa}  ·  P2: ${sa+1}–59  ·  P3: 60–${S.pensionAge-1}  ·  P4: ${S.pensionAge}+`;
 
   // ── Colombian badge & withdrawal note ──
   const activeCount = activeColEntries.length;
@@ -1611,7 +1655,7 @@ function draw() {
   badge.style.color        = activeCount > 0 ? 'var(--color-text-success)' : 'var(--color-text-warning)';
   badge.style.borderColor  = activeCount > 0 ? 'var(--teal-border)'        : 'var(--amb-border)';
   document.getElementById('order-note').innerHTML =
-    'Withdrawal order: <strong>Cash → Livrets → CTO → PEA → AV' +
+    'Withdrawal order: <strong>Cash → Livrets → CTO → PEA → AV → PER (from ' + S.pensionAge + ')' +
     (activeCount > 0 ? ' → ' + activeColEntries.map(e=>'🇨🇴 '+e.label).join(' → ') : '') + '</strong>';
 
   // ── Colombian asset cards & totals ──
@@ -1634,10 +1678,10 @@ function draw() {
   buildTotalProjGrid('cop-total-proj', copEntries);
 
   // ── French totals ──
-  const pea=S.pea*1000, av=S.av*1000, cto=S.cto*1000, liv=S.liv*1000, cash=S.cash*1000;
-  const peaR=cagr('pea'), avR=S['av-r']/100, ctoR=cagr('cto'), livR=S['liv-r']/100;
-  const frTotal  = pea+av+cto+liv+cash;
-  const passive  = pea*peaR + av*avR + cto*ctoR + liv*livR;
+  const pea=S.pea*1000, av=S.av*1000, cto=S.cto*1000, liv=S.liv*1000, cash=S.cash*1000, per=S.per*1000;
+  const peaR=cagr('pea'), avR=S['av-r']/100, ctoR=cagr('cto'), livR=S['liv-r']/100, perR=S['per-r']/100;
+  const frTotal  = pea+av+cto+liv+cash+per;
+  const passive  = pea*peaR + av*avR + cto*ctoR + liv*livR + per*perR;
   const avgRet   = frTotal > 0 ? (passive/frTotal*100) : 0;
   document.getElementById('fr-total-eur').textContent    = '€' + fmt(frTotal/1000) + 'K';
   document.getElementById('fr-total-sub').textContent    = 'Weighted avg return: ' + avgRet.toFixed(1) + '%  ·  Passive income: €' + fmt(passive) + '/yr';
@@ -1652,9 +1696,15 @@ function draw() {
   document.getElementById('grand-total-breakdown').textContent = '🇫🇷 €'+fmt(frTotal/1000)+'K  +  🇨🇴 €'+fmt(totCopEur/1000)+'K ('+fmt(totCopNow)+'M COP)';
 
   // ── Phase descriptions ──
-  const infl = S.infl/100, salary = S.salary, lockYrs = S.lock;
+  const infl = S.infl/100, lockYrs = S.lock;
+  let areTot = 0; for (let y = 0; y < 4; y++) areTot += areInYear(y);
   document.getElementById('chomage-desc').textContent =
-    'Months 1–6: ~€'+fmt(salary)+'/mo  ·  Months 7–12: ~€'+fmt(Math.round(salary*0.5))+'/mo  ·  Year 2+: €0';
+    S.areM + ' months' + (S.areDelay ? ', starting after ' + S.areDelay + ' mo' : '') + '  ·  total €' + fmt(areTot) +
+    '  ·  in year 1: €' + fmt(areInYear(0)) + (areInYear(1) ? '  ·  year 2: €' + fmt(areInYear(1)) : '');
+  document.getElementById('ph3-label').textContent = S.pensionAge > 60 ? `Phase 3 — Winding down: age 60–${S.pensionAge-1}` : 'Phase 3 — none (pension from 60)';
+  document.getElementById('ph4-label').textContent = `Phase 4 — Retirement: age ${S.pensionAge}+`;
+  document.getElementById('pension-note').textContent = `French pension (base + complementary, net) from age ${S.pensionAge}, in today's euros`;
+  document.getElementById('per-note').textContent = `Locked until age ${S.pensionAge} (pension age), never drawn early. Gains ~18.6% at exit (approximation).`;
   document.getElementById('lock-info').innerHTML =
     '<strong>PEA, AV and CTO</strong> locked until age <strong>'+(sa+lockYrs)+'</strong>. Cash, Livrets and ticked 🇨🇴 assets available from day one.';
 
@@ -1702,6 +1752,7 @@ function draw() {
     {label:'AV',     data:sim.hist.av,   borderColor:'#4DC79A', backgroundColor:'rgba(77,199,154,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
     {label:'CTO',    data:sim.hist.cto,  borderColor:'#E8A040', backgroundColor:'rgba(232,160,64,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
     {label:'Livrets',data:sim.hist.liv,  borderColor:'#7DC94E', backgroundColor:'rgba(125,201,78,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
+    {label:'PER',    data:sim.hist.per,  borderColor:'#B07CE0', backgroundColor:'rgba(176,124,224,0.12)', fill:true, tension:0.35, pointRadius:0, borderWidth:2},
     {label:'Cash',   data:sim.hist.cash, borderColor:'#9E9D97', backgroundColor:'rgba(158,157,151,0.10)',  fill:true, tension:0.35, pointRadius:0, borderWidth:2},
   ];
   COL_ENTRIES.forEach(e => {
@@ -1773,10 +1824,10 @@ const DRIVE = LifeDrive.create({
   apply: payload => {
       if (!payload.S) throw new Error('Invalid file format');
       p2Init.clear();
-      migrateReturns(payload.S);
+      migrateState(payload.S);
       Object.keys(payload.S).forEach(k => { S[k] = payload.S[k]; if (!(k in LIM)) LIM[k] = [0, 1e9]; });
       applyColChecks(payload.colChecks);
-      if (payload.scenarios) payload.scenarios.forEach((s, i) => { if (s?.snap?.S) migrateReturns(s.snap.S); scenarios[i] = s || null; });
+      if (payload.scenarios) payload.scenarios.forEach((s, i) => { if (s?.snap?.S) migrateState(s.snap.S); scenarios[i] = s || null; });
       if (payload.activeScenario !== undefined) activeScenario = payload.activeScenario;
       saveState();
       draw();
