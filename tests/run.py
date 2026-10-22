@@ -639,11 +639,14 @@ def fire_sim_rules(b):
         idx = 1.03 ** x['y']
         if x['phase'] == 2: near(x['inflow'], (400 + 150) * 12 * idx, f"P2 income at {x['age']}")
         if x['phase'] == 4: near(x['inflow'], (0 + 0 + 900) * 12 * idx, f"P4 income at {x['age']}")
-    # Spending nothing can pay while investments are locked is reported, not dropped
+    # Cash + Livrets run out while PEA/AV/CTO are locked: the lock is broken for what is missing
+    # (flagged), spending is never dropped, and 'capital lasts' is the real depletion
     setup({**base, 'cash': 1, 'liv': 0, 'lock': 5, 'infl': 0}, 2500, 0)
-    r = ev("() => { const s = simulate(); return { last: s.lastsUntil, short: s.shortYears, sa: S.startAge, shown: document.getElementById('m-short').textContent }; }")
-    assert r['short'] and r['short'][0]['locked'] and r['last'] == r['short'][0]['age'] <= r['sa'] + 4, r
-    assert r['shown'] != 'None', r
+    r = ev("""() => { const s = simulate(); return { last: s.lastsUntil, dep: s.depleteAge, early: s.earlyYears, sa: S.startAge,
+             uncovered: s.rows.filter(x => x.shortfall > 0).map(x => x.total), shown: document.getElementById('m-short').textContent }; }""")
+    assert r['early'] and r['early'][0]['age'] <= r['sa'] + 4 and r['shown'] != 'None', r
+    assert r['last'] is None or r['last'] >= r['dep'] - 1, r
+    assert all(t == 0 for t in r['uncovered']), f'spending left unpaid while capital remains: {r}'
     # Colombian assets are not locked: they pay before PEA/AV/CTO unlock
     setup({**base, 'cash': 0, 'liv': 0, 'lock': 10, 'infl': 0, 'cop1': 500}, 2500, 0, cols=('cop1',))
     srcs = ev("() => allRows[1].sources.map(s => s.label)")

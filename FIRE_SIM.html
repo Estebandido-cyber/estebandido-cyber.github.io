@@ -864,7 +864,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
     <div class="metrics" style="margin-top:0">
       <div class="met"><p class="ml">Capital lasts until age</p><p class="mv" id="m-age">—</p></div>
       <div class="met"><p class="ml">PEA+AV+CTO at lock-lift</p><p class="mv" id="m-atlock">—</p></div>
-      <div class="met"><p class="ml">Spending not covered</p><p class="mv" id="m-short">—</p></div>
+      <div class="met"><p class="ml">Drawn before lock ends</p><p class="mv" id="m-short">—</p></div>
     </div>
     <div class="metrics" style="margin-top:8px;margin-bottom:0">
       <div class="met"><p class="ml">Net burn phase 2 (avg/mo)</p><p class="mv" id="m-burn1">—</p></div>
@@ -1180,8 +1180,9 @@ function cagr(a) { let g = 1; for (let y = 0; y < HORIZON; y++) g *= 1 + rateFor
 // ── Simulation engine — the ONLY place the year-by-year projection is computed ──
 // p2Side: optional uniform Phase 2 side income (break-even search); null = per-year values.
 // All monthly amounts are in today's euros and grow with inflation (spend AND income).
-// Returns rows for the table, balances for the chart, and lastsUntil = first age whose spending
-// could not be fully paid (capital gone, or what is left is still locked); null = lasts the horizon.
+// If Cash + Livrets (+ ticked 🇨🇴) run out while PEA/AV/CTO are locked, the lock is broken for what is
+// missing (drawn early, flagged) — spending is never dropped. lastsUntil = first age whose spending could
+// not be fully paid because the capital is gone; null = lasts the horizon.
 function simulate(p2Side = null) {
   const sa = S.startAge, infl = S.infl/100, lockYrs = S.lock;
   const avR = S['av-r']/100, livR = S['liv-r']/100;
@@ -1198,7 +1199,7 @@ function simulate(p2Side = null) {
   const everDrawn = { cto:false, pea:false, av:false, liv:false };
   const hist = { pea:[], av:[], cto:[], liv:[], cash:[], col:{} };
   COL_ENTRIES.forEach(e => { hist.col[e.id] = []; });
-  const rows = [], shortYears = [];
+  const rows = [], shortYears = [], earlyYears = [];
   let depleteAge = null, firstShortAge = null, atLock = null;
 
   for (let y = 0; y < HORIZON; y++) {
@@ -1220,14 +1221,16 @@ function simulate(p2Side = null) {
     const cashBefore = bCash;
     bCash += netCash;
 
-    let yearTaxPaid = 0, shortfall = 0;
+    let yearTaxPaid = 0, shortfall = 0, early = 0;
     const sources = [], unlocks = [];
     const take = (label, cls, bal, basis, rate, key, colEntry) => {
       const r = drawFrom(need, bal, basis, rate);
       if (r.drawn <= 1) return null;
       const seen = colEntry ? colEntry.everDrawn : everDrawn[key];
       if (!seen) { unlocks.push({ label, bal }); if (colEntry) colEntry.everDrawn = true; else everDrawn[key] = true; }
-      sources.push({ cls, label: colEntry ? label.replace('🇨🇴 ', '') : label, amount: r.drawn });
+      const isEarly = locked && !colEntry;
+      sources.push({ cls, label: (colEntry ? label.replace('🇨🇴 ', '') : label) + (isEarly ? ' (early)' : ''), amount: r.drawn });
+      if (isEarly) early += r.drawn;
       yearTaxPaid += r.taxPaid; need -= r.netReceived;
       return r;
     };
@@ -1242,16 +1245,20 @@ function simulate(p2Side = null) {
           sources.push({cls:'bk-liv', label:'Livrets', amount:d}); bLiv -= d; need -= d;
         }
       }
-      if (!locked) {
+      const drawFr = () => {
         if (bCto > 0 && need > 0) { const r = take('CTO','bk-cto',bCto,baseCto,TAX.cto,'cto'); if (r) { bCto=r.newBal; baseCto=r.newBasis; } }
         if (bPea > 0 && need > 0) { const r = take('PEA','bk-pea',bPea,basePea,TAX.pea,'pea'); if (r) { bPea=r.newBal; basePea=r.newBasis; } }
         if (bAv  > 0 && need > 0) { const r = take('AV','bk-av',bAv,baseAv,TAX.av,'av');       if (r) { bAv=r.newBal;  baseAv=r.newBasis;  } }
-      }
-      // Colombian assets are not part of the lock (lock = PEA, AV, CTO only)
-      for (const e of COL_ENTRIES) {
-        const c = col[e.id];
-        if (c.active && c.bal > 0 && need > 0) { const r = take('🇨🇴 '+e.label, e.bkCls, c.bal, c.basis, 0, null, c); if (r) { c.bal=r.newBal; c.basis=r.newBasis; } }
-      }
+      };
+      const drawCol = () => {
+        for (const e of COL_ENTRIES) {
+          const c = col[e.id];
+          if (c.active && c.bal > 0 && need > 0) { const r = take('🇨🇴 '+e.label, e.bkCls, c.bal, c.basis, 0, null, c); if (r) { c.bal=r.newBal; c.basis=r.newBasis; } }
+        }
+      };
+      // Order: CTO → PEA → AV → 🇨🇴. While locked, 🇨🇴 (not part of the lock) pays first, then
+      // PEA/AV/CTO cover what is still missing — that breaks the lock and is flagged as "(early)".
+      if (!locked) { drawFr(); drawCol(); } else { drawCol(); drawFr(); }
       if (need > 1) shortfall = need;   // spending that nothing could pay this year
     } else if (netCash < 0 && cashBefore > 0) {
       sources.push({cls:'bk-cash', label:'Cash', amount:Math.min(-netCash, cashBefore)});
@@ -1262,8 +1269,9 @@ function simulate(p2Side = null) {
     COL_ENTRIES.forEach(e => { col[e.id].bal = Math.max(0, col[e.id].bal); });
 
     const totalAfter = bPea+bAv+bCto+bLiv+bCash + colSum();
+    if (early > 0) earlyYears.push({ age, amount: early });
     if (shortfall > 0) {
-      shortYears.push({ age, amount: shortfall, locked: locked && (bPea+bAv+bCto) > 1 });
+      shortYears.push({ age, amount: shortfall });
       if (firstShortAge === null) firstShortAge = age;
     }
     if (totalAfter <= 0 && depleteAge === null) depleteAge = age;
@@ -1272,10 +1280,10 @@ function simulate(p2Side = null) {
     hist.liv.push(Math.round(bLiv/1000)); hist.cash.push(Math.round(bCash/1000));
     COL_ENTRIES.forEach(e => { hist.col[e.id].push(col[e.id].active ? Math.round(col[e.id].bal/1000) : null); });
     rows.push({ year:y+1, age, phase, locked, inflow, spend:inflSpend*12, taxPaid:yearTaxPaid, net:netCash-yearTaxPaid,
-                shortfall, sources, unlocks, total:Math.max(0,totalAfter), initTotal });
+                shortfall, early, sources, unlocks, total:Math.max(0,totalAfter), initTotal });
   }
   const cand = [firstShortAge, depleteAge].filter(a => a !== null);
-  return { rows, hist, shortYears, atLock, initTotal, depleteAge, lastsUntil: cand.length ? Math.min(...cand) : null };
+  return { rows, hist, shortYears, earlyYears, atLock, initTotal, depleteAge, lastsUntil: cand.length ? Math.min(...cand) : null };
 }
 
 // Break-even helper: age the capital lasts until with a uniform Phase 2 side income (null = whole horizon)
@@ -1562,7 +1570,7 @@ function renderTable() {
       `<td>€${fmt(r.spend)}</td>` +
       `<td style="color:var(--color-text-danger)">${r.taxPaid>0?'−€'+fmt(r.taxPaid):'—'}</td>` +
       `<td style="${nc}">${ns}€${fmt(Math.abs(r.net))}</td>` +
-      `<td style="text-align:left">${ul}${buildSourceCell(r.sources, r.shortfall)}${r.shortfall > 0 ? `<span class="bk bk-short">Not covered €${fmt(r.shortfall)}${r.locked ? ' 🔒' : ''}</span>` : ''}</td>` +
+      `<td style="text-align:left">${ul}${buildSourceCell(r.sources, r.shortfall)}${r.shortfall > 0 ? `<span class="bk bk-short">Not covered €${fmt(r.shortfall)}</span>` : ''}</td>` +
       `<td style="${dc}">${fmtK(r.total)}</td>`;
     tbody.appendChild(tr);
   });
@@ -1677,14 +1685,11 @@ function draw() {
   mAge.style.color = !depleteAge||depleteAge>80 ? 'var(--color-text-success)'
     : depleteAge>70 ? 'var(--color-text-warning)' : 'var(--color-text-danger)';
   const mShort = document.getElementById('m-short');
-  if (sim.shortYears.length) {
-    // While investments are locked: how much could not be paid; otherwise: from when the capital is gone
-    const lk = sim.shortYears.filter(x => x.locked);
-    if (lk.length) {
-      const a0 = lk[0].age, a1 = lk[lk.length-1].age;
-      mShort.textContent = '€' + fmt(lk.reduce((t, x) => t + x.amount, 0)/1000) + 'K at ' + (a0 === a1 ? a0 : a0 + '–' + a1) + ' 🔒 locked';
-    } else mShort.textContent = 'From age ' + sim.shortYears[0].age + ' (capital gone)';
-    mShort.style.color = 'var(--color-text-danger)';
+  if (sim.earlyYears.length) {
+    // Cash + Livrets ran out before the lock ends: PEA/AV/CTO had to be used early
+    const ey = sim.earlyYears, a0 = ey[0].age, a1 = ey[ey.length-1].age;
+    mShort.textContent = '€' + fmt(ey.reduce((t, x) => t + x.amount, 0)/1000) + 'K at ' + (a0 === a1 ? a0 : a0 + '–' + a1);
+    mShort.style.color = 'var(--color-text-warning)';
   } else { mShort.textContent = 'None'; mShort.style.color = 'var(--color-text-success)'; }
 
   updateStickyHeader(frTotal, totCopEur, grandTotalEur, depleteAge);
