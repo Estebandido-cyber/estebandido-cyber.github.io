@@ -529,6 +529,15 @@ body {
 
 .ename { font-size: 13px; font-weight: 400; color: var(--text-1); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .enote { font-size: 10px; color: var(--text-3); white-space: nowrap; }
+/* Phone: notes (weekly / yearly) go under the name so names are not cut */
+@media (max-width: 580px) {
+  .erow { row-gap: 0; }
+  .erow .ename { grid-column: 1; grid-row: 1; }
+  .erow .enote { grid-column: 1; grid-row: 2; }
+  .erow .enote:empty { display: none; }
+  .erow .spin-wrap { grid-column: 3; grid-row: 1 / span 2; }
+  .erow .eamt { grid-column: 4; grid-row: 1 / span 2; }
+}
 .eamt  { font-size: 13px; font-weight: 500; color: var(--text-1); text-align: right; min-width: 58px; }
 /* Shared box: one grid so header, rows and total share column widths */
 .expense-rows.split-grid { display: grid; grid-template-columns: 1fr auto auto auto; column-gap: 8px; }
@@ -703,28 +712,29 @@ const LS_KEY          = 'xpenses_calculator_v1';
 //    label  — display label
 //    step   — spinner increment (€)
 //    yearly — true if the state value is annual (displayed as /12)
+//    weekly — true for variable spending: shows "≈ €X/wk" (monthly × 12 / 52); Breakdown rows always do
 // ════════════════════════════════════════════════════════════════════
 const SHARED_DEF = [
   { key: 'rent',        label: 'Rent',           step: 5  },
   { key: 'internet',    label: 'Free',           step: 5  },
   { key: 'netflix',     label: 'Netflix',        step: 1  },
   { key: 'electricity', label: 'Electricity',    step: 10 },
-  { key: 'courses',     label: 'Courses',        step: 10 },
-  { key: 'bobsFood',    label: 'Bobs Food',      step: 2  },
+  { key: 'courses',     label: 'Courses',        step: 10, weekly: true },
+  { key: 'bobsFood',    label: 'Bobs Food',      step: 2, weekly: true },
   { key: 'bobsLitiere', label: 'Bobs Litière',   step: 5  },
-  { key: 'sharedResto', label: 'Restos',         step: 10 },
-  { key: 'deliveroo',   label: 'Deliveroo',      step: 5  },
-  { key: 'sharedBar',   label: 'Bar',            step: 10 },
-  { key: 'sharedExtras',label: 'Extras',         step: 5  },
+  { key: 'sharedResto', label: 'Restos',         step: 10, weekly: true },
+  { key: 'deliveroo',   label: 'Deliveroo',      step: 5, weekly: true },
+  { key: 'sharedBar',   label: 'Bar',            step: 10, weekly: true },
+  { key: 'sharedExtras',label: 'Extras',         step: 5, weekly: true },
 ];
 
 const PERSONAL_DEF = [
   { key: 'insurance',   label: 'Home insurance',        step: 1  },
-  { key: 'lunch',       label: 'Lunch',                 step: 10 },
-  { key: 'extras',      label: 'Extras',                step: 10 },
+  { key: 'lunch',       label: 'Lunch',                 step: 10, weekly: true },
+  { key: 'extras',      label: 'Extras',                step: 10, weekly: true },
   { key: 'health',      label: 'Health',                step: 10 },
-  { key: 'beer',        label: 'Beer',                  step: 5  },
-  { key: 'smoothie',    label: 'Post-workout smoothie', step: 5  },
+  { key: 'beer',        label: 'Beer',                  step: 5, weekly: true },
+  { key: 'smoothie',    label: 'Post-workout smoothie', step: 5, weekly: true },
   { key: 'savings',     label: 'Savings',               step: 10 },
   { key: 'drums',       label: 'Drums',                 step: 5  },
   { key: 'billar',      label: 'Billar membership',     step: 10, yearly: true },
@@ -822,6 +832,9 @@ const charts = { now: null, fire: null };
 const fmt      = n => '€' + Math.round(n).toLocaleString('de-DE');
 const fmtd     = n => '€' + n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtSmart = n => (n % 1 === 0) ? fmt(n) : fmtd(n);
+// Weekly equivalent of a monthly amount (a month is 52/12 ≈ 4,33 weeks)
+const weekly   = m => m * 12 / 52;
+const fmtWeek  = m => { const w = weekly(m); return '≈ €' + w.toLocaleString('de-DE', { maximumFractionDigits: w < 10 ? 1 : 0 }) + '/wk'; };
 
 // ════════════════════════════════════════════════════════════════════
 //  DERIVED VALUES
@@ -1138,6 +1151,7 @@ function render(tab) {
     localStorage.setItem('xpenses_calculator_outputs', JSON.stringify(outputs));
   } catch (_) {}
   SHARED_DEF.forEach(def => {
+    document.getElementById(`${p}note-${def.key}`).textContent = def.weekly ? fmtWeek(s[def.key]) : '';   // weekly of the full shared bill
     document.getElementById(`${p}sv-${def.key}`).textContent  = fmt(s[def.key]);
     document.getElementById(`${p}amt-${def.key}`).textContent = fmtSmart(s[def.key] / 2); // your half
   });
@@ -1157,12 +1171,13 @@ function render(tab) {
     const monthly = def.yearly ? raw / 12 : raw;
     document.getElementById(`${p}sv-${def.key}`).textContent   = fmt(raw);
     document.getElementById(`${p}amt-${def.key}`).textContent  = fmtSmart(monthly);
-    document.getElementById(`${p}note-${def.key}`).textContent = def.yearly ? `€${raw}/yr → €${(raw / 12).toFixed(2)}/mo` : '';
+    document.getElementById(`${p}note-${def.key}`).textContent = def.yearly ? `€${raw}/yr → €${(raw / 12).toFixed(2)}/mo` : def.weekly ? fmtWeek(raw) : '';
   });
   document.getElementById(`${p}total-personal`).textContent = fmt(d.personalMonthly);
 
   // Info-only tracker — deliberately outside derived()
   TRACKER_DEF.forEach(def => {
+    document.getElementById(`${p}note-${def.key}`).textContent = fmtWeek(s[def.key]);
     document.getElementById(`${p}sv-${def.key}`).textContent  = fmt(s[def.key]);
     document.getElementById(`${p}amt-${def.key}`).textContent = fmt(s[def.key]);
   });

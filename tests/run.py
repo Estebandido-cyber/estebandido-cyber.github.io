@@ -441,6 +441,13 @@ def xpenses_calculator_rules(b):
         assert ta['d'] == tb['d'], f'[{tab}] tracker stepper changed totals'
         approx(ta['donut'], tb['donut'], 'tracker stepper must not change the donut')
         assert ta['total'] == ta['want'], f'[{tab}] tracker total {ta["total"]!r} ≠ {ta["want"]!r}'
+        # Weekly hint = monthly × 12 / 52, on flagged variable rows and every Breakdown row; none on fixed bills
+        wk = pg.evaluate("""tab => [...SHARED_DEF, ...PERSONAL_DEF, ...TRACKER_DEF].map(d => ({ key: d.key,
+            want: (d.weekly || TRACKER_DEF.includes(d)) && !d.yearly ? fmtWeek(states[tab][d.key]) : (d.yearly ? null : ''),
+            shown: document.getElementById(tab + '-note-' + d.key).textContent }))""", tab)
+        bad = [x for x in wk if x['want'] is not None and x['shown'] != x['want']]
+        assert not bad, f'[{tab}] weekly hints wrong: {bad[:3]}'
+        approx(pg.evaluate("() => weekly(260)"), 60, 'weekly = monthly × 12 / 52')
         sub = pg.evaluate("""tab => TRACKER_GROUPS.map(g => [document.getElementById(tab + '-sub-tracker-' + g.id).textContent,
             fmt(g.rows.reduce((s, x) => s + states[tab][x.key], 0))])""", tab)
         assert all(a == b for a, b in sub), f'[{tab}] tracker subtotals wrong: {sub}'
