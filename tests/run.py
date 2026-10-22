@@ -443,7 +443,7 @@ def xpenses_calculator_rules(b):
         assert ta['total'] == ta['want'], f'[{tab}] tracker total {ta["total"]!r} ≠ {ta["want"]!r}'
         # Weekly hint = monthly × 12 / 52, on flagged variable rows and every Breakdown row; none on fixed bills
         wk = pg.evaluate("""tab => [...SHARED_DEF, ...PERSONAL_DEF, ...TRACKER_DEF].map(d => ({ key: d.key,
-            want: (d.weekly || TRACKER_DEF.includes(d)) && !d.yearly ? fmtWeek(states[tab][d.key]) : (d.yearly ? null : ''),
+            want: (d.weekly || (TRACKER_DEF.includes(d) && d.weekly !== false)) && !d.yearly ? fmtWeek(states[tab][d.key]) : (d.yearly ? null : ''),
             shown: document.getElementById(tab + '-note-' + d.key).textContent }))""", tab)
         bad = [x for x in wk if x['want'] is not None and x['shown'] != x['want']]
         assert not bad, f'[{tab}] weekly hints wrong: {bad[:3]}'

@@ -712,7 +712,7 @@ const LS_KEY          = 'xpenses_calculator_v1';
 //    label  — display label
 //    step   — spinner increment (€)
 //    yearly — true if the state value is annual (displayed as /12)
-//    weekly — true for variable spending: shows "≈ €X/wk" (monthly × 12 / 52); Breakdown rows always do
+//    weekly — true for variable spending: shows "≈ €X/wk" (monthly × 12 / 52); Breakdown rows do unless weekly: false
 // ════════════════════════════════════════════════════════════════════
 const SHARED_DEF = [
   { key: 'rent',        label: 'Rent',           step: 5  },
@@ -721,24 +721,24 @@ const SHARED_DEF = [
   { key: 'electricity', label: 'Electricity',    step: 10 },
   { key: 'courses',     label: 'Courses',        step: 10, weekly: true },
   { key: 'bobsFood',    label: 'Bobs Food',      step: 2, weekly: true },
-  { key: 'bobsLitiere', label: 'Bobs Litière',   step: 5  },
+  { key: 'bobsLitiere', label: 'Bobs Litière',   step: 5, weekly: true },
   { key: 'sharedResto', label: 'Restos',         step: 10, weekly: true },
   { key: 'deliveroo',   label: 'Deliveroo',      step: 5, weekly: true },
   { key: 'sharedBar',   label: 'Bar',            step: 10, weekly: true },
-  { key: 'sharedExtras',label: 'Extras',         step: 5, weekly: true },
+  { key: 'sharedExtras',label: 'Extras',         step: 5  },
 ];
 
 const PERSONAL_DEF = [
   { key: 'insurance',   label: 'Home insurance',        step: 1  },
   { key: 'lunch',       label: 'Lunch',                 step: 10, weekly: true },
-  { key: 'extras',      label: 'Extras',                step: 10, weekly: true },
+  { key: 'extras',      label: 'Extras',                step: 10 },
   { key: 'health',      label: 'Health',                step: 10 },
   { key: 'beer',        label: 'Beer',                  step: 5, weekly: true },
   { key: 'smoothie',    label: 'Post-workout smoothie', step: 5, weekly: true },
   { key: 'savings',     label: 'Savings',               step: 10 },
-  { key: 'drums',       label: 'Drums',                 step: 5  },
+  { key: 'drums',       label: 'Drums',                 step: 5, weekly: true },
   { key: 'billar',      label: 'Billar membership',     step: 10, yearly: true },
-  { key: 'billarMonth', label: 'Billar monthly',        step: 5  },
+  { key: 'billarMonth', label: 'Billar monthly',        step: 5, weekly: true },
   { key: 'chess',       label: 'Chess membership',      step: 5,  yearly: true },
   { key: 'amazonPrime', label: 'Amazon Prime',          step: 5,  yearly: true },
   { key: 'phone',       label: 'Phone',                 step: 1  },
@@ -768,10 +768,10 @@ const TRACKER_GROUPS = [
     { key: 'trkBarBouffe',label: 'Bar Bouffe',   step: 2 },
   ]},
   { id: 'extras', title: 'Extras', rows: [
-    { key: 'trkConcert',    label: 'Concert',     step: 5  },
+    { key: 'trkConcert',    label: 'Concert',     step: 5,  weekly: false },
     { key: 'trkConcertBar', label: 'Concert bar', step: 5  },
-    { key: 'trkVacs',       label: 'Vacs',        step: 10 },
-    { key: 'trkHome',       label: 'Home',        step: 5  },
+    { key: 'trkVacs',       label: 'Vacs',        step: 10, weekly: false },
+    { key: 'trkHome',       label: 'Home',        step: 5,  weekly: false },
   ]},
 ];
 const TRACKER_DEF = TRACKER_GROUPS.flatMap(g => g.rows);
@@ -1177,7 +1177,7 @@ function render(tab) {
 
   // Info-only tracker — deliberately outside derived()
   TRACKER_DEF.forEach(def => {
-    document.getElementById(`${p}note-${def.key}`).textContent = fmtWeek(s[def.key]);
+    document.getElementById(`${p}note-${def.key}`).textContent = def.weekly === false ? '' : fmtWeek(s[def.key]);
     document.getElementById(`${p}sv-${def.key}`).textContent  = fmt(s[def.key]);
     document.getElementById(`${p}amt-${def.key}`).textContent = fmt(s[def.key]);
   });
