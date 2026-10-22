@@ -1123,54 +1123,26 @@ function paintWorkout(v, savedAt) {
   setFoot('footer-workout', savedAt);
 }
 
-// ── Kals ──
-// View = the most recent day with entries; `today` says whether that day is today (device-local date).
-function kalsFromData(data) {
-  if (!data?.days) return null;
-  const sum = arr => Math.round((arr || []).reduce((s, x) => s + (x?.kcal || 0), 0));
-  const keys = Object.keys(data.days).filter(k => /^kals_day_\d{4}-\d{2}-\d{2}$/.test(k)).sort().reverse();
-  for (const k of keys) {
-    const day = data.days[k] || {};
-    const c = sum(day.meals), b = sum(day.burned), w = day.waterTotal || 0;
-    if (c || b || w) return kalsView({ d: k.slice(9), c, b, w, budget: data.settings?.budget }, day.savedAt);
-  }
-  return null;
-}
-function kalsFromHub(h) { return h.d ? kalsView(h) : null; }
-function kalsView(h, savedAt) {
-  return { d: h.d, c: h.c || 0, b: h.b || 0, w: h.w || 0, budget: h.budget || 2650, today: h.d === periods().today, savedAt };
-}
+// ── Kals (Balance: weekly check-ins) ──
+// Summary: wk (Monday of the latest check-in), v/vt (verdict code/label), tw (trend kg), wa (waist cm), mt (maintenance kcal)
+function kalsFromData(data) { return data && data.v === 2 && data.hub ? kalsFromHub(data.hub) : null; }
+function kalsFromHub(h) { return h && h.wk ? h : null; }
 function paintKals(v, savedAt) {
   const el = document.getElementById('stats-kals');
-  if (!v) { el.innerHTML = noData('Open Kals to start'); return; }
-  const left      = (v.budget + v.b) - v.c;
-  const leftColor = left >= 0 ? 'var(--text)' : '#ff6b6b';
-  const kalsPct   = Math.min(100, Math.round((v.c / v.budget) * 100));
-  const kalsColor = kalsPct < 70 ? '#00e5a0' : kalsPct < 90 ? '#ffd166' : '#ff6b6b';
-  const kalsBar   = `<div class="budget-bar-wrap"><div class="budget-bar-fill" style="width:${kalsPct}%;background:${kalsColor}"></div></div>`;
-  const waterL    = (v.w/1000).toFixed(1) + 'L';
-  if (v.today) {
-    el.innerHTML =
-      `<div class="stat"><div class="stat-label">Consumed · ${kalsPct}% of budget</div><div class="stat-value stat-value-big">${v.c} kcal</div>${kalsBar}</div>` +
-      '<div class="stat-divider"></div>' +
-      `<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${leftColor}">${left} kcal</div></div>` +
-      '<div class="stat-divider"></div>' +
-      statHTML('Water', waterL);
-  } else {
-    // Nothing today: say so, then the last logged day (same height: remaining + water share a row)
-    const dt = new Date(v.d + 'T12:00:00');
-    const dayLbl = dt.toLocaleDateString('en-GB', { weekday:'short' }) + ' ' + dt.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
-    el.innerHTML =
-      `<div class="no-data">Nothing logged today</div>` +
-      '<div class="stat-divider"></div>' +
-      `<div class="stat"><div class="stat-label">Last log · ${dayLbl}</div><div class="stat-value">${v.c} kcal</div>${kalsBar}</div>` +
-      '<div class="stat-divider"></div>' +
-      `<div class="stat-pair">` +
-        `<div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${leftColor}">${left} kcal</div></div>` +
-        statHTML('Water', waterL) +
-      `</div>`;
-  }
-  setFoot('footer-kals', savedAt || v.savedAt);
+  if (!v) { el.innerHTML = noData('Open Kals for your weekly check-in'); return; }
+  const n1 = x => x.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const vColor = v.v === 'good' ? '#00e5a0' : v.v === 'warn' ? '#ffd166' : 'var(--text)';
+  const wkLbl = new Date(v.wk + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  el.innerHTML =
+    `<div class="stat"><div class="stat-label">Recomposition · week of ${esc(wkLbl)}</div><div class="stat-value stat-value-big" style="color:${vColor}">${esc(v.vt || '—')}</div></div>` +
+    '<div class="stat-divider"></div>' +
+    `<div class="stat-pair">` +
+      statHTML('Trend weight', typeof v.tw === 'number' ? n1(v.tw) + ' kg' : '—') +
+      statHTML('Waist', typeof v.wa === 'number' ? n1(v.wa) + ' cm' : '—') +
+    `</div>` +
+    '<div class="stat-divider"></div>' +
+    statHTML('Real maintenance', typeof v.mt === 'number' ? v.mt.toLocaleString('de-DE') + ' kcal' : '—');
+  setFoot('footer-kals', savedAt);
 }
 
 // ── LUKAS Flow ──

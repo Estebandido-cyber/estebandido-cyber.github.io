@@ -30,6 +30,8 @@ JSONH = {**CORS, 'Content-Type': 'application/json'}
 
 # Pages whose save function is not global (script wrapped in an IIFE): trigger via the UI
 SAVE_BY_CLICK = {'WEEK_PLANNER.html': '#clearbtn'}
+# Read-only access to another widget's cloud data (GET only, never POST)
+CROSS_READS = {'kals_track.html': {'workout'}}
 DRIVE_STATUS_IDS = ['drive-status-bar', 'drive-status', 'statusText']
 
 
@@ -213,7 +215,7 @@ def cloud_sync_load_and_save(b):
         if f in SAVE_BY_CLICK: pg.click(SAVE_BY_CLICK[f])
         else: pg.evaluate('cloudSave()')
         assert wait_until(pg, lambda: w['key'] in worker.keys('POST'), 6), f'{f}: no POST /data/{w["key"]} after save'
-        other = (worker.keys('GET') | worker.keys('POST')) - {w['key']}
+        other = ((worker.keys('GET') - CROSS_READS.get(f, set())) | worker.keys('POST')) - {w['key']}
         assert not other, f'{f}: touched other cloud keys {other}'
         assert not errs, f'{f}: {errs}'
         ctx.close()
@@ -454,6 +456,55 @@ def xpenses_calculator_rules(b):
     ctx.close()
 
 @test
+def kals_balance_rules(b):
+    worker = FakeWorker()
+    worker.store['kalstrack'] = json.dumps({'settings': {'budget': 2000}, 'days': {'kals_day_2026-01-05': {'meals': [{'kcal': 1}]}}})   # old KALS format
+    ctx = new_context(b, worker)
+    ctx.add_init_script("localStorage.setItem('kals_day_2026-01-05', '{}'); localStorage.setItem('kals_settings', '{}');")
+    pg, errs = open_page(ctx, 'kals_track.html'); wait_until(pg, lambda: 'kalstrack' in worker.keys('GET')); pg.wait_for_timeout(500)
+    ev = pg.evaluate
+    # Old day-by-day data is ignored (fresh start), its local keys removed, and nothing is written just by opening
+    assert ev("Object.keys(state.weeks).length") == 0, 'old KALS cloud data must not be loaded'
+    assert ev("Object.keys(localStorage).filter(k => k.startsWith('kals_') && !k.startsWith('kals_balance')).length") == 0, 'old kals_ keys not removed'
+    assert not [1 for m, p, _ in worker.log if m == 'POST'], 'opening must not overwrite the cloud'
+    near = lambda a, e, what: abs(a - e) < 1e-6 or (_ for _ in ()).throw(AssertionError(f'{what}: {a} ≠ {e}'))
+    # Beer: verres standard = ml × %alc × 0.789 / 10 g
+    std = ev("beerStats({bd: 2, fp: 2, bb: 1}, {abvB: 4, abvF: 8}).std")
+    near(std, (2 * 250 * 0.04 + 2 * 500 * 0.08 + 330 * 0.04) * 0.789 / 10, 'standard drinks')
+    # Maintenance = mean kcal − weight slope (kg/day) × 7700; needs 2 weeks with kcal
+    st = {'v': 2, 'settings': {'defLo': 100, 'defHi': 400, 'protKg': 2},
+          'weeks': {'2026-03-02': {'w': {'2026-03-02': 80.0, '2026-03-05': 79.7}, 'kcal': 2400, 'prot': 150},
+                    '2026-03-09': {'w': {'2026-03-09': 79.3, '2026-03-12': 79.0}, 'kcal': 2600, 'prot': 100}}}
+    c = ev("s => { const c = compute(s, []); return c.weeks.map(w => ({maint: w.maint, lo: w.zoneLo, hi: w.zoneHi, status: w.status, pt: w.protTarget, trend: w.trend})); }", st)
+    assert c[0]['maint'] is None, 'one week of kcal is not enough for maintenance'
+    near(c[1]['maint'], 2500 + 0.1 * 7700, 'maintenance'); near(c[1]['lo'], c[1]['maint'] - 400, 'zone bottom'); near(c[1]['hi'], c[1]['maint'] - 100, 'zone top')
+    assert c[1]['status'] == 'below', c[1]
+    near(c[1]['pt'], 2 * c[1]['trend'], 'protein target = g/kg × trend weight')
+    # Verdict: falling waist → on track; rising waist → warning; < 4 check-ins → waiting
+    def verdict(waists):
+        ws = {}
+        for i, wa in enumerate(waists):
+            mon = ev("i => addDays('2026-03-02', 7 * i)", i)
+            ws[mon] = {'w': {mon: 80.0}, 'waist': wa}
+        return ev("s => compute(s, []).verdict.code", {'v': 2, 'settings': {}, 'weeks': ws})
+    assert verdict([90, 89.7, 89.4, 89.1]) == 'good'
+    assert verdict([90, 90.3, 90.6, 90.9]) == 'warn'
+    assert verdict([90, 89.5, 89]) == 'wait'
+    # Check-in form: European input parsed, saved for the chosen week, pushed to the cloud
+    pg.click('#btn-open-checkin'); mon = ev('ciMon')
+    pg.fill('#ci-days input >> nth=0', '74,4'); pg.fill('#ci-days input >> nth=3', '74.0')
+    pg.fill('#ci-kcal', '2.350'); pg.fill('#ci-prot', '128'); pg.fill('#ci-steps', '8.900'); pg.fill('#ci-rhr', '57'); pg.fill('#ci-sleep', '6h52')
+    pg.click('#ci-beer button[data-k="fp"][data-s="1"]'); pg.click('#ci-beer button[data-k="fp"][data-s="1"]'); pg.click('#ci-beer button[data-k="bd"][data-s="1"]')
+    pg.fill('#ci-waist', '86,5'); pg.click('#waist-minus')
+    pg.click('#btn-save')
+    e = ev("m => state.weeks[m]", mon)
+    assert e['w'] == {mon: 74.4, ev("m => addDays(m, 3)", mon): 74} and e['kcal'] == 2350 and e['steps'] == 8900 and e['sleep'] == 412, e
+    assert e['beer'] == {'fp': 2, 'bd': 1} and e['waist'] == 86, e
+    assert wait_until(pg, lambda: (worker.posted('kalstrack') or {}).get('weeks', {}).get(mon), 6), 'check-in not synced'
+    assert not errs, errs
+    ctx.close()
+
+@test
 def workout_rings_rules(b):
     ctx = new_context(b, FakeWorker())
     pg, errs = open_page(ctx, 'workout_dashboard.html'); pg.wait_for_timeout(500)
@@ -560,9 +611,11 @@ def hub_summary_values(b):
     # Workout: month count anchored, last session, best kcal
     h = saved('workout_dashboard.html', "localStorage.setItem('workout_insights_v3', JSON.stringify({sessions:[{d:'2026-01-02',dur:30,kcal:700},{d:'2026-03-04',dur:45,kcal:300}],monthly:[{month:'%s',sessions:7}],ts:Date.now()}));" % P['month'], 'workout')
     assert (h['m'], h['mN'], h['last'], h['dur'], h['best']) == (P['month'], 7, '2026-03-04', 45, 700), h
-    # Kals: most recent day WITH entries (empty newer days skipped)
-    h = saved('kals_track.html', "localStorage.setItem('kals_settings', JSON.stringify({budget:2000})); localStorage.setItem('kals_day_2026-01-05', JSON.stringify({meals:[{kcal:500.4},{kcal:300}],burned:[{kcal:100}],waterTotal:1500})); localStorage.setItem('kals_day_2026-01-06', JSON.stringify({meals:[],burned:[]}));", 'kalstrack')
-    assert h == {'budget': 2000, 'd': '2026-01-05', 'c': 800, 'b': 100, 'w': 1500}, h
+    # Kals: latest check-in week, last waist, trend weight; nothing for an empty state
+    weeks = {'2026-01-05': {'w': {'2026-01-05': 80}, 'waist': 90}, '2026-01-12': {'w': {'2026-01-13': 80}, 'kcal': 2000}}
+    h = saved('kals_track.html', "localStorage.setItem('kals_balance_v1', %s);" % json.dumps(json.dumps({'v': 2, 'settings': {}, 'weeks': weeks})), 'kalstrack')
+    assert (h['wk'], h['wa'], h['tw'], h['v']) == ('2026-01-12', 90, 80, 'wait') and 'mt' not in h, h
+    assert saved('kals_track.html', '', 'kalstrack') == {}, 'empty Kals must send an empty summary'
 
 @test
 def fire_summary_matches_widget(b):
@@ -575,7 +628,7 @@ def fire_summary_matches_widget(b):
     assert not errs, errs
     ctx.close()
 
-def seed_hub(worker, P, kals_day=None):
+def seed_hub(worker, P):
     """Summaries for every widget, as the Worker would return them from /hub."""
     at = '2026-10-20T08:00:00Z'
     hubs = {
@@ -585,7 +638,7 @@ def seed_hub(worker, P, kals_day=None):
         'weekplanner': {'week': 1, 'hours': 4.5, 'free': 3},
         'fire-sim': {'total': 216667, 'fr': 150000, 'co': 66667, 'scen': 'Plan <A>'},
         'workout': {'m': P['month'], 'mN': 5, 'best': 520, 'last': '2026-10-18', 'dur': 45},
-        'kalstrack': {'budget': 2000, 'd': kals_day or P['today'], 'c': 900, 'b': 200, 'w': 1500},
+        'kalstrack': {'wk': '2026-10-12', 'v': 'good', 'vt': 'On <track>', 'tw': 74.2, 'wa': 86, 'mt': 2540},
         'lukas-flow': {'v': 123456, 'gl': -5432, 'glp': -4.2},
     }
     worker.meta = {k: {'savedAt': at, 'hub': h} for k, h in hubs.items()}
@@ -605,7 +658,8 @@ def hub_renders_from_summaries_only(b):
     assert 'Week 2' in t['planner'] and '4.5h' in t['planner'] and '3 free days' in t['planner'], t['planner']
     assert 'Plan <A>' in t['fire'] and not pg.query_selector('#stats-fire a'), t['fire']
     assert '5 sessions' in t['workout'] and '520 kcal' in t['workout'], t['workout']
-    assert '900 kcal' in t['kals'] and '1300 kcal' in t['kals'] and 'Nothing logged' not in t['kals'], t['kals']
+    assert 'On <track>' in t['kals'] and '74,2 kg' in t['kals'] and '86,0 cm' in t['kals'] and '2.540 kcal' in t['kals'], t['kals']
+    assert not pg.query_selector('#stats-kals track'), 'Kals verdict must be escaped'
     assert '-4.2%' in t['lukas'], t['lukas']
     foot = pg.evaluate("document.getElementById('footer-tracker').textContent")
     assert foot.startswith('Last logged'), f'footer must come from the cloud save time: {foot!r}'
@@ -613,15 +667,14 @@ def hub_renders_from_summaries_only(b):
     ctx.close()
 
 @test
-def hub_old_periods_and_kals_last_day(b):
-    P = periods_now(); worker = FakeWorker(); seed_hub(worker, P, kals_day='2026-01-05')
+def hub_old_periods_and_old_kals_summary(b):
+    P = periods_now(); worker = FakeWorker(); seed_hub(worker, P)
+    worker.meta['kalstrack']['hub'] = {'budget': 2000, 'd': '2026-01-05', 'c': 900, 'b': 200, 'w': 1500}   # old day-by-day KALS
     worker.meta['xpenser']['hub'].update(w='2000-01-03', m='2000-01', y='2000')
     worker.meta['workout']['hub']['m'] = '2000-01'
     ctx = new_context(b, worker)
     pg, errs = open_page(ctx, 'index.html')
-    assert wait_until(pg, lambda: 'Nothing logged today' in stats_text(pg, 'kals')), stats_text(pg, 'kals')
-    k = stats_text(pg, 'kals')
-    assert re.search(r'Mon,? 5 Jan', k) and '900 kcal' in k and '1300 kcal' in k, f'Kals must show the last logged day: {k}'
+    assert wait_until(pg, lambda: 'weekly check-in' in stats_text(pg, 'kals')), f'old Kals summary must show the start message: {stats_text(pg, "kals")}'
     tr = stats_text(pg, 'tracker').replace(' ', ' ').replace('\xa0', ' ')
     assert tr.count('0 €') == 3 and 'of income' not in tr, f'old-period totals must count as 0: {tr}'
     assert '0 sessions' in stats_text(pg, 'workout')
@@ -632,11 +685,11 @@ def hub_old_periods_and_kals_last_day(b):
 def hub_falls_back_per_widget(b):
     P = periods_now(); worker = FakeWorker(); seed_hub(worker, P)
     del worker.meta['kalstrack']; worker.meta['weekplanner'] = {'savedAt': '2026-10-20T08:00:00Z'}   # saved before summaries existed
-    worker.store['kalstrack'] = json.dumps({'settings': {'budget': 2000}, 'days': {'kals_day_' + P['today']: {'meals': [{'kcal': 700}], 'burned': [], 'waterTotal': 500}}})
+    worker.store['kalstrack'] = json.dumps({'v': 2, 'settings': {}, 'weeks': {}, 'hub': {'wk': '2026-10-12', 'v': 'wait', 'vt': 'Collecting data', 'mt': 2700}})
     worker.store['weekplanner'] = json.dumps({'curWeek': 0, 'weekPlaces': [{'a': {'d': 0, 'dur': 3}}], 'acts': [], 'weekNotes': []})
     ctx = new_context(b, worker)
     pg, errs = open_page(ctx, 'index.html')
-    assert wait_until(pg, lambda: '700 kcal' in stats_text(pg, 'kals')), stats_text(pg, 'kals')
+    assert wait_until(pg, lambda: '2.700 kcal' in stats_text(pg, 'kals')), stats_text(pg, 'kals')
     assert worker.keys('GET') == {'kalstrack', 'weekplanner'}, worker.keys('GET')
     assert '3h' in stats_text(pg, 'planner')
     assert pg.evaluate("document.getElementById('footer-planner').textContent").startswith('Last logged'), 'planner footer must use the cloud save time'

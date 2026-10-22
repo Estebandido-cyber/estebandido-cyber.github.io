@@ -15,7 +15,7 @@ and can be backed up manually to Google Drive.
 | Life Command Center (DOit!) | `notes.html` | `doit-lcc` | `doit_lcc_data.json` | `doit_lcc_v1` |
 | Xpenser Tracker | `XPENSE_TRACKER.html` | `xpenser` | `xpenser_data.json` | `depenses_data_v1` (+ `_settings_v1`, `_cashflow_v1`, `_notes_v1`) |
 | Workout Insights | `workout_dashboard.html` | `workout` | `workout_insights_data.json` | `workout_insights_v3` |
-| KALS Track | `kals_track.html` | `kalstrack` | `kalstrack_data.json` | `kals_settings`, `kals_recaps`, `kals_day_*` |
+| KALS Balance | `kals_track.html` | `kalstrack` (+ reads `workout`) | `kalstrack_data.json` | `kals_balance_v1` (+ `kals_balance_range`) |
 | LUKAS Flow | `lukas_analyzer.html` | `lukas-flow` | `portfolio_dashboard_data.json` | `lukas_flow_snapshot` |
 | Xpenses Calculator | `XPENSES_CALCULATOR.html` | `xpenses-calculator` | `xpenses_calculator_data.json` | `xpenses_calculator_v1` |
 | FIRE Sim | `FIRE_SIM.html` | `fire-sim` | `fire-sim-data.json` | `fire-sim-v1` |
@@ -77,7 +77,7 @@ edits are flushed first (`LifeSync.flushPending()`).
 | Week Plan | `week`, `hours`, `free` (weekdays with < 2 h) |
 | FIRE Sim | `total`, `fr`, `co` (live COP/EUR, ticked Colombian assets only), `scen` |
 | Workout | `m`, `mN`, `last`, `dur`, `best` |
-| Kals | `budget`, and the most recent day with entries: `d`, `c`, `b`, `w` |
+| Kals | `wk` (Monday of the latest check-in), `v`/`vt` (verdict code/label), `tw` (trend kg), `wa` (waist cm), `mt` (maintenance kcal) |
 | LUKAS | `v`, `gl`, `glp` — only from fully priced renders; after a price refresh saved only if the value moved ≥ €100 since this device's last save (`lukas_hub_last`) or that save is > 24 h old and something changed |
 
 ## External services

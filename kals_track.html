@@ -7,926 +7,156 @@
 <script src="lib/drive.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KALS Track</title>
+<title>KALS Balance</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f3;
-  --bg-tertiary: #eeede9;
-  --text-primary: #1a1a18;
-  --text-secondary: #5f5e5a;
-  --text-tertiary: #888780;
-  --border: rgba(0,0,0,0.11);
-  --border-med: rgba(0,0,0,0.2);
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --green: #1D9E75;
-  --blue: #378ADD;
-  --teal: #5DCAA5;
-  --amber: #EF9F27;
-  --red: #E24B4A;
-  --purple: #8B5CF6;
-  --header-h: 58px;
-  --font-body: 'DM Sans', sans-serif;
-  --font-kals: 'Black Ops One', sans-serif;
+  --bg: #eeede9; --card: #ffffff; --sub: #f5f5f3;
+  --text: #1a1a18; --text2: #5f5e5a; --text3: #8a8880;
+  --border: rgba(0,0,0,0.11); --border2: rgba(0,0,0,0.2); --grid: #e6e5e0;
+  --green: #13795a; --green-bg: #e3f4ec; --green-bd: #8fd1b5; --green-tx: #0d5a42;
+  --amber: #b25f00; --amber-bar: #e8a34a; --amber-bg: #fdf1e0; --amber-bd: #f0c88a; --amber-tx: #7a4300;
+  --blue: #3f6fb5; --pink: #b8336a; --on-green: #ffffff; --zone: rgba(19,121,90,0.22);
+  --font: 'DM Sans', system-ui, sans-serif; --font-logo: 'Black Ops One', sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-primary: #1e1e1c; --bg-secondary: #2a2a28; --bg-tertiary: #242422;
-    --text-primary: #f0ede6; --text-secondary: #a8a69f; --text-tertiary: #6e6d69;
-    --border: rgba(255,255,255,0.09); --border-med: rgba(255,255,255,0.18);
+    --bg: #161615; --card: #1f1f1d; --sub: #2a2a28;
+    --text: #f0ede6; --text2: #a8a69f; --text3: #7a7872;
+    --border: rgba(255,255,255,0.09); --border2: rgba(255,255,255,0.18); --grid: #2e2e2b;
+    --green: #3cc492; --green-bg: #11281f; --green-bd: #1f5a44; --green-tx: #8fe0bf;
+    --amber: #f0a640; --amber-bar: #e8a34a; --amber-bg: #2b1f0c; --amber-bd: #5a4010; --amber-tx: #f5c27a;
+    --blue: #6f9be0; --pink: #e0709c; --on-green: #0b1f17; --zone: rgba(60,196,146,0.24);
   }
 }
-body {
-  font-family: var(--font-body); background: var(--bg-tertiary); color: var(--text-primary);
-  min-height: 100vh; padding: calc(var(--header-h) + 1.25rem) 1.25rem 2rem;
-  overflow-x: hidden;
-}
+body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
 
-/* ── Header ── */
-.site-header {
-  position: fixed; top: 0; left: 0; right: 0; height: var(--header-h);
-  background: var(--bg-primary); border-bottom: 0.5px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 1.25rem; z-index: 100;
-}
-.header-logo { display: flex; align-items: baseline; gap: 9px; user-select: none; }
-.logo-kals {
-  font-family: var(--font-kals); font-size: 26px; line-height: 1; letter-spacing: 0.04em;
-  background: linear-gradient(105deg, #ff6b2b 0%, #ff3c00 40%, #ffb300 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-  filter: drop-shadow(0 0 8px rgba(255,90,0,0.25)); position: relative; top: 1px;
-}
-.logo-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-tertiary); flex-shrink: 0; margin-bottom: 3px; }
-.logo-track { font-family: var(--font-body); font-size: 17px; font-weight: 300; letter-spacing: 0.18em; color: var(--text-secondary); text-transform: uppercase; }
-.header-actions { display: flex; align-items: center; gap: 8px; }
-.header-sep { width: 1px; height: 18px; background: rgba(0,0,0,0.22); flex-shrink: 0; }
-@media (prefers-color-scheme: dark) { .header-sep { background: rgba(255,255,255,0.18); } }
-#home-link { display: flex; align-items: center; opacity: 0.85; transition: opacity 0.18s, transform 0.18s; text-decoration: none; }
-#home-link:hover { opacity: 1; transform: scale(1.1); }
-
-/* ── Day navigator ── */
-.day-nav {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 1rem;
-  background: var(--bg-primary); border: 0.5px solid var(--border);
-  border-radius: var(--radius-lg); padding: 10px 14px; justify-content: space-between;
-}
-.day-nav-center { display: flex; flex-direction: column; align-items: center; gap: 1px; }
-.day-nav-date { font-size: 14px; font-weight: 500; color: var(--text-primary); }
-.day-nav-label { font-size: 11px; color: var(--text-tertiary); letter-spacing: 0.03em; }
-.nav-btn {
-  background: transparent; border: 0.5px solid var(--border-med); border-radius: var(--radius-md);
-  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 15px; color: var(--text-secondary); transition: background 0.1s; flex-shrink: 0;
-}
-.nav-btn:hover { background: var(--bg-secondary); }
-.nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.day-nav-today {
-  font-size: 11px; color: var(--blue); cursor: pointer; padding: 4px 8px;
-  border-radius: var(--radius-md); border: 0.5px solid var(--border);
-  background: transparent; font-family: var(--font-body);
-}
-.day-nav-today:hover { background: var(--bg-secondary); }
-
-/* ── Top cards ── */
-.top-cards { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin-bottom: 1rem; }
-.card { background: var(--bg-primary); border-radius: var(--radius-lg); padding: 12px 14px; border: 0.5px solid var(--border); }
-.card-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; font-weight: 500; }
-.card-value { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1; }
-.card-sub { font-size: 10px; color: var(--text-tertiary); margin-top: 3px; }
-.card-bar { height: 3px; border-radius: 2px; background: var(--border); margin-top: 7px; overflow: hidden; }
-.card-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
-.calories-over { color: var(--red) !important; }
-
-/* ── Two-col layout ── */
-.layout-main { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; margin-bottom: 12px; }
-.layout-bottom { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; }
-
-/* ── Panel base ── */
-.panel { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.1rem; min-width: 0; max-width: 100%; }
-.panel-title { font-size: 10px; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.9rem; }
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem; }
-
-/* ── Tabs ── */
-.tab-row { display: flex; margin-bottom: 0.9rem; border-bottom: 0.5px solid var(--border); }
-.tab { font-size: 11px; font-weight: 500; color: var(--text-tertiary); padding: 4px 11px 8px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; letter-spacing: 0.05em; text-transform: uppercase; transition: color 0.15s; }
-.tab.active { color: var(--text-primary); border-bottom-color: var(--text-primary); }
-
-/* ── Unified chat panel ── */
-.chat-panel { display: flex; flex-direction: column; min-height: 420px; }
-.chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px; min-height: 280px; max-height: 340px; }
-.msg { max-width: 90%; border-radius: 10px; padding: 8px 12px; font-size: 13px; line-height: 1.5; word-break: break-word; }
-.msg-user { align-self: flex-end; background: var(--text-primary); color: var(--bg-primary); border-bottom-right-radius: 3px; }
-.msg-assistant { align-self: flex-start; background: var(--bg-secondary); color: var(--text-primary); border-bottom-left-radius: 3px; }
-.msg-system { align-self: center; background: transparent; color: var(--text-tertiary); font-size: 11px; padding: 2px 0; text-align: center; }
-.msg-log { align-self: flex-start; background: rgba(29,158,117,0.08); border: 0.5px solid rgba(29,158,117,0.25); color: var(--text-primary); border-bottom-left-radius: 3px; font-size: 12px; }
-.msg-water { align-self: flex-start; background: rgba(93,202,165,0.1); border: 0.5px solid rgba(93,202,165,0.3); color: var(--text-primary); border-bottom-left-radius: 3px; font-size: 12px; }
-.msg-thinking { align-self: flex-start; background: var(--bg-secondary); border-radius: 10px; border-bottom-left-radius: 3px; padding: 10px 14px; }
-.dot-anim span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--text-tertiary); margin: 0 1px; animation: bounce 1.2s infinite; }
-.dot-anim span:nth-child(2) { animation-delay: 0.2s; }
-.dot-anim span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
-
-/* Log entry confirmation bubble */
-.log-confirm { padding: 4px 0 6px; }
-.log-confirm-title { font-weight: 500; font-size: 13px; margin-bottom: 4px; }
-.log-confirm-items { font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.6; }
-.log-confirm-total { font-size: 12px; font-weight: 500; margin-bottom: 8px; }
-.log-confirm-btns { display: flex; gap: 6px; }
-.btn-add { background: var(--green); color: #fff; border: none; border-radius: var(--radius-md); padding: 5px 14px; font-family: var(--font-body); font-size: 12px; font-weight: 500; cursor: pointer; }
-.btn-skip { background: transparent; border: 0.5px solid var(--border-med); border-radius: var(--radius-md); padding: 5px 12px; font-family: var(--font-body); font-size: 12px; color: var(--text-secondary); cursor: pointer; }
-
-/* Water quick pills */
-.water-pills { display: flex; gap: 5px; flex-wrap: wrap; padding: 6px 0 4px; border-top: 0.5px solid var(--border); margin-top: 6px; }
-.water-pill { background: rgba(93,202,165,0.12); border: 0.5px solid rgba(93,202,165,0.35); border-radius: 20px; padding: 3px 10px; font-size: 11px; color: var(--teal); cursor: pointer; transition: background 0.1s; font-family: var(--font-body); white-space: nowrap; }
-.water-pill:hover { background: rgba(93,202,165,0.22); }
-
-/* Memory chips */
-.memory-section { margin-bottom: 8px; }
-.memory-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
-.memory-row { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 3px; }
-.memory-chip { display: flex; align-items: center; gap: 4px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: 20px; padding: 3px 10px 3px 8px; font-size: 11px; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; }
-.memory-chip:hover { background: var(--bg-tertiary); border-color: var(--border-med); color: var(--text-primary); }
-
-/* Chat input row */
-.chat-input-wrap { margin-top: 8px; border-top: 0.5px solid var(--border); padding-top: 8px; }
-.chat-input-row { display: flex; gap: 8px; align-items: flex-end; }
-.chat-textarea { flex: 1; font-family: var(--font-body); font-size: 13px; color: var(--text-primary); background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 8px 10px; outline: none; resize: none; transition: border-color 0.15s; line-height: 1.4; max-height: 90px; overflow-y: auto; }
-.chat-textarea:focus { border-color: var(--border-med); }
-.chat-textarea::placeholder { color: var(--text-tertiary); }
-.btn-send { background: var(--text-primary); color: var(--bg-primary); border: none; border-radius: var(--radius-md); padding: 8px 14px; font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; flex-shrink: 0; height: 36px; }
-.btn-send:hover { opacity: 0.78; }
-.btn-send:disabled { opacity: 0.32; cursor: not-allowed; }
-
-/* Suggestion chips */
-.suggestion-row { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
-.suggestion-chip { font-size: 11px; color: var(--text-secondary); background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: 20px; padding: 3px 10px; cursor: pointer; transition: all 0.15s; }
-.suggestion-chip:hover { background: var(--bg-tertiary); color: var(--text-primary); }
-
-/* ── Log panel (right) ── */
-.log-panel { display: flex; flex-direction: column; }
-.meal-list { flex: 1; overflow-y: auto; max-height: 320px; }
-.meal-item { padding: 9px 0; border-bottom: 0.5px solid var(--border); }
-.meal-item:last-child { border-bottom: none; }
-.meal-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; gap: 6px; }
-.meal-name-wrap { display: flex; align-items: baseline; gap: 4px; flex: 1; min-width: 0; }
-.meal-name { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* .meal-edit-btn removed — pencil rename button replaced by unified Edit button */
-.meal-fulledit-btn { background: none; border: 0.5px solid var(--border-med); border-radius: 5px; cursor: pointer; padding: 2px 7px; color: var(--blue); font-size: 11px; font-family: var(--font-body); font-weight: 500; flex-shrink: 0; transition: background 0.12s; }
-.meal-fulledit-btn:hover { background: var(--bg-secondary); }
-.meal-name-input { font-size: 13px; font-weight: 500; font-family: var(--font-body); color: var(--text-primary); background: var(--bg-secondary); border: 0.5px solid var(--border-med); border-radius: 4px; padding: 1px 6px; outline: none; flex: 1; min-width: 0; }
-.meal-kcal { font-size: 12px; font-weight: 500; color: var(--text-primary); flex-shrink: 0; }
-.meal-delete-btn { background: none; border: none; cursor: pointer; padding: 0 2px; color: var(--text-tertiary); font-size: 12px; flex-shrink: 0; opacity: 0.45; transition: opacity 0.15s; }
-.meal-item:hover .meal-delete-btn { opacity: 1; }
-.meal-macros { font-size: 11px; color: var(--text-tertiary); }
-.meal-time { font-size: 10px; color: var(--text-tertiary); }
-.meal-uncertainty { font-size: 11px; color: var(--amber); margin-top: 1px; }
-.water-entry-item { padding: 5px 0; border-bottom: 0.5px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-.water-entry-item:last-child { border-bottom: none; }
-.water-label { font-size: 12px; color: var(--teal); }
-.water-time { font-size: 10px; color: var(--text-tertiary); }
-.empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-tertiary); font-size: 12px; line-height: 1.6; }
-.day-total-row { display: flex; justify-content: space-between; padding-top: 8px; margin-top: 6px; border-top: 0.5px solid var(--border-med); font-size: 12px; font-weight: 500; color: var(--text-primary); }
-
-/* ── Week bars ── */
-.week-bars { display: flex; gap: 5px; align-items: flex-end; height: 80px; }
-.week-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; cursor: pointer; }
-.week-bar-wrap:hover .week-bar-fill { opacity: 0.72; }
-.week-bar-bg { width: 100%; background: var(--bg-secondary); border-radius: 3px; flex: 1; display: flex; align-items: flex-end; overflow: hidden; border: 0.5px solid var(--border); }
-.week-bar-fill { width: 100%; transition: height 0.5s ease; }
-.week-bar-label { font-size: 9px; color: var(--text-tertiary); }
-.week-bar-val { font-size: 9px; color: var(--text-secondary); font-weight: 500; min-height: 12px; }
-
-/* ── Narrative panel ── */
-.narrative-empty { text-align: center; padding: 1.25rem 0.5rem; color: var(--text-tertiary); font-size: 12px; line-height: 1.6; }
-.narrative-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 10px; }
-.narrative-stat { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 8px 10px; }
-.narrative-stat-val { font-size: 17px; font-weight: 500; color: var(--text-primary); line-height: 1; }
-.narrative-stat-label { font-size: 9px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
-.narrative-text { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
-.narrative-text p { margin-bottom: 6px; }
-.narrative-text p:last-child { margin-bottom: 0; }
-.narrative-generating { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-tertiary); padding: 1rem 0; }
-.btn-narrative { background: linear-gradient(135deg, var(--purple), #6366f1); color: #fff; border: none; border-radius: var(--radius-md); padding: 6px 13px; font-family: var(--font-body); font-size: 12px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
-.btn-narrative:hover { opacity: 0.85; }
-.btn-narrative:disabled { opacity: 0.4; cursor: not-allowed; }
-
-/* Past recaps */
-.recap-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
-.recap-item { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 8px 10px; cursor: pointer; transition: background 0.1s; border: 0.5px solid transparent; }
-.recap-item:hover { background: var(--bg-tertiary); border-color: var(--border); }
-.recap-item-header { display: flex; justify-content: space-between; align-items: baseline; }
-.recap-item-date { font-size: 12px; font-weight: 500; color: var(--text-primary); }
-.recap-item-stats { font-size: 11px; color: var(--text-tertiary); }
-.recap-item-preview { font-size: 11px; color: var(--text-secondary); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.recap-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
-.recap-modal-box { background: var(--bg-primary); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 520px; width: 100%; max-height: 80vh; overflow-y: auto; }
-.recap-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-.recap-modal-title { font-size: 14px; font-weight: 500; color: var(--text-primary); }
-.btn-close { background: none; border: none; font-size: 18px; color: var(--text-tertiary); cursor: pointer; padding: 0 4px; }
-
-/* Settings */
-.settings-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
-.settings-row:last-child { border-bottom: none; }
-.settings-label { color: var(--text-secondary); }
-.settings-val { display: flex; align-items: center; gap: 6px; }
-.settings-val input { width: 70px; text-align: right; font-family: var(--font-body); font-size: 13px; color: var(--text-primary); background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 5px 8px; outline: none; }
-.settings-unit { font-size: 11px; color: var(--text-tertiary); }
-.key-row input { width: 160px; font-family: monospace; font-size: 11px; }
-.btn-sm { background: transparent; border: 0.5px solid var(--border-med); border-radius: var(--radius-md); padding: 4px 10px; font-family: var(--font-body); font-size: 12px; color: var(--text-secondary); cursor: pointer; }
-.btn-sm:hover { background: var(--bg-secondary); }
-.btn-primary { background: var(--text-primary); color: var(--bg-primary); border: none; border-radius: var(--radius-md); padding: 7px 16px; font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; }
-.btn-primary:hover { opacity: 0.78; }
-
-/* Error */
-.error-box { padding: 8px 10px; background: #FCEBEB; border-radius: var(--radius-md); font-size: 12px; color: #A32D2D; border: 0.5px solid #F7C1C1; margin-top: 6px; }
-@media (prefers-color-scheme: dark) { .error-box { background: #2d1a1a; color: #f09595; border-color: #4a2020; } }
-
-/* Setup screen */
-.setup-screen { max-width: 440px; margin: 3rem auto; background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; }
-.setup-screen h2 { font-size: 15px; font-weight: 500; margin-bottom: 0.5rem; }
-.setup-screen p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 0.9rem; }
-.setup-screen a { color: var(--blue); text-decoration: none; }
-.setup-warn { background: #FAEEDA; border: 0.5px solid #FAC775; border-radius: var(--radius-md); padding: 9px 12px; font-size: 12px; color: #633806; margin-bottom: 1rem; line-height: 1.5; }
-@media (prefers-color-scheme: dark) { .setup-warn { background: #2a1f0a; border-color: #4a3510; color: #FAC775; } }
-.setup-input-row { display: flex; gap: 8px; }
-.setup-input-row input { flex: 1; font-family: monospace; font-size: 12px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 7px 10px; color: var(--text-primary); outline: none; }
-
-::-webkit-scrollbar { width: 3px; height: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-med); border-radius: 2px; }
-
-
-/* ── Google Drive buttons ── */
-#drivesavebtn, #driveloadbtn {
-  display: flex; align-items: center; gap: 5px;
-  font-family: inherit; font-size: 12px; font-weight: 500;
-  padding: 6px 12px; border-radius: 9px;
-  border: 1.5px solid #1a73e8;
-  background: rgba(26,115,232,0.12); color: #1a73e8;
-  cursor: pointer; transition: all 0.15s;
-}
-#drivesavebtn:hover, #driveloadbtn:hover { background: rgba(26,115,232,0.26); color: #1557b0; }
+/* Header */
+.site-header { position: sticky; top: 0; z-index: 50; background: var(--card); border-bottom: 1px solid var(--border); }
+.header-row { max-width: 1100px; margin: 0 auto; height: 58px; padding: 0 16px; display: flex; align-items: center; gap: 12px; }
+#home-link { display: flex; align-items: center; opacity: 0.85; text-decoration: none; }
+#home-link:hover { opacity: 1; }
+.header-sep { width: 1px; height: 26px; background: var(--border); }
+.logo { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
+.logo-kals { font-family: var(--font-logo); font-size: 26px; letter-spacing: 0.04em; color: var(--green); line-height: 1; }
+.logo-sub { font-size: 14px; letter-spacing: 0.18em; color: var(--text2); text-transform: uppercase; }
+#drivesavebtn, #driveloadbtn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 7px 12px; border-radius: 99px; border: none; background: rgba(26,115,232,0.14); color: #1a73e8; }
 #drivesavebtn:disabled, #driveloadbtn:disabled { opacity: 0.45; cursor: not-allowed; }
-#drive-status {
-  position: fixed; top: var(--header-h); left: 0; right: 0;
-  text-align: center; font-size: 10px; color: #999;
-  padding: 3px 14px; letter-spacing: 0.04em;
-  background: var(--bg-primary); border-bottom: 0.5px solid var(--border);
-  z-index: 99; display: none; opacity: 1; transition: color 0.3s, opacity 0.6s;
-}
+.status-bar { max-width: 1100px; margin: 0 auto; padding: 0 16px 5px; display: flex; gap: 14px; justify-content: center; font-size: 11px; color: var(--text3); min-height: 16px; }
+#drive-status { display: none; }
 #drive-status.visible { display: block; }
-#drive-status.fading { opacity: 0; }
-#drive-status.ok { color: #1a7a4a; }
-#drive-status.err { color: #c0392b; }
-#drive-status.working { color: #854F0B; }
+#drive-status.ok { color: var(--green); } #drive-status.err { color: #d04040; } #drive-status.working { color: var(--amber); }
+#cf-status { display: flex; align-items: center; gap: 5px; }
+#cf-status .cf-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
+#cf-status.ok { color: var(--green); } #cf-status.ok .cf-dot { background: var(--green); }
+#cf-status.err { color: #d04040; } #cf-status.err .cf-dot { background: #d04040; }
+#cf-status.working .cf-dot { background: var(--amber); }
 
-/* ── Cloudflare sync status ── */
-#cf-status {
-  text-align: center; font-size: 12px; font-weight: 500; color: #999;
-  padding: 4px 14px; letter-spacing: 0.03em; min-height: 0;
-  transition: color 0.3s; display: none; align-items: center;
-  justify-content: center; gap: 6px;
-}
-#cf-status.visible { display: flex; }
-#cf-status.ok { color: #1a7a4a; }
-#cf-status.err { color: #c0392b; }
-#cf-status.working { color: #854F0B; }
-.cf-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #999; }
-#cf-status.ok .cf-dot { background: #1a7a4a; }
-#cf-status.err .cf-dot { background: #c0392b; }
-#cf-status.working .cf-dot { background: #854F0B; }
+/* Layout */
+.wrap { max-width: 1100px; margin: 0 auto; padding: 16px 16px 48px; display: flex; flex-direction: column; gap: 12px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.card h2 { font-size: 14px; font-weight: 700; }
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.card-big { font-size: 20px; font-weight: 700; white-space: nowrap; }
+.muted { font-size: 12px; color: var(--text2); }
+.tiny { font-size: 11px; color: var(--text2); }
+.grid5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 900px) { .grid5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid5 .verdict { grid-column: 1 / -1; } }
+@media (max-width: 700px) { .grid3, .grid2 { grid-template-columns: minmax(0, 1fr); } }
 
-/* ── Meal type badge ── */
-.meal-type-badge {
-  display: inline-block; font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
-  text-transform: uppercase; border-radius: 20px; padding: 1px 7px; margin-right: 5px;
-  flex-shrink: 0; white-space: nowrap;
-}
-.badge-breakfast { background: rgba(255,179,0,0.15); color: #B37800; }
-.badge-lunch     { background: rgba(55,138,221,0.13); color: #2268B2; }
-.badge-dinner    { background: rgba(139,92,246,0.13); color: #6B35D4; }
-.badge-snack     { background: rgba(29,158,117,0.13); color: #178060; }
-.badge-apero     { background: rgba(239,159,39,0.18); color: #9A5F00; }
-.badge-workout   { background: rgba(226,75,74,0.12);  color: #C0392B; }
-@media (prefers-color-scheme: dark) {
-  .badge-breakfast { background: rgba(255,179,0,0.2);  color: #FFCA55; }
-  .badge-lunch     { background: rgba(55,138,221,0.2); color: #7BB8F0; }
-  .badge-dinner    { background: rgba(139,92,246,0.2); color: #C4A0FF; }
-  .badge-snack     { background: rgba(29,158,117,0.2); color: #5DCAA5; }
-  .badge-apero     { background: rgba(239,159,39,0.2); color: #F5B84A; }
-  .badge-workout   { background: rgba(226,75,74,0.2);  color: #F08080; }
-}
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pills { display: flex; gap: 4px; background: var(--sub); border-radius: 99px; padding: 3px; }
+.pills button { border: none; background: transparent; color: var(--text2); font-size: 13px; padding: 6px 14px; border-radius: 99px; min-height: 32px; }
+.pills button.on { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.btn-primary { border: none; background: var(--green); color: var(--on-green); font-size: 14px; font-weight: 700; border-radius: 99px; padding: 10px 18px; min-height: 44px; }
+.btn-ghost { border: 1px solid var(--border2); background: transparent; color: var(--text); font-size: 14px; border-radius: 99px; padding: 10px 18px; min-height: 44px; }
+.spacer { flex: 1; }
 
-/* ── Burned entry in meal log ── */
-.burned-item { padding: 9px 0; border-bottom: 0.5px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-.burned-item:last-child { border-bottom: none; }
-.burned-label { font-size: 12px; font-weight: 500; color: var(--red); display:flex; align-items:center; gap:5px; }
-.burned-time { font-size: 10px; color: var(--text-tertiary); }
+/* KPI */
+.kpi .lbl { font-size: 12px; color: var(--text2); }
+.kpi .val { font-size: 26px; font-weight: 700; margin-top: 4px; white-space: nowrap; }
+.kpi .val small { font-size: 14px; font-weight: 500; color: var(--text2); }
+.kpi .sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.kpi .sub.good { color: var(--green); font-weight: 500; }
+.kpi .sub.bad { color: var(--amber); font-weight: 500; }
+.verdict { display: flex; flex-direction: column; gap: 6px; }
+.verdict .vt { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.verdict .vl { font-size: 20px; font-weight: 700; }
+.verdict .vx { font-size: 12px; line-height: 1.4; }
+.verdict.good { background: var(--green-bg); border-color: var(--green-bd); color: var(--green-tx); }
+.verdict.warn { background: var(--amber-bg); border-color: var(--amber-bd); color: var(--amber-tx); }
+.verdict.neutral, .verdict.wait { background: var(--sub); }
 
-/* ── Burned card glow ── */
-#burnedCard { cursor: default; }
+.chart-box { position: relative; height: 170px; margin-top: 8px; }
+.chart-box.small { height: 140px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--text2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.nums { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 8px; }
+.nums .n { font-size: 24px; font-weight: 700; }
+.reps { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 18px; font-size: 13px; align-items: baseline; margin-top: 10px; }
+.reps .r { text-align: right; font-weight: 700; }
+.reps .h { font-size: 11px; color: var(--text2); }
+.up { color: var(--green); } .down { color: var(--amber); } .flat { color: var(--text2); }
+.report ul { margin: 10px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.45; }
+.empty-card { text-align: center; padding: 28px 18px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.empty-card p { max-width: 520px; font-size: 14px; color: var(--text2); line-height: 1.5; }
+details.settings summary { cursor: pointer; font-size: 13px; color: var(--text2); }
+.set-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-top: 10px; }
+.set-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text2); }
+.set-grid input { height: 40px; border: 1px solid var(--border2); border-radius: 8px; padding: 0 10px; background: var(--card); font-size: 15px; }
 
-/* ── Water week bars (second row) ── */
-.week-bars-water { display: flex; gap: 5px; align-items: flex-end; height: 50px; margin-top: 8px; }
-
-/* ── Calories card dual display ── */
-.cal-dual { display: flex; flex-direction: column; gap: 0; }
-.cal-remaining { font-size: 22px; font-weight: 600; color: var(--text-primary); line-height: 1; }
-.cal-budget { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; letter-spacing: 0.01em; }
-.cal-budget span { font-weight: 500; color: var(--text-secondary); }
-
-/* ── Chat panel highlight ── */
-.chat-panel {
-  background: rgba(55,138,221,0.04) !important;
-  border: 1.5px solid rgba(55,138,221,0.28) !important;
-}
-@media (prefers-color-scheme: dark) {
-  .chat-panel {
-    background: rgba(55,138,221,0.07) !important;
-    border-color: rgba(55,138,221,0.35) !important;
-  }
-}
-
-
-/* ── Meal edit modal ── */
-.edit-modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
-  z-index: 300; display: flex; align-items: center; justify-content: center;
-  padding: 1.5rem;
-}
-.edit-modal {
-  background: var(--bg-primary); border-radius: var(--radius-lg);
-  padding: 1.5rem; width: 100%; max-width: 480px;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
-}
-.edit-modal-title {
-  font-size: 14px; font-weight: 500; color: var(--text-primary);
-  margin-bottom: 4px;
-}
-.edit-modal-sub {
-  font-size: 11px; color: var(--text-tertiary); margin-bottom: 1rem;
-}
-.edit-modal textarea {
-  width: 100%; border: 0.5px solid var(--border-med); border-radius: var(--radius-md);
-  padding: 10px 12px; font-family: var(--font-body); font-size: 14px;
-  color: var(--text-primary); background: var(--bg-secondary);
-  resize: none; line-height: 1.5; outline: none; margin-bottom: 10px;
-}
-.edit-modal textarea:focus { border-color: var(--blue); }
-.edit-modal-preview {
-  background: var(--bg-secondary); border-radius: var(--radius-md);
-  padding: 10px 12px; font-size: 12px; margin-bottom: 10px;
-  border: 0.5px solid var(--border);
-}
-.edit-modal-preview-item {
-  display: flex; justify-content: space-between;
-  color: var(--text-secondary); padding: 2px 0;
-  border-bottom: 0.5px solid var(--border);
-}
-.edit-modal-preview-item:last-child { border-bottom: none; }
-.edit-modal-preview-total {
-  display: flex; justify-content: space-between;
-  font-weight: 500; color: var(--text-primary);
-  font-size: 13px; padding-top: 7px; margin-top: 4px;
-  border-top: 0.5px solid var(--border-med);
-}
-.edit-modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 2px; }
-.edit-modal-analysing {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12px; color: var(--text-tertiary); padding: 8px 0;
-}
-.edit-modal-current {
-  font-size: 12px; color: var(--text-secondary);
-  background: var(--bg-secondary); border-radius: var(--radius-md);
-  padding: 7px 10px; margin-bottom: 10px; border: 0.5px solid var(--border);
-  line-height: 1.5;
-}
-.edit-note { font-size: 11px; color: var(--amber); margin-bottom: 8px; }
-
-/* ── Meal ingredient expand ── */
-.meal-ingredients {
-  display: none;
-  margin-top: 6px;
-  padding: 6px 8px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  border: 0.5px solid var(--border);
-}
-.meal-ingredients.open { display: block; }
-.meal-ingredient-row {
-  display: flex; justify-content: space-between;
-  font-size: 11px; color: var(--text-secondary);
-  padding: 2px 0; border-bottom: 0.5px solid var(--border);
-}
-.meal-ingredient-row:last-child { border-bottom: none; }
-.meal-expand-btn {
-  background: none; border: none; cursor: pointer;
-  font-size: 10px; color: var(--text-tertiary);
-  font-family: var(--font-body); padding: 0;
-  transition: color 0.15s; letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-.meal-expand-btn:hover { color: var(--text-secondary); }
-
-/* ── Meal Library ── */
-.library-panel { display: flex; flex-direction: column; flex: 1; }
-.library-search-row { display: flex; gap: 8px; margin-bottom: 10px; }
-.library-search-row input {
-  flex: 1; font-family: var(--font-body); font-size: 13px;
-  color: var(--text-primary); background: var(--bg-secondary);
-  border: 0.5px solid var(--border); border-radius: var(--radius-md);
-  padding: 7px 10px; outline: none; transition: border-color 0.15s;
-}
-.library-search-row input:focus { border-color: var(--border-med); }
-.library-search-row input::placeholder { color: var(--text-tertiary); }
-.library-list { overflow-y: auto; max-height: 340px; display: flex; flex-direction: column; gap: 1px; }
-.library-item {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 9px 8px; border-radius: var(--radius-md); cursor: pointer;
-  transition: background 0.1s; border: 0.5px solid transparent;
-}
-.library-item:hover { background: var(--bg-secondary); border-color: var(--border); }
-.library-item-info { flex: 1; min-width: 0; }
-.library-item-header { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; flex-wrap: wrap; }
-.library-item-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
-.library-item-kcal { font-size: 11px; color: var(--text-tertiary); flex-shrink: 0; }
-.library-item-ingredients { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.library-item-day { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; }
-.library-empty { text-align: center; padding: 2rem 1rem; color: var(--text-tertiary); font-size: 12px; line-height: 1.6; }
-.library-section-label { font-size: 10px; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.07em; padding: 8px 8px 4px; }
-
-/* ── Re-log sheet (bottom sheet style modal) ── */
-.relog-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
-  z-index: 300; display: flex; align-items: flex-end; justify-content: center;
-}
-.relog-sheet {
-  background: var(--bg-primary); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 1.25rem; width: 100%; max-width: 540px;
-  box-shadow: 0 -4px 32px rgba(0,0,0,0.14);
-  max-height: 85vh; overflow-y: auto;
-}
-.relog-handle { width: 36px; height: 4px; background: var(--border-med); border-radius: 2px; margin: 0 auto 1rem; }
-.relog-meal-name { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 3px; }
-.relog-meal-macros { font-size: 12px; color: var(--text-tertiary); margin-bottom: 12px; }
-.relog-ingredients { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 8px 10px; margin-bottom: 12px; }
-.relog-ingredient-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); padding: 2px 0; border-bottom: 0.5px solid var(--border); }
-.relog-ingredient-row:last-child { border-bottom: none; }
-.relog-section-label { font-size: 10px; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
-.relog-type-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-.relog-type-chip {
-  font-size: 12px; font-weight: 500; padding: 5px 13px; border-radius: 20px;
-  border: 1.5px solid var(--border-med); cursor: pointer; font-family: var(--font-body);
-  background: transparent; color: var(--text-secondary); transition: all 0.12s;
-}
-.relog-type-chip.selected { border-color: var(--text-primary); background: var(--text-primary); color: var(--bg-primary); }
-.relog-btns { display: flex; gap: 8px; }
-.relog-btn-log { flex: 1; background: var(--green); color: #fff; border: none; border-radius: var(--radius-md); padding: 10px 16px; font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; }
-.relog-btn-edit { background: transparent; border: 0.5px solid var(--border-med); border-radius: var(--radius-md); padding: 10px 14px; font-family: var(--font-body); font-size: 13px; color: var(--text-secondary); cursor: pointer; }
-.relog-btn-cancel { background: transparent; border: none; padding: 10px 10px; font-family: var(--font-body); font-size: 13px; color: var(--text-tertiary); cursor: pointer; }
-
-/* ── Ingredient inline edit ── */
-.ing-edit-btn {
-  background: none; border: none; cursor: pointer; font-size: 11px;
-  color: var(--text-tertiary); padding: 0 2px; font-family: var(--font-body);
-  opacity: 0.5; transition: opacity 0.15s;
-}
-.ing-edit-btn:hover { opacity: 1; color: var(--blue); }
-.ing-kcal { font-size: 11px; color: var(--text-secondary); }
-.ing-kcal-input {
-  width: 60px; font-family: var(--font-body); font-size: 12px;
-  color: var(--text-primary); background: var(--bg-primary);
-  border: 0.5px solid var(--border-med); border-radius: 4px;
-  padding: 1px 5px; outline: none; text-align: right;
-}
-
-/* ══════════════════════════════════════════════
-   UNIFIED LOG BLOCK
-   ══════════════════════════════════════════════ */
-
-/* Outer panel — full width, replaces layout-main */
-.log-block {
-  background: var(--bg-primary);
-  border: 1.5px solid rgba(55,138,221,0.3);
-  border-radius: var(--radius-lg);
-  padding: 0;
-  margin-bottom: 12px;
-  overflow: hidden;
-}
-
-/* ── Header bar: LOG button + meal slot pills + water pills ── */
-.log-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-bottom: 0.5px solid var(--border);
-  flex-wrap: wrap;
-}
-.log-trigger-btn {
-  background: var(--text-primary);
-  color: var(--bg-primary);
-  border: none;
-  border-radius: var(--radius-md);
-  padding: 8px 18px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  letter-spacing: 0.04em;
-  flex-shrink: 0;
-  transition: opacity 0.15s;
-}
-.log-trigger-btn:hover { opacity: 0.78; }
-.log-trigger-btn.active {
-  background: var(--blue);
-}
-
-/* Meal slot pills */
-.slot-pills {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  flex: 1;
-}
-.slot-pill {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 500;
-  padding: 5px 10px;
-  border-radius: 20px;
-  border: 1px solid var(--border-med);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.12s;
-  white-space: nowrap;
-}
-.slot-pill:hover { background: var(--bg-secondary); color: var(--text-primary); }
-.slot-pill.selected {
-  border-color: transparent;
-  color: var(--bg-primary);
-  font-weight: 600;
-}
-/* Slot colours */
-.slot-pill[data-slot="pre-workout"].selected  { background: #E24B4A; }
-.slot-pill[data-slot="breakfast"].selected    { background: #EF9F27; }
-.slot-pill[data-slot="morning-snack"].selected{ background: #B07D2E; }
-.slot-pill[data-slot="lunch"].selected        { background: #378ADD; }
-.slot-pill[data-slot="afternoon-snack"].selected{ background: #5DCAA5; }
-.slot-pill[data-slot="apero"].selected        { background: #F4845F; }
-.slot-pill[data-slot="dinner"].selected       { background: #8B5CF6; }
-.slot-pill[data-slot="post-workout"].selected { background: #E24B4A; }
-.slot-pill[data-slot="teuf"].selected         { background: #1a1a18; }
-
-/* ── Input area (shown when LOG is active) ── */
-.log-input-area {
-  display: none;
-  flex-direction: column;
-  padding: 12px 14px;
-  border-bottom: 0.5px solid var(--border);
-  background: rgba(55,138,221,0.03);
-  gap: 8px;
-}
-.log-input-area.open { display: flex; }
-.log-input-row { display: flex; gap: 8px; align-items: flex-end; }
-.log-textarea {
-  flex: 1;
-  font-family: var(--font-body);
-  font-size: 14px;
-  color: var(--text-primary);
-  background: var(--bg-primary);
-  border: 0.5px solid var(--border-med);
-  border-radius: var(--radius-md);
-  padding: 9px 11px;
-  resize: none;
-  outline: none;
-  line-height: 1.5;
-  transition: border-color 0.15s;
-  max-height: 100px;
-  overflow-y: auto;
-}
-.log-textarea:focus { border-color: var(--blue); }
-.log-textarea::placeholder { color: var(--text-tertiary); }
-.btn-analyse {
-  background: var(--blue);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: 9px 16px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  flex-shrink: 0;
-  height: 38px;
-  transition: opacity 0.15s;
-}
-.btn-analyse:hover { opacity: 0.82; }
-.btn-analyse:disabled { opacity: 0.35; cursor: not-allowed; }
-
-/* ── Autocomplete dropdown ── */
-.autocomplete-list {
-  background: var(--bg-primary);
-  border: 0.5px solid var(--border-med);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  display: none;
-  flex-direction: column;
-  max-height: 220px;
-  overflow-y: auto;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-}
-.autocomplete-list.open { display: flex; }
-.ac-item {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 13px;
-  border-bottom: 0.5px solid var(--border);
-  transition: background 0.1s;
-}
-.ac-item:last-child { border-bottom: none; }
-.ac-item:hover { background: var(--bg-secondary); }
-.ac-item-name { color: var(--text-primary); flex: 1; }
-.ac-item-kcal { color: var(--text-tertiary); font-size: 11px; flex-shrink: 0; }
-.ac-item-context { color: var(--text-tertiary); font-size: 11px; font-style: italic; }
-.ac-section-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  padding: 6px 12px 2px;
-  background: var(--bg-secondary);
-}
-
-/* ── Pending log bubble (inside block) ── */
-.log-pending-area {
-  padding: 10px 14px;
-  border-bottom: 0.5px solid var(--border);
-  display: none;
-}
-.log-pending-area.open { display: block; }
-
-/* ── Water quick pills inside block ── */
-.log-water-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-bottom: 0.5px solid var(--border);
-  flex-wrap: wrap;
-  background: rgba(93,202,165,0.03);
-}
-.log-water-label { font-size: 10px; color: var(--teal); text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0; }
-
-/* ── Slots area: grouped logged meals ── */
-.log-slots-area { padding: 0 0 8px; }
-
-.log-slot-group { }
-.log-slot-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px 4px;
-  cursor: pointer;
-  user-select: none;
-}
-.log-slot-header:hover .log-slot-name { color: var(--text-primary); }
-.log-slot-dot {
-  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-}
-.log-slot-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.07em; flex: 1; }
-.log-slot-kcal { font-size: 11px; color: var(--text-tertiary); }
-.log-slot-toggle { font-size: 10px; color: var(--text-tertiary); }
-
-.log-slot-items { padding: 0 14px 6px; display: flex; flex-direction: column; gap: 1px; }
-.log-slot-item {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 7px 8px;
-  border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-  border: 0.5px solid var(--border);
-  margin-bottom: 3px;
-}
-.log-slot-item-left { flex: 1; min-width: 0; }
-.log-slot-item-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
-.log-slot-item-macros { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
-.log-slot-item-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.log-slot-item-kcal { font-size: 12px; font-weight: 500; color: var(--text-primary); }
-
-/* Ingredient expand inside slot */
-.slot-item-ingredients { display: none; padding: 4px 8px 0; }
-.slot-item-ingredients.open { display: block; }
-.slot-ing-row {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 11px; color: var(--text-secondary);
-  padding: 2px 0; border-bottom: 0.5px solid var(--border);
-}
-.slot-ing-row:last-child { border-bottom: none; }
-.slot-expand-btn {
-  background: none; border: none; cursor: pointer;
-  font-size: 10px; color: var(--text-tertiary);
-  font-family: var(--font-body); padding: 0;
-  text-transform: uppercase; letter-spacing: 0.03em;
-}
-
-/* Slot dot colours */
-.dot-pre-workout, .dot-post-workout { background: #E24B4A; }
-.dot-breakfast   { background: #EF9F27; }
-.dot-morning-snack { background: #B07D2E; }
-.dot-lunch       { background: #378ADD; }
-.dot-afternoon-snack { background: #5DCAA5; }
-.dot-apero       { background: #F4845F; }
-.dot-dinner      { background: #8B5CF6; }
-.dot-teuf        { background: #1a1a18; }
-.dot-other       { background: var(--text-tertiary); }
-
-/* Day total row inside block */
-.log-block-total {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 14px;
-  border-top: 0.5px solid var(--border-med);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-/* Settings panel still lives here */
-.log-settings { padding: 12px 14px; }
-
-/* Header right: settings gear */
-.log-header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-.btn-gear {
-  background: none; border: none; cursor: pointer;
-  font-size: 16px; color: var(--text-tertiary);
-  padding: 4px; border-radius: var(--radius-md);
-  transition: color 0.15s;
-}
-.btn-gear:hover { color: var(--text-primary); }
-/* ── Responsive ── */
-
-/* ── Tablet: 641px – 1280px ── */
-@media (min-width: 641px) and (max-width: 1280px) {
-
-  /* Use fluid font scaling via clamp:
-     At 641px → ~14px base, at 1024px → ~16px base */
-  html { font-size: clamp(14px, 1.5vw, 16px); }
-
-  body { padding: calc(var(--header-h) + 1.4rem) 1.4rem 2rem; }
-
-  /* Header: full width, comfortable size */
-  .site-header { padding: 0 1.4rem; }
-  .logo-kals { font-size: clamp(22px, 2.5vw, 28px); }
-  .logo-track { font-size: clamp(13px, 1.6vw, 17px); }
-  #drivesavebtn, #driveloadbtn { font-size: clamp(11px, 1.2vw, 13px); padding: 6px 12px; }
-
-  /* Day nav */
-  .day-nav { padding: 11px 16px; margin-bottom: 1.1rem; }
-  .day-nav-date { font-size: clamp(15px, 1.8vw, 18px); }
-  .day-nav-label { font-size: clamp(11px, 1.2vw, 13px); }
-
-  /* Cards: 4 per row, 2 rows */
-  .top-cards {
-    grid-template-columns: repeat(4, minmax(0,1fr));
-    gap: clamp(7px, 1vw, 10px);
-    margin-bottom: 1rem;
-  }
-  .card { padding: clamp(10px, 1.4vw, 16px) clamp(12px, 1.6vw, 18px); }
-  .card-label { font-size: clamp(10px, 1.1vw, 12px); margin-bottom: 6px; }
-  .card-value { font-size: clamp(18px, 2.2vw, 24px); }
-  .card-sub { font-size: clamp(10px, 1.1vw, 12px); margin-top: 4px; }
-  .card-bar { height: 3px; margin-top: 8px; }
-  .cal-remaining { font-size: clamp(18px, 2.2vw, 24px); }
-  .cal-budget { font-size: clamp(10px, 1.2vw, 13px); }
-
-  /* Layouts: strict 50/50, no stretch */
-  .layout-main {
-    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
-    gap: clamp(10px, 1.4vw, 16px);
-    margin-bottom: clamp(10px, 1.4vw, 16px);
-  }
-  .layout-bottom {
-    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
-    gap: clamp(10px, 1.4vw, 16px);
-  }
-
-  /* Panels */
-  .panel { padding: clamp(1rem, 1.4vw, 1.4rem); min-width: 0; }
-  .panel-title { font-size: clamp(10px, 1.1vw, 12px); }
-  .tab { font-size: clamp(11px, 1.2vw, 13px); padding: 5px 12px 9px; }
-
-  /* Chat */
-  .chat-panel { min-height: unset; }
-  .chat-messages {
-    max-height: clamp(260px, 30vh, 400px);
-    min-height: clamp(200px, 24vh, 320px);
-  }
-  .msg { font-size: clamp(13px, 1.4vw, 15px); padding: 9px 13px; }
-  .chat-textarea { font-size: clamp(13px, 1.4vw, 15px); padding: 9px 11px; }
-  .btn-send { font-size: clamp(13px, 1.4vw, 15px); height: 38px; }
-  .memory-chip { font-size: clamp(11px, 1.2vw, 13px); }
-  .water-pill { font-size: clamp(11px, 1.2vw, 13px); padding: 4px 11px; }
-  .suggestion-chip { font-size: clamp(11px, 1.2vw, 13px); }
-
-  /* Meal list */
-  .meal-list { max-height: clamp(260px, 32vh, 420px); }
-  .meal-name { font-size: clamp(12px, 1.4vw, 14px); }
-  .meal-kcal { font-size: clamp(12px, 1.3vw, 14px); }
-  .meal-macros { font-size: clamp(10px, 1.1vw, 12px); }
-  .meal-item { padding: 10px 0; }
-  .day-total-row { font-size: clamp(12px, 1.3vw, 14px); }
-
-  /* Week bars */
-  .week-bars { height: clamp(70px, 9vw, 100px); }
-  .week-bar-label { font-size: clamp(9px, 1vw, 11px); }
-  .week-bar-val { font-size: clamp(9px, 1vw, 11px); }
-  .week-bars-water { height: clamp(45px, 6vw, 65px); }
-
-  /* Narrative */
-  .narrative-stat-val { font-size: clamp(16px, 1.8vw, 20px); }
-  .narrative-stat-label { font-size: clamp(9px, 1vw, 11px); }
-  .narrative-text { font-size: clamp(12px, 1.3vw, 14px); line-height: 1.75; }
-  .btn-narrative { font-size: clamp(11px, 1.2vw, 13px); }
-
-  /* Settings */
-  .settings-row { font-size: clamp(12px, 1.4vw, 14px); padding: 10px 0; }
-}
-
-
-@media (max-width: 640px) {
-  /* Root: never wider than the screen */
-  html { overflow-x: hidden; }
-  body {
-    overflow-x: hidden;
-    padding: calc(var(--header-h) + 0.9rem) 0.9rem 2rem;
-    /* Ensure body width is capped — critical */
-    width: 100%;
-    max-width: 100%;
-  }
-
-  /* Header stays in bounds */
-  .site-header { padding: 0 0.75rem; }
-
-  /* Restore button labels (remove icon-only mode) */
-  #drivesavebtn span, #driveloadbtn span { display: inline; }
-  #drivesavebtn, #driveloadbtn { padding: 6px 10px; font-size: 11px; }
-  .header-actions { gap: 5px; }
-
-  /* Logo slightly smaller */
-  .logo-kals { font-size: 20px; }
-  .logo-track { font-size: 12px; letter-spacing: 0.1em; }
-
-  /* Cards 2×4 on mobile */
-  .top-cards { grid-template-columns: repeat(2,1fr); gap: 7px; }
-  .top-cards .card:last-child { grid-column: unset; }
-
-  /* Stack all two-col layouts */
-  .layout-main { grid-template-columns: 1fr; }
-  .layout-bottom { grid-template-columns: 1fr; }
-
-  /* Panels must never overflow their container */
-  .panel { min-width: 0; max-width: 100%; box-sizing: border-box; }
-
-  /* Chat panel: no fixed min-height on mobile */
-  .chat-panel { min-height: unset; }
-  .chat-messages { max-height: 260px; min-height: 180px; }
-  .meal-list { max-height: 220px; }
-
-  /* Textarea and inputs: constrain to panel width */
-  .chat-textarea { max-width: 100%; min-width: 0; }
-  .settings-val input { max-width: 60px; }
-  .key-row input { width: 120px; }
-
-  /* Memory chips scroll horizontally, don't push width */
-  .memory-row { flex-wrap: nowrap; overflow-x: auto; }
-  .memory-chip { flex-shrink: 0; }
-
-  /* Water pills wrap tightly */
-  .water-pills { gap: 4px; }
-  .water-pill { font-size: 10px; padding: 3px 8px; }
-
-  /* Hide week bar values */
-  .week-bar-val { display: none; }
-}
+/* Check-in */
+#view-checkin { display: none; }
+body.checkin #view-checkin { display: flex; }
+body.checkin #view-dash { display: none; }
+#view-checkin { max-width: 560px; }
+.week-nav { display: flex; align-items: center; gap: 8px; }
+.week-nav .wk { flex: 1; text-align: center; }
+.week-nav .wk b { font-size: 17px; display: block; }
+.icon-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border2); background: var(--card); display: flex; align-items: center; justify-content: center; }
+.icon-btn:disabled { opacity: 0.35; cursor: default; }
+.sec-title { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2); }
+.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.days label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text2); text-align: center; }
+.days input { height: 44px; width: 100%; text-align: center; font-size: 15px; font-weight: 700; border: 1px solid var(--border2); border-radius: 8px; background: var(--card); padding: 0 2px; }
+.days input:placeholder-shown { border-style: dashed; background: var(--sub); }
+.frow { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.frow label, .frow .fl { flex: 1; font-size: 14px; }
+.frow .hint { display: block; font-size: 11px; color: var(--text2); }
+.frow input.num { width: 110px; height: 44px; text-align: right; font-size: 18px; font-weight: 700; border: 1px solid var(--border2); border-radius: 8px; padding: 0 10px; background: var(--card); }
+.stepper { display: flex; }
+.stepper button { width: 40px; height: 44px; border: 1px solid var(--border2); background: var(--sub); font-size: 18px; }
+.stepper button:first-child { border-radius: 8px 0 0 8px; }
+.stepper button:last-child { border-radius: 0 8px 8px 0; }
+.stepper .sv { min-width: 38px; height: 44px; display: flex; align-items: center; justify-content: center; border-top: 1px solid var(--border2); border-bottom: 1px solid var(--border2); font-weight: 700; padding: 0 4px; }
+.stepper .sv.zero { color: var(--text3); }
+.stepper input.sv { width: 64px; text-align: center; font-size: 17px; border-left: none; border-right: none; border-radius: 0; background: var(--card); }
+.beer-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 12px; align-items: center; margin-top: 8px; }
+.beer-grid .ch { font-size: 12px; font-weight: 700; color: var(--text2); text-align: center; }
+.summary-line { font-size: 13px; background: var(--sub); border-radius: 8px; padding: 8px 10px; margin-top: 10px; }
+.auto-line { background: var(--sub); border: 1px dashed var(--border2); border-radius: 12px; padding: 10px 14px; font-size: 13px; line-height: 1.4; }
+.preview { background: var(--green-bg); border: 1px solid var(--green-bd); color: var(--green-tx); border-radius: 12px; padding: 10px 14px; font-size: 13px; line-height: 1.5; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.actions .btn-primary { flex: 1; min-height: 52px; border-radius: 14px; font-size: 16px; }
+.link-btn { border: none; background: none; color: var(--text2); text-decoration: underline; font-size: 13px; padding: 8px 0; min-height: 44px; }
+.saved-badge { font-size: 11px; font-weight: 700; color: var(--green); }
 </style>
 </head>
-<body style="overflow-x:hidden;width:100%;max-width:100%;padding-left:max(1.25rem, env(safe-area-inset-left));padding-right:max(1.25rem, env(safe-area-inset-right));">
+<body>
 
 <header class="site-header">
-  <div style="display:flex;align-items:center;gap:10px;">
+  <div class="header-row">
     <a id="home-link" href="index.html" title="Back to Life Hub">
       <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="16" cy="16" r="13.5" stroke="url(#hl-g1)" stroke-width="1.2" fill="none" opacity="0.7"/>
@@ -951,1753 +181,492 @@ body {
       </svg>
     </a>
     <div class="header-sep"></div>
-    <div class="header-logo">
-      <span class="logo-kals">KALS</span>
-      <span class="logo-dot"></span>
-      <span class="logo-track">Track</span>
-      <span style="font-size:18px;margin-left:5px;position:relative;top:1px;">&#9889;</span>
-    </div>
-    <div class="header-sep"></div>
+    <div class="logo"><span class="logo-kals">KALS</span><span class="logo-sub">Balance</span></div>
+    <button id="drivesavebtn" title="Save to Google Drive">☁ Save</button>
+    <button id="driveloadbtn" title="Load from Google Drive">☁ Load</button>
   </div>
-  <div class="header-actions" id="headerActions">
-    <button id="drivesavebtn" title="Save to Google Drive">
-      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M7 1v8M4 6l3 3 3-3M2 11h10"/></svg>
-      <span>Save</span>
-    </button>
-    <button id="driveloadbtn" title="Load from Google Drive">
-      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M7 9V1M4 4l3-3 3 3M2 11h10"/></svg>
-      <span>Load</span>
-    </button>
+  <div class="status-bar">
+    <span id="cf-status"><span class="cf-dot"></span><span id="cf-status-msg"></span></span>
+    <span id="drive-status"></span>
   </div>
 </header>
-<div id="drive-status"></div>
-<div id="cf-status"><span class="cf-dot"></span><span id="cf-status-msg"></span></div>
 
-<!-- Setup screen -->
-<div id="setupScreen" style="display:none;max-width:1400px;margin:0 auto;width:100%;">
-  <div class="setup-screen">
-    <h2>Welcome to KALS Track</h2>
-    <p>This tracker uses Claude AI to parse your meals, water and answer nutrition questions — all in one place.</p>
-    <p>Get your Anthropic API key at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> → API Keys → Create key.</p>
-    <div class="setup-warn">&#9888; Your key is stored only in your browser's local storage.</div>
-    <div class="setup-input-row">
-      <input type="password" id="keyInput" placeholder="sk-ant-..." />
-      <button class="btn-primary" onclick="saveKey()">Start</button>
+<!-- ══ DASHBOARD ══ -->
+<main class="wrap" id="view-dash">
+  <div class="toolbar">
+    <div class="pills" id="range-pills">
+      <button data-w="13" class="on">3 months</button>
+      <button data-w="26">6 months</button>
+      <button data-w="52">1 year</button>
     </div>
-  </div>
-</div>
-
-<!-- Main app -->
-<div id="mainApp" style="display:none;max-width:1400px;margin:0 auto;width:100%;">
-
-  <!-- Day navigator -->
-  <div class="day-nav">
-    <button class="nav-btn" id="prevDayBtn" onclick="navigateDay(-1)">&#8592;</button>
-    <div class="day-nav-center">
-      <div class="day-nav-date" id="dayNavDate">Today</div>
-      <div class="day-nav-label" id="dayNavLabel"></div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <button class="day-nav-today" id="todayBtn" onclick="goToToday()" style="display:none;">↩ Today</button>
-      <button class="nav-btn" id="nextDayBtn" onclick="navigateDay(1)" disabled>&#8594;</button>
-    </div>
+    <div class="spacer"></div>
+    <button class="btn-primary" id="btn-open-checkin">+ Weekly check-in</button>
   </div>
 
-  <!-- Top cards -->
-  <div class="top-cards">
-    <div class="card">
-      <div class="card-label">Calories left</div>
-      <div class="cal-dual">
-        <div class="cal-remaining calories-ok" id="calLeft">2650</div>
-        <div class="cal-budget">of <span id="calBudgetDisplay">2650</span> kcal budget</div>
-      </div>
-      <div class="card-bar"><div class="card-bar-fill" id="calBar" style="width:0%;background:var(--green);"></div></div>
-    </div>
-    <div class="card">
-      <div class="card-label">Protein</div>
-      <div class="card-value" id="protVal">0g</div>
-      <div class="card-sub" id="protSub">of 120g goal</div>
-      <div class="card-bar"><div class="card-bar-fill" id="protBar" style="width:0%;background:var(--blue);"></div></div>
-    </div>
-    <div class="card">
-      <div class="card-label">Water today</div>
-      <div class="card-value" id="waterVal">0 ml</div>
-      <div class="card-sub" id="waterSub">of 3L goal</div>
-      <div class="card-bar"><div class="card-bar-fill" id="waterBar" style="width:0%;background:var(--teal);"></div></div>
-    </div>
-    <div class="card">
-      <div class="card-label">Alcohol</div>
-      <div class="card-value" id="alcVal">0</div>
-      <div class="card-sub">units this week</div>
-      <div class="card-bar"><div class="card-bar-fill" id="alcBar" style="width:0%;background:var(--amber);"></div></div>
-    </div>
-    <div class="card" id="burnedCard">
-      <div class="card-label">🔥 Burned today</div>
-      <div class="card-value" id="burnedVal">0</div>
-      <div class="card-sub" id="burnedSub">kcal from Fitbit</div>
-      <div class="card-bar"><div class="card-bar-fill" id="burnedBar" style="width:0%;background:var(--red);"></div></div>
-    </div>
-    <div class="card">
-      <div class="card-label">Fat</div>
-      <div class="card-value" id="fatVal">0g</div>
-      <div class="card-sub" id="fatSub">today</div>
-      <div class="card-bar"><div class="card-bar-fill" id="fatBar" style="width:0%;background:#E8916A;"></div></div>
-    </div>
-    <div class="card">
-      <div class="card-label">Carbs</div>
-      <div class="card-value" id="carbsVal">0g</div>
-      <div class="card-sub" id="carbsSub">today</div>
-      <div class="card-bar"><div class="card-bar-fill" id="carbsBar" style="width:0%;background:#F2C94C;"></div></div>
-    </div>
-    <div class="card">
-      <div class="card-label">Sugar</div>
-      <div class="card-value" id="sugarVal">0g</div>
-      <div class="card-sub" id="sugarSub">today</div>
-      <div class="card-bar"><div class="card-bar-fill" id="sugarBar" style="width:0%;background:#EB5757;"></div></div>
-    </div>
+  <div id="dash-empty" class="card empty-card">
+    <h2>Start with your first weekly check-in</h2>
+    <p>Once a week (Sunday works well): your weigh-ins of the week, Lose It averages (kcal, protein), Fitbit averages (steps, resting heart rate, sleep), beers and waist. About 2 minutes.</p>
+    <p>Real maintenance appears after 2 weeks with weigh-ins, the recomposition verdict after 4.</p>
   </div>
 
-  <!-- UNIFIED LOG BLOCK -->
-  <div class="log-block" id="logBlock">
-
-    <!-- Header: LOG button + slot pills + gear -->
-    <div class="log-header">
-      <button class="log-trigger-btn" id="logTriggerBtn" onclick="toggleLogInput()">+ LOG</button>
-      <div class="slot-pills" id="slotPills">
-        <button class="slot-pill" data-slot="pre-workout"     onclick="selectSlot(this)">Pre Workout</button>
-        <button class="slot-pill" data-slot="breakfast"       onclick="selectSlot(this)">Breakfast</button>
-        <button class="slot-pill" data-slot="morning-snack"   onclick="selectSlot(this)">Morning Snack</button>
-        <button class="slot-pill" data-slot="lunch"           onclick="selectSlot(this)">Lunch</button>
-        <button class="slot-pill" data-slot="afternoon-snack" onclick="selectSlot(this)">Afternoon Snack</button>
-        <button class="slot-pill" data-slot="apero"           onclick="selectSlot(this)">Apéro</button>
-        <button class="slot-pill" data-slot="dinner"          onclick="selectSlot(this)">Dinner</button>
-        <button class="slot-pill" data-slot="post-workout"    onclick="selectSlot(this)">Post Workout</button>
-        <button class="slot-pill" data-slot="teuf"            onclick="selectSlot(this)">Teuf</button>
+  <div id="dash-body">
+    <section class="grid5">
+      <div class="card verdict wait" id="verdict">
+        <div class="vt">Recomposition</div>
+        <div class="vl" id="v-label">—</div>
+        <div class="vx" id="v-text"></div>
       </div>
-      <div class="log-header-right">
-        <button class="btn-gear" onclick="toggleSettings()" title="Settings">⚙</button>
-      </div>
-    </div>
+      <div class="card kpi"><div class="lbl">Trend weight</div><div class="val" id="k-weight">—</div><div class="sub" id="k-weight-sub"></div></div>
+      <div class="card kpi"><div class="lbl">Waist</div><div class="val" id="k-waist">—</div><div class="sub" id="k-waist-sub"></div></div>
+      <div class="card kpi"><div class="lbl">Real maintenance</div><div class="val" id="k-maint">—</div><div class="sub" id="k-maint-sub"></div></div>
+      <div class="card kpi"><div class="lbl">Protein</div><div class="val" id="k-prot">—</div><div class="sub" id="k-prot-sub"></div></div>
+    </section>
 
-    <!-- Settings panel (hidden by default) -->
-    <div id="logSettings" style="display:none;" class="log-settings">
-      <div class="settings-row"><span class="settings-label">Calorie budget</span><span class="settings-val"><input type="number" id="setBudget" value="2650"><span class="settings-unit">kcal</span></span></div>
-      <div class="settings-row"><span class="settings-label">Protein goal</span><span class="settings-val"><input type="number" id="setProt" value="120"><span class="settings-unit">g</span></span></div>
-      <div class="settings-row"><span class="settings-label">Water goal</span><span class="settings-val"><input type="number" id="setWater" value="3000"><span class="settings-unit">ml</span></span></div>
-      <div class="settings-row"><span class="settings-label">Weight</span><span class="settings-val"><input type="number" id="setWeight" value="81"><span class="settings-unit">kg</span></span></div>
-      <div class="settings-row"><span class="settings-label">API key</span><span class="settings-val key-row"><input type="password" id="keyDisplay" /><button class="btn-sm" onclick="updateKey()">Update</button></span></div>
-      <div style="margin-top:10px;display:flex;gap:8px;">
-        <button class="btn-primary" onclick="saveSettings()">Save settings</button>
-        <button class="btn-sm" onclick="toggleSettings()">Close</button>
-      </div>
-    </div>
+    <section class="grid2" style="margin-top: 12px">
+      <div class="card"><div class="card-head"><h2>Weight</h2><span class="muted">dots = scale · line = trend</span></div><div class="chart-box"><canvas id="ch-weight" role="img" aria-label="Weight: scale readings and trend line"></canvas></div></div>
+      <div class="card"><div class="card-head"><h2>Waist</h2><span class="muted">weekly, cm</span></div><div class="chart-box"><canvas id="ch-waist" role="img" aria-label="Waist per week"></canvas></div></div>
+    </section>
 
-    <!-- Input area (shown when LOG active) -->
-    <div class="log-input-area" id="logInputArea">
-      <div class="log-input-row">
-        <textarea class="log-textarea" id="chatInput" rows="2"
-          placeholder="Describe what you ate or drank… e.g. '60g rice, pavé de saumon, fried egg'"
-          oninput="onLogInput()" onkeydown="handleKey(event)"></textarea>
-        <button class="btn-analyse" id="sendBtn" onclick="sendChat()">Analyse ↗</button>
-      </div>
-      <!-- Autocomplete suggestions -->
-      <div class="autocomplete-list" id="autocompleteList"></div>
-    </div>
-
-    <!-- Pending log bubble area -->
-    <div class="log-pending-area" id="logPendingArea">
-      <div id="chatMessages" style="display:flex;flex-direction:column;gap:6px;"></div>
-    </div>
-
-    <!-- Water row -->
-    <div class="log-water-row">
-      <span class="log-water-label">💧 Water</span>
-      <button class="water-pill" onclick="quickWater(250)">+250ml</button>
-      <button class="water-pill" onclick="quickWater(330)">+330ml</button>
-      <button class="water-pill" onclick="quickWater(500)">+500ml</button>
-      <button class="water-pill" onclick="quickWater(750)">+750ml</button>
-      <button class="water-pill" onclick="quickWater(1000)">+1L</button>
-      <span id="waterTodayInline" style="margin-left:auto;font-size:11px;color:var(--teal);"></span>
-    </div>
-
-    <!-- Slots area: logged meals grouped by meal slot -->
-    <div class="log-slots-area" id="logSlotsArea">
-      <div class="empty-state" id="logEmptyState" style="padding:1.5rem 1rem;">
-        Tap <strong>+ LOG</strong>, pick a meal slot, and describe what you ate.
-      </div>
-    </div>
-
-    <!-- Day total -->
-    <div class="log-block-total" id="logBlockTotal" style="display:none;">
-      <span>Total today</span><span id="dayTotalVal">0 kcal</span>
-    </div>
-
-    <!-- Hidden compat elements for old renderMealList refs -->
-    <div id="mealList" style="display:none;"></div>
-    <div id="dayTotal" style="display:none;"></div>
-    <div id="mealCount" style="display:none;"></div>
-
-  </div>
-
-  <!-- Bottom: week + recap -->
-  <div class="layout-bottom">
-
-    <!-- Week bars -->
-    <div class="panel">
-      <div class="panel-title">Last 7 days</div>
-      <div style="font-size:9px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;">Calories</div>
-      <div class="week-bars" id="weekBars"></div>
-      <div style="font-size:10px;color:var(--text-tertiary);margin-top:5px;" id="weekAvg"></div>
-      <div style="font-size:9px;color:var(--teal);text-transform:uppercase;letter-spacing:0.06em;margin-top:10px;margin-bottom:3px;">💧 Water</div>
-      <div class="week-bars week-bars-water" id="weekBarsWater"></div>
-      <div style="font-size:10px;color:var(--text-tertiary);margin-top:5px;" id="weekAvgWater"></div>
-    </div>
-
-    <!-- Weekly recap -->
-    <div class="panel">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.9rem;">
-        <div class="panel-title" style="margin-bottom:0;">Weekly recap</div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <button class="btn-sm" id="pastRecapsBtn" onclick="togglePastRecaps()" style="display:none;">Past recaps</button>
-          <button class="btn-narrative" id="narrativeBtn" onclick="generateNarrative()">✦ Generate</button>
+    <section class="card" style="margin-top: 12px">
+      <div class="card-head" style="flex-wrap: wrap">
+        <h2>Weekly intake vs real maintenance</h2>
+        <div class="legend">
+          <span><span class="sw" style="background: var(--green)"></span>In target zone</span>
+          <span><span class="sw" style="background: var(--amber-bar)"></span>Above zone</span>
+          <span><span class="sw" style="background: var(--blue)"></span>Below zone</span>
+          <span><span class="sw" style="background: var(--zone)"></span>Target <span id="zone-lbl"></span></span>
+          <span><span style="width: 14px; border-top: 2px dashed var(--text)"></span>Maintenance</span>
         </div>
       </div>
-      <div id="narrativeContent">
-        <div class="narrative-empty">Click <strong>Generate</strong> to get a personalised AI summary of your week.</div>
+      <div class="chart-box"><canvas id="ch-intake" role="img" aria-label="Average kcal per day per week against maintenance and target zone"></canvas></div>
+    </section>
+
+    <section class="grid3" style="margin-top: 12px">
+      <div class="card"><div class="card-head"><h2>Protein</h2><span class="card-big" id="p-prot">—</span></div><div class="muted" id="p-prot-sub">g/day</div><div class="chart-box small"><canvas id="ch-prot" role="img" aria-label="Protein per day per week against target"></canvas></div></div>
+      <div class="card"><div class="card-head"><h2>Sleep</h2><span class="card-big" id="p-sleep">—</span></div><div class="muted" id="p-sleep-sub">h/night</div><div class="chart-box small"><canvas id="ch-sleep" role="img" aria-label="Average sleep per night per week"></canvas></div></div>
+      <div class="card"><div class="card-head"><h2>Resting heart rate</h2><span class="card-big" id="p-rhr">—</span></div><div class="muted">weekly average · lower is better</div><div class="chart-box small"><canvas id="ch-rhr" role="img" aria-label="Resting heart rate per week"></canvas></div></div>
+    </section>
+
+    <section class="grid2" style="margin-top: 12px">
+      <div class="card">
+        <h2>Beer</h2>
+        <div class="nums">
+          <div><div class="n" id="b-std">—</div><div class="muted">verres std / week</div></div>
+          <div><div class="n" id="b-l">—</div><div class="muted">per week</div></div>
+          <div><div class="n" id="b-pct">—</div><div class="muted">of kcal from alcohol</div></div>
+        </div>
+        <div class="chart-box small"><canvas id="ch-beer" role="img" aria-label="Standard drinks per week against the reference of 10"></canvas></div>
+        <div class="tiny" style="margin-top: 6px">Averages over the selected range · line = 10 verres std/week (Santé publique France) · kcal already counted in Lose It</div>
       </div>
-      <div id="pastRecapsList" style="display:none;">
-        <div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;margin-top:4px;">Saved recaps</div>
-        <div class="recap-list" id="recapListInner"></div>
+      <div class="card" style="display: flex; flex-direction: column">
+        <h2>Steps &amp; strength</h2>
+        <div class="nums">
+          <div><div class="n" id="s-steps">—</div><div class="muted">steps / day</div></div>
+          <div><div class="n" id="s-wo">—</div><div class="muted">workouts / week</div></div>
+        </div>
+        <div class="reps" id="s-reps"></div>
+        <div class="tiny" style="margin-top: auto; padding-top: 10px" id="s-note">Read automatically from the Workout widget</div>
+      </div>
+    </section>
+
+    <section class="card report" style="margin-top: 12px">
+      <div class="card-head"><h2 id="r-title">Report</h2><span class="muted">from your weekly check-ins</span></div>
+      <ul id="r-list"></ul>
+    </section>
+  </div>
+
+  <details class="card settings">
+    <summary>Settings</summary>
+    <div class="set-grid">
+      <label>Target below maintenance — min (kcal/day)<input id="set-defLo" inputmode="numeric"></label>
+      <label>Target below maintenance — max (kcal/day)<input id="set-defHi" inputmode="numeric"></label>
+      <label>Protein target (g per kg)<input id="set-protKg" inputmode="decimal"></label>
+      <label>Sleep target (hours)<input id="set-sleepH" inputmode="decimal"></label>
+      <label>Blonde strength (% alc.)<input id="set-abvB" inputmode="decimal"></label>
+      <label>Forte / IPA strength (% alc.)<input id="set-abvF" inputmode="decimal"></label>
+    </div>
+  </details>
+</main>
+
+<!-- ══ WEEKLY CHECK-IN ══ -->
+<main class="wrap" id="view-checkin">
+  <div class="week-nav">
+    <button class="icon-btn" id="wk-prev" aria-label="Previous week"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+    <div class="wk"><b id="wk-title">Week</b><span class="muted" id="wk-dates"></span> <span class="saved-badge" id="wk-saved"></span></div>
+    <button class="icon-btn" id="wk-next" aria-label="Next week"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+  </div>
+
+  <section class="card">
+    <div class="card-head"><span class="sec-title">Weight · scale</span><span class="muted" id="ci-wavg"></span></div>
+    <div class="days" id="ci-days"></div>
+    <div class="tiny" style="margin-top: 8px">Kg, on waking. Fill the days you weighed (3–4 is enough).</div>
+  </section>
+
+  <section class="card">
+    <span class="sec-title">Lose It · weekly averages</span>
+    <div class="frow"><label for="ci-kcal">Kcal / day</label><input class="num" id="ci-kcal" inputmode="numeric"></div>
+    <div class="frow"><label for="ci-prot">Protein (g / day)</label><input class="num" id="ci-prot" inputmode="numeric"></div>
+  </section>
+
+  <section class="card">
+    <span class="sec-title">Fitbit · weekly averages</span>
+    <div class="frow"><label for="ci-steps">Steps / day</label><input class="num" id="ci-steps" inputmode="numeric"></div>
+    <div class="frow"><label for="ci-rhr">Resting heart rate<span class="hint">bpm · not the all-day average</span></label><input class="num" id="ci-rhr" inputmode="numeric"></div>
+    <div class="frow"><label for="ci-sleep">Sleep / night<span class="hint">e.g. 6h52 or 6,9</span></label><input class="num" id="ci-sleep"></div>
+  </section>
+
+  <section class="card">
+    <span class="sec-title">Beers this week</span>
+    <div class="beer-grid" id="ci-beer"></div>
+    <div class="summary-line" id="ci-beer-sum"></div>
+  </section>
+
+  <section class="card">
+    <div class="frow" style="padding: 0">
+      <span class="fl">Waist (cm)<span class="hint">tape at navel, after exhaling</span></span>
+      <div class="stepper">
+        <button id="waist-minus" aria-label="Waist minus 0,5 cm">−</button>
+        <input class="sv" id="ci-waist" inputmode="decimal" aria-label="Waist in cm">
+        <button id="waist-plus" aria-label="Waist plus 0,5 cm">+</button>
       </div>
     </div>
-  </div>
+  </section>
 
-</div>
+  <div class="auto-line" id="ci-auto"></div>
+  <div class="preview" id="ci-preview"></div>
 
-<!-- Re-log sheet -->
-<div class="relog-overlay" id="relogSheet" style="display:none;" onclick="closeRelogSheet(event)">
-  <div class="relog-sheet">
-    <div class="relog-handle"></div>
-    <div class="relog-meal-name" id="relogName"></div>
-    <div class="relog-meal-macros" id="relogMacros"></div>
-    <div class="relog-section-label">Ingredients</div>
-    <div class="relog-ingredients" id="relogIngredients"></div>
-    <div class="relog-section-label">Meal type</div>
-    <div class="relog-type-chips" id="relogTypeChips">
-      <button class="relog-type-chip" data-type="breakfast" onclick="selectRelogType(this)">Breakfast</button>
-      <button class="relog-type-chip" data-type="lunch" onclick="selectRelogType(this)">Lunch</button>
-      <button class="relog-type-chip" data-type="dinner" onclick="selectRelogType(this)">Dinner</button>
-      <button class="relog-type-chip" data-type="snack" onclick="selectRelogType(this)">Snack</button>
-      <button class="relog-type-chip" data-type="apero" onclick="selectRelogType(this)">Apéro</button>
-    </div>
-    <div class="relog-btns">
-      <button class="relog-btn-log" onclick="confirmRelog()">✓ Log it</button>
-      <button class="relog-btn-edit" onclick="editBeforeRelog()">✏ Edit first</button>
-      <button class="relog-btn-cancel" onclick="document.getElementById('relogSheet').style.display='none'">Cancel</button>
-    </div>
+  <div class="actions">
+    <button class="btn-ghost" id="btn-cancel">Cancel</button>
+    <button class="btn-primary" id="btn-save">Save check-in</button>
   </div>
-</div>
-
-<!-- Meal edit modal -->
-<div class="edit-modal-overlay" id="editModal" style="display:none;" onclick="closeEditModal(event)">
-  <div class="edit-modal">
-    <div class="edit-modal-title">Edit meal</div>
-    <div id="editModalCurrentInfo" class="edit-modal-current"></div>
-    <div class="edit-modal-sub">The ingredients are pre-filled below. Correct what changed and hit re-parse.</div>
-    <textarea id="editModalInput" rows="4" placeholder="e.g. '3 eggs, bacon, no banana this time, tablespoon olive oil'"></textarea>
-    <div id="editModalStatus"></div>
-    <div class="edit-modal-btns">
-      <button class="btn-discard" onclick="document.getElementById('editModal').style.display='none'">Cancel</button>
-      <button class="btn-confirm" id="editModalSaveBtn" onclick="submitEditModal()">Re-parse &amp; save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Recap modal -->
-<div class="recap-modal" id="recapModal" style="display:none;" onclick="closeModal(event)">
-  <div class="recap-modal-box">
-    <div class="recap-modal-header">
-      <div class="recap-modal-title" id="modalTitle"></div>
-      <button class="btn-close" onclick="document.getElementById('recapModal').style.display='none'">✕</button>
-    </div>
-    <div class="narrative-stats" id="modalStats"></div>
-    <div class="narrative-text" id="modalText"></div>
-  </div>
-</div>
+  <button class="link-btn" id="btn-clear">Clear this week</button>
+</main>
 
 <script>
-const DEFAULT_SETTINGS = { budget: 2650, protein: 120, water: 3000, weight: 81 };
-let settings = { ...DEFAULT_SETTINGS };
-let API_KEY = '';
-let viewOffset = 0;
-let chatHistory = [];
-let activeSlot = null; // currently selected meal slot key
-const SLOT_LABELS = {
-  'pre-workout':     'Pre Workout',
-  'breakfast':       'Breakfast',
-  'morning-snack':   'Morning Snack',
-  'lunch':           'Lunch',
-  'afternoon-snack': 'Afternoon Snack',
-  'apero':           'Apéro',
-  'dinner':          'Dinner',
-  'post-workout':    'Post Workout',
-  'teuf':            'Teuf',
-};
-const SLOT_ORDER = Object.keys(SLOT_LABELS);
-// Map meal_type string → slot key
-const MEAL_TYPE_TO_SLOT = {
-  breakfast: 'breakfast', lunch: 'lunch', dinner: 'dinner',
-  snack: 'afternoon-snack', apero: 'apero', drink: 'apero',
-  'pre-workout': 'pre-workout', 'post-workout': 'post-workout',
-};
-let pendingLogBubble = null; // { el, data } — the currently visible log confirmation bubble
-let pendingEntry = null; // { type:'food'|'water', data:{...}, confirmMsgEl }
-
-// ── Date helpers ──
-function dateKey(offset) {
-  const d = new Date(); d.setDate(d.getDate() + offset);
-  return d.toISOString().slice(0, 10);
-}
-function todayKey() { return dateKey(0); }
-function getCurrentKey() { return dateKey(viewOffset); }
-function formatDisplay(key) {
-  return new Date(key + 'T12:00:00').toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-}
-function getWeekStart() {
-  const now = new Date();
-  return dateKey(-((now.getDay()+6)%7));
-}
-
-// ── Storage ──
-function loadDay(key) {
-  try { return JSON.parse(localStorage.getItem('kals_day_' + key)) || { meals:[], water:[], waterTotal:0, burned:[] }; }
-  catch(e) { return { meals:[], water:[], waterTotal:0, burned:[] }; }
-}
-function saveDay(key, data) { data.savedAt = new Date().toISOString(); localStorage.setItem('kals_day_' + key, JSON.stringify(data)); scheduleCloudsave(); }
-function getCurrentDay() { return loadDay(getCurrentKey()); }
-function saveCurrentDay(data) { saveDay(getCurrentKey(), data); }
-
-// ── Saved recaps ──
-function loadRecaps() {
-  try { return JSON.parse(localStorage.getItem('kals_recaps')) || []; }
-  catch(e) { return []; }
-}
-function saveRecap(recap) {
-  const recaps = loadRecaps();
-  const existing = recaps.findIndex(r => r.weekStart === recap.weekStart);
-  if (existing >= 0) recaps[existing] = recap; else recaps.unshift(recap);
-  recaps.sort((a,b) => b.weekStart.localeCompare(a.weekStart));
-  localStorage.setItem('kals_recaps', JSON.stringify(recaps.slice(0, 52)));
-  scheduleCloudsave();
-}
-
-// ── Meal Library ──
-let relogMeal = null;
-let libraryResults = []; // indexed store for library items — avoids fragile onclick serialisation
-
-// Compatibility wrapper — called by buildDayContext
-function getRecentMeals() {
-  return getMealLibrary('').slice(0, 8).map(r => r.meal);
-}
-
-function getMealLibrary(query) {
-  const freq = new Map();
-  for (let i = 0; i >= -59; i--) {
-    const key = dateKey(i);
-    const day = loadDay(key);
-    (day.meals||[]).forEach(m => { freq.set(m.label, (freq.get(m.label)||0) + 1); });
-  }
-  const seen = new Map();
-  for (let i = 0; i >= -59; i--) {
-    const key = dateKey(i);
-    const day = loadDay(key);
-    const d = new Date(key + 'T12:00:00');
-    const dayLabel = i === 0 ? 'Today' : i === -1 ? 'Yesterday' : d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-    (day.meals||[]).forEach(m => {
-      if (!seen.has(m.label)) seen.set(m.label, { meal: m, dateKey: key, dayLabel, count: freq.get(m.label)||1, daysAgo: Math.abs(i) });
-    });
-  }
-  let results = [...seen.values()];
-  if (query && query.trim()) {
-    const q = query.toLowerCase();
-    results = results.filter(r => {
-      const inLabel = r.meal.label.toLowerCase().includes(q);
-      const inIngredients = (r.meal.items||[]).some(it => it.name.toLowerCase().includes(q));
-      return inLabel || inIngredients;
-    });
-    results.sort((a, b) => {
-      const aL = a.meal.label.toLowerCase().includes(q) ? 1 : 0;
-      const bL = b.meal.label.toLowerCase().includes(q) ? 1 : 0;
-      return bL - aL;
-    });
-  } else {
-    results.sort((a, b) => {
-      if (a.daysAgo === 1 && b.daysAgo !== 1) return -1;
-      if (b.daysAgo === 1 && a.daysAgo !== 1) return 1;
-      const scoreA = a.count * 2 + Math.max(0, 30 - a.daysAgo);
-      const scoreB = b.count * 2 + Math.max(0, 30 - b.daysAgo);
-      return scoreB - scoreA;
-    });
-  }
-  return results;
-}
-
-function renderLibrary() {
-  const query = (document.getElementById('librarySearch')||{}).value || '';
-  libraryResults = getMealLibrary(query); // store for index lookup
-  const list = document.getElementById('libraryList');
-  if (!list) return;
-  if (libraryResults.length === 0) {
-    list.innerHTML = query
-      ? `<div class="library-empty">No meals matching "${query}".</div>`
-      : '<div class="library-empty">Log some meals to build your library.</div>';
-    return;
-  }
-  let out = '';
-  let shownYesterday = false, shownOlder = false;
-  libraryResults.forEach((r, idx) => {
-    const m = r.meal;
-    if (!query) {
-      if (r.daysAgo === 1 && !shownYesterday) { out += `<div class="library-section-label">Yesterday</div>`; shownYesterday = true; }
-      else if (r.daysAgo !== 1 && !shownOlder) { out += `<div class="library-section-label">Recent &amp; frequent</div>`; shownOlder = true; }
-    }
-    const ingPreview = (m.items||[]).map(it=>it.name).join(', ');
-    const countLabel = r.count > 1 ? ` · ${r.count}×` : '';
-    out += `<div class="library-item" onclick="openRelogSheetByIndex(${idx})">
-      <div class="library-item-info">
-        <div class="library-item-header">${getMealTypeBadge(m.mealType)}<span class="library-item-name">${m.label}</span><span class="library-item-kcal">${Math.round(m.kcal)} kcal${countLabel}</span></div>
-        ${ingPreview ? `<div class="library-item-ingredients">${ingPreview}</div>` : ''}
-        <div class="library-item-day">${r.dayLabel} · P${Math.round(m.protein)}g F${Math.round(m.fat)}g C${Math.round(m.carbs)}g</div>
-      </div>
-    </div>`;
-  });
-  list.innerHTML = out;
-}
-
-// Safe index-based entry point — no serialisation issues
-function openRelogSheetByIndex(idx) {
-  const r = libraryResults[idx];
-  if (!r) return;
-  openRelogSheet(r.meal);
-}
-
-function openRelogSheet(meal) {
-  relogMeal = meal;
-  document.getElementById('relogName').textContent = meal.label;
-  document.getElementById('relogMacros').textContent = `${Math.round(meal.kcal)} kcal · P${Math.round(meal.protein)}g F${Math.round(meal.fat)}g C${Math.round(meal.carbs)}g`;
-  const ingEl = document.getElementById('relogIngredients');
-  ingEl.innerHTML = (meal.items||[]).length > 0
-    ? meal.items.map((it,j)=>`<div class="relog-ingredient-row">
-        <span>${it.name}</span>
-        <span style="display:flex;align-items:center;gap:6px;">
-          <span class="ing-kcal" id="relog-ing-${j}">${Math.round(it.kcal)} kcal</span>
-          <button class="ing-edit-btn" onclick="editRelogIngredient(${j})" title="Correct kcal">✎</button>
-        </span>
-      </div>`).join('')
-    : `<div class="relog-ingredient-row"><span style="color:var(--text-tertiary);">No ingredient details saved</span></div>`;
-  const chips = document.querySelectorAll('.relog-type-chip');
-  chips.forEach(c => c.classList.toggle('selected', c.dataset.type === (meal.mealType||'')));
-  const anySelected = [...chips].some(c => c.classList.contains('selected'));
-  if (!anySelected) {
-    const h = new Date().getHours();
-    const inferred = h < 10 ? 'breakfast' : h < 15 ? 'lunch' : h >= 19 ? 'dinner' : 'snack';
-    chips.forEach(c => { if (c.dataset.type === inferred) c.classList.add('selected'); });
-  }
-  document.getElementById('relogSheet').style.display = 'flex';
-}
-
-function closeRelogSheet(e) {
-  if (e.target.id === 'relogSheet') document.getElementById('relogSheet').style.display = 'none';
-}
-
-function selectRelogType(btn) {
-  document.querySelectorAll('.relog-type-chip').forEach(c => c.classList.remove('selected'));
-  btn.classList.add('selected');
-}
-
-function confirmRelog() {
-  if (!relogMeal) return;
-  const sheetType = (document.querySelector('.relog-type-chip.selected')||{}).dataset?.type;
-  const mealType = sheetType || activeSlot || relogMeal.mealType;
-  const day = getCurrentDay();
-  day.meals.push({ ...relogMeal, mealType, time: getTime() });
-  saveCurrentDay(day);
-  document.getElementById('relogSheet').style.display = 'none';
-  updateUI();
-  relogMeal = null;
-}
-
-function editBeforeRelog() {
-  if (!relogMeal) return;
-  const mealType = (document.querySelector('.relog-type-chip.selected')||{}).dataset?.type || relogMeal.mealType;
-  document.getElementById('relogSheet').style.display = 'none';
-  const input = document.getElementById('chatInput');
-  input.value = (relogMeal.items||[]).length > 0 ? relogMeal.items.map(it=>it.name).join(', ') : relogMeal.label;
-  switchTab('chat');
-  input.focus();
-  input.setSelectionRange(0, input.value.length);
-  relogMeal = null;
-}
-
-
-
-
-// ── Unified log block UI ──
-function toggleLogInput() {
-  const area = document.getElementById('logInputArea');
-  const btn = document.getElementById('logTriggerBtn');
-  const isOpen = area.classList.toggle('open');
-  btn.classList.toggle('active', isOpen);
-  if (isOpen) {
-    document.getElementById('chatInput').focus();
-    // Auto-select slot based on time of day if none selected
-    if (!activeSlot) autoSelectSlot();
-  }
-}
-
-function autoSelectSlot() {
-  const h = new Date().getHours();
-  let slot = 'lunch';
-  if (h < 9) slot = 'breakfast';
-  else if (h < 11) slot = 'morning-snack';
-  else if (h < 14) slot = 'lunch';
-  else if (h < 17) slot = 'afternoon-snack';
-  else if (h < 19) slot = 'apero';
-  else slot = 'dinner';
-  const btn = document.querySelector(`.slot-pill[data-slot="${slot}"]`);
-  if (btn) selectSlot(btn);
-}
-
-function selectSlot(btn) {
-  document.querySelectorAll('.slot-pill').forEach(p => p.classList.remove('selected'));
-  btn.classList.add('selected');
-  activeSlot = btn.dataset.slot;
-  // Open input if not already open
-  const area = document.getElementById('logInputArea');
-  if (!area.classList.contains('open')) {
-    area.classList.add('open');
-    document.getElementById('logTriggerBtn').classList.add('active');
-    document.getElementById('chatInput').focus();
-  }
-  updatePlaceholder();
-}
-
-function updatePlaceholder() {
-  const ta = document.getElementById('chatInput');
-  const label = activeSlot ? SLOT_LABELS[activeSlot] : 'meal';
-  ta.placeholder = `Describe your ${label.toLowerCase()}… e.g. "60g rice, pavé de saumon, fried egg"`;
-}
-
-function toggleSettings() {
-  const s = document.getElementById('logSettings');
-  s.style.display = s.style.display === 'none' ? '' : 'none';
-}
-
-// ── Autocomplete ──
-let acIndex = []; // [{name, kcal, type:'ingredient'|'meal', mealLabel, date}]
-
-function buildAutocompleteIndex() {
-  acIndex = [];
-  const seen = new Set();
-  for (let i = 0; i >= -59; i--) {
-    const day = loadDay(dateKey(i));
-    const d = new Date(dateKey(i) + 'T12:00:00');
-    const dateLabel = i === 0 ? 'today' : i === -1 ? 'yesterday' : d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    (day.meals||[]).forEach(m => {
-      // Whole meal entry
-      const mealKey = m.label.toLowerCase();
-      if (!seen.has('meal:'+mealKey)) {
-        seen.add('meal:'+mealKey);
-        acIndex.push({ name: m.label, kcal: Math.round(m.kcal), type: 'meal', date: dateLabel, meal: m });
-      }
-      // Individual ingredients
-      (m.items||[]).forEach(it => {
-        const ingKey = it.name.toLowerCase() + ':' + m.label.toLowerCase();
-        if (!seen.has(ingKey)) {
-          seen.add(ingKey);
-          acIndex.push({ name: it.name, kcal: Math.round(it.kcal), type: 'ingredient', mealLabel: m.label, date: dateLabel, meal: m });
-        }
-      });
-    });
-  }
-}
-
-function onLogInput() {
-  const q = (document.getElementById('chatInput').value || '').trim().toLowerCase();
-  const list = document.getElementById('autocompleteList');
-  if (q.length < 2) { list.classList.remove('open'); list.innerHTML = ''; return; }
-
-  buildAutocompleteIndex();
-  const matches = acIndex.filter(e => e.name.toLowerCase().includes(q)).slice(0, 10);
-  if (matches.length === 0) { list.classList.remove('open'); list.innerHTML = ''; return; }
-
-  let html = '';
-  let shownIngredients = false, shownMeals = false;
-  matches.forEach((e, idx) => {
-    if (e.type === 'ingredient' && !shownIngredients) { html += `<div class="ac-section-label">Ingredients</div>`; shownIngredients = true; }
-    if (e.type === 'meal' && !shownMeals) { html += `<div class="ac-section-label">Full meals</div>`; shownMeals = true; }
-    const context = e.type === 'ingredient' ? ` in ${e.mealLabel} · ${e.date}` : ` · ${e.date}`;
-    html += `<div class="ac-item" onclick="selectAutocomplete(${idx})">
-      <span class="ac-item-name">${e.name}</span>
-      <span class="ac-item-kcal">${e.kcal} kcal</span>
-      <span class="ac-item-context">${context}</span>
-    </div>`;
-  });
-  list.innerHTML = html;
-  list.classList.add('open');
-}
-
-// Store last ac results for index lookup
-let lastAcResults = [];
-function onLogInput() {
-  const q = (document.getElementById('chatInput').value || '').trim().toLowerCase();
-  const list = document.getElementById('autocompleteList');
-  if (q.length < 2) { list.classList.remove('open'); list.innerHTML = ''; lastAcResults = []; return; }
-
-  buildAutocompleteIndex();
-  lastAcResults = acIndex.filter(e => e.name.toLowerCase().includes(q)).slice(0, 10);
-  if (lastAcResults.length === 0) { list.classList.remove('open'); list.innerHTML = ''; return; }
-
-  let out = '';
-  let shownIng = false, shownMeal = false;
-  lastAcResults.forEach((e, idx) => {
-    if (e.type === 'ingredient' && !shownIng) { out += `<div class="ac-section-label">Ingredients from past meals</div>`; shownIng = true; }
-    if (e.type === 'meal' && !shownMeal) { out += `<div class="ac-section-label">Full meals</div>`; shownMeal = true; }
-    const context = e.type === 'ingredient' ? `in ${e.mealLabel}, ${e.date}` : e.date;
-    out += `<div class="ac-item" onclick="selectAutocomplete(${idx})">
-      <span class="ac-item-name">${e.name}</span>
-      <span class="ac-item-kcal">${e.kcal} kcal</span>
-      <span class="ac-item-context">${context}</span>
-    </div>`;
-  });
-  list.innerHTML = out;
-  list.classList.add('open');
-}
-
-function selectAutocomplete(idx) {
-  const e = lastAcResults[idx];
-  if (!e) return;
-  document.getElementById('autocompleteList').classList.remove('open');
-
-  if (e.type === 'meal') {
-    // Open re-log sheet for the full meal
-    openRelogSheet(e.meal);
-  } else {
-    // Pre-fill the textarea with the ingredient name so user can adjust quantity
-    document.getElementById('chatInput').value = e.name;
-    document.getElementById('chatInput').focus();
-  }
-}
-
-// Close autocomplete when clicking outside
-document.addEventListener('click', e => {
-  if (!e.target.closest('#logInputArea')) {
-    const list = document.getElementById('autocompleteList');
-    if (list) list.classList.remove('open');
-  }
-});
-
-// ── Slot-grouped meal log rendering ──
-function renderLogSlots(meals, waterTotal, waterEntries, burnedEntries) {
-  const area = document.getElementById('logSlotsArea');
-  const emptyState = document.getElementById('logEmptyState');
-  const totalEl = document.getElementById('logBlockTotal');
-  const totalValEl = document.getElementById('dayTotalVal');
-
-  // Group meals by slot
-  const groups = {};
-  SLOT_ORDER.forEach(s => { groups[s] = []; });
-  groups['other'] = [];
-
-  meals.forEach((m, i) => {
-    const slot = m.mealType && (MEAL_TYPE_TO_SLOT[m.mealType] || m.mealType);
-    const key = (slot && groups[slot] !== undefined) ? slot : 'other';
-    groups[key].push({ ...m, _idx: i });
-  });
-
-  // Burned entries as special items
-  const burnedTotal = (burnedEntries||[]).reduce((s,b)=>s+b.kcal,0);
-  const totalIn = meals.reduce((s,m)=>s+m.kcal,0);
-  const hasAnything = meals.length > 0 || (burnedEntries||[]).length > 0;
-
-  if (!hasAnything) {
-    emptyState.style.display = '';
-    totalEl.style.display = 'none';
-    return;
-  }
-  emptyState.style.display = 'none';
-  totalEl.style.display = 'flex';
-  totalValEl.textContent = Math.round(totalIn) + ' kcal' + (burnedTotal > 0 ? ' (+' + burnedTotal + ' burned)' : '');
-
-  let out = '';
-
-  // Render each slot that has items
-  SLOT_ORDER.forEach(slot => {
-    const items = groups[slot];
-    if (items.length === 0) return;
-    const slotKcal = Math.round(items.reduce((s,m)=>s+m.kcal,0));
-    const label = SLOT_LABELS[slot] || slot;
-    out += `<div class="log-slot-group">
-      <div class="log-slot-header" onclick="toggleSlotGroup('slot-items-${slot}', this)">
-        <span class="log-slot-dot dot-${slot}"></span>
-        <span class="log-slot-name">${label}</span>
-        <span class="log-slot-kcal">${slotKcal} kcal</span>
-        <span class="log-slot-toggle">▾</span>
-      </div>
-      <div class="log-slot-items" id="slot-items-${slot}">`;
-    items.forEach(m => {
-      const i = m._idx;
-      const hasItems = m.items && m.items.length > 0;
-      const ingHTML = hasItems
-        ? m.items.map((it,j) => `<div class="slot-ing-row">
-            <span>${it.name}</span>
-            <span style="display:flex;align-items:center;gap:5px;">
-              <span class="ing-kcal" id="ing-kcal-${i}-${j}">${Math.round(it.kcal)} kcal</span>
-              <button class="ing-edit-btn" onclick="editIngredientKcal(${i},${j})" title="Edit kcal">✎</button>
-            </span>
-          </div>`).join('')
-        : `<div class="slot-ing-row" style="color:var(--text-tertiary);">No ingredients saved</div>`;
-      out += `<div class="log-slot-item">
-        <div class="log-slot-item-left">
-          <div class="log-slot-item-name">${m.label}</div>
-          <div class="log-slot-item-macros">P${Math.round(m.protein)}g F${Math.round(m.fat)}g C${Math.round(m.carbs)}g${m.alcohol>0?' · '+m.alcohol.toFixed(1)+'u':''} · ${m.time||''}</div>
-          <div class="slot-item-ingredients" id="slot-ing-${i}">${ingHTML}</div>
-        </div>
-        <div class="log-slot-item-right">
-          <span class="log-slot-item-kcal">${Math.round(m.kcal)} kcal</span>
-          <button class="slot-expand-btn" onclick="toggleSlotIng('slot-ing-${i}',this)">▸</button>
-          <button class="meal-fulledit-btn" onclick="openEditModal(${i})" title="Edit">✏</button>
-          <button class="meal-delete-btn" onclick="deleteMeal(${i})" title="Delete">✕</button>
-        </div>
-      </div>`;
-    });
-    out += `</div></div>`;
-  });
-
-  // Other (unclassified)
-  if (groups['other'].length > 0) {
-    const items = groups['other'];
-    const slotKcal = Math.round(items.reduce((s,m)=>s+m.kcal,0));
-    out += `<div class="log-slot-group">
-      <div class="log-slot-header" onclick="toggleSlotGroup('slot-items-other',this)">
-        <span class="log-slot-dot dot-other"></span>
-        <span class="log-slot-name">Other</span>
-        <span class="log-slot-kcal">${slotKcal} kcal</span>
-        <span class="log-slot-toggle">▾</span>
-      </div>
-      <div class="log-slot-items" id="slot-items-other">`;
-    items.forEach(m => {
-      const i = m._idx;
-      out += `<div class="log-slot-item">
-        <div class="log-slot-item-left">
-          <div class="log-slot-item-name">${m.label}</div>
-          <div class="log-slot-item-macros">P${Math.round(m.protein)}g F${Math.round(m.fat)}g C${Math.round(m.carbs)}g · ${m.time||''}</div>
-        </div>
-        <div class="log-slot-item-right">
-          <span class="log-slot-item-kcal">${Math.round(m.kcal)} kcal</span>
-          <button class="meal-fulledit-btn" onclick="openEditModal(${i})" title="Edit">✏</button>
-          <button class="meal-delete-btn" onclick="deleteMeal(${i})" title="Delete">✕</button>
-        </div>
-      </div>`;
-    });
-    out += `</div></div>`;
-  }
-
-  // Burned entries
-  (burnedEntries||[]).forEach(b => {
-    out += `<div class="log-slot-group">
-      <div class="log-slot-header">
-        <span class="log-slot-dot" style="background:var(--red);"></span>
-        <span class="log-slot-name" style="color:var(--red);">🔥 ${b.label}</span>
-        <span class="log-slot-kcal" style="color:var(--red);">+${b.kcal} kcal to budget · ${b.time||''}</span>
-      </div>
-    </div>`;
-  });
-
-  area.innerHTML = out;
-}
-
-function toggleSlotGroup(id, headerEl) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const isOpen = el.style.display !== 'none';
-  el.style.display = isOpen ? 'none' : '';
-  const toggle = headerEl.querySelector('.log-slot-toggle');
-  if (toggle) toggle.textContent = isOpen ? '▸' : '▾';
-}
-
-function toggleSlotIng(id, btn) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const isOpen = el.classList.toggle('open');
-  btn.textContent = isOpen ? '▾' : '▸';
-}
-
-// Inline water summary
-function updateWaterInline(waterTotal) {
-  const el = document.getElementById('waterTodayInline');
-  if (!el) return;
-  el.textContent = waterTotal > 0
-    ? (waterTotal >= 1000 ? (waterTotal/1000).toFixed(1)+'L' : waterTotal+'ml') + ' today'
-    : '';
-}
-
-// Show/hide pending area
-function showPendingArea(show) {
-  const el = document.getElementById('logPendingArea');
-  if (el) el.classList.toggle('open', show);
-}
-
-// ── Navigation ──
-function navigateDay(dir) {
-  const n = viewOffset + dir;
-  if (n > 0) return;
-  viewOffset = n;
-  updateDayNav(); updateUI();
-}
-function goToToday() { viewOffset = 0; updateDayNav(); updateUI(); }
-function jumpToDay(offset) { viewOffset = offset; updateDayNav(); updateUI(); }
-function updateDayNav() {
-  const key = getCurrentKey(), isToday = viewOffset === 0;
-  document.getElementById('dayNavDate').textContent = isToday ? 'Today' : viewOffset === -1 ? 'Yesterday' : formatDisplay(key).split(',')[0];
-  document.getElementById('dayNavLabel').textContent = formatDisplay(key);
-  document.getElementById('nextDayBtn').disabled = isToday;
-  document.getElementById('todayBtn').style.display = isToday ? 'none' : '';
-}
-
-function getTime() {
-  const n = new Date();
-  return n.getHours().toString().padStart(2,'0') + ':' + n.getMinutes().toString().padStart(2,'0');
-}
-
-// ── Init ──
-function init() {
-  API_KEY = localStorage.getItem('kals_api_key') || '';
-  if (!API_KEY) { document.getElementById('setupScreen').style.display = ''; return; }
-  document.getElementById('mainApp').style.display = '';
-  document.getElementById('keyDisplay').value = API_KEY;
-  loadSettings(); updateDayNav(); updateUI();
-  checkPastRecaps();
-}
-function saveKey() {
-  const val = document.getElementById('keyInput').value.trim();
-  if (!val.startsWith('sk-ant-')) { alert('Should start with sk-ant-'); return; }
-  API_KEY = val;
-  localStorage.setItem('kals_api_key', API_KEY);
-  document.getElementById('setupScreen').style.display = 'none';
-  document.getElementById('mainApp').style.display = '';
-  document.getElementById('keyDisplay').value = API_KEY;
-  updateDayNav(); updateUI(); checkPastRecaps();
-}
-function updateKey() {
-  const val = document.getElementById('keyDisplay').value.trim();
-  if (val) { API_KEY = val; localStorage.setItem('kals_api_key', val); }
-}
-function loadSettings() {
-  try {
-    const s = JSON.parse(localStorage.getItem('kals_settings'));
-    if (s) {
-      Object.assign(settings, s);
-      document.getElementById('setBudget').value = settings.budget;
-      document.getElementById('setProt').value = settings.protein;
-      document.getElementById('setWater').value = settings.water;
-      document.getElementById('setWeight').value = settings.weight;
-    }
-  } catch(e) {}
-}
-function switchTab(tab) {
-  // Legacy compat — tabs replaced by unified block
-  if (tab === 'library') renderLibrary();
-  if (tab === 'chat') {
-    const area = document.getElementById('logInputArea');
-    if (area && !area.classList.contains('open')) toggleLogInput();
-  }
-}
-function switchLogTab(tab) {
-  // Legacy — tabs removed in unified block, no-op
-}
-function saveSettings() {
-  settings.budget = parseInt(document.getElementById('setBudget').value) || DEFAULT_SETTINGS.budget;
-  settings.protein = parseInt(document.getElementById('setProt').value) || DEFAULT_SETTINGS.protein;
-  settings.water = parseInt(document.getElementById('setWater').value) || DEFAULT_SETTINGS.water;
-  settings.weight = parseFloat(document.getElementById('setWeight').value) || DEFAULT_SETTINGS.weight;
-  delete settings.burned;
-  localStorage.setItem('kals_settings', JSON.stringify(settings));
-  scheduleCloudsave();
-  updateUI(); switchTab('chat');
-}
-// ── Main UI ──
-function updateUI() {
-  const day = getCurrentDay();
-  const meals = day.meals || [];
-  const waterTotal = day.waterTotal || 0;
-  const totalIn = meals.reduce((s,m)=>s+m.kcal,0);
-  const totalProt = meals.reduce((s,m)=>s+m.protein,0);
-  const totalBurned = (day.burned||[]).reduce((s,b)=>s+b.kcal,0);
-  const effectiveBudget = settings.budget + totalBurned;
-  const remaining = effectiveBudget - totalIn;
-  const weekAlc = getWeekAlcohol();
-
-  const calEl = document.getElementById('calLeft');
-  calEl.textContent = Math.round(remaining);
-  calEl.className = 'cal-remaining' + (remaining < 0 ? ' calories-over' : '');
-  document.getElementById('calBudgetDisplay').textContent = effectiveBudget + (totalBurned > 0 ? ' (+' + totalBurned + ' 🔥)' : '');
-  const calPct = Math.min(100, Math.round((totalIn/effectiveBudget)*100));
-  document.getElementById('calBar').style.width = calPct + '%';
-  document.getElementById('calBar').style.background = remaining < 0 ? 'var(--red)' : 'var(--green)';
-
-  document.getElementById('protVal').textContent = Math.round(totalProt) + 'g';
-  document.getElementById('protSub').textContent = 'of ' + settings.protein + 'g goal';
-  document.getElementById('protBar').style.width = Math.min(100, Math.round((totalProt/settings.protein)*100)) + '%';
-
-  document.getElementById('waterVal').textContent = waterTotal >= 1000 ? (waterTotal/1000).toFixed(1)+' L' : waterTotal+' ml';
-  document.getElementById('waterSub').textContent = 'of '+(settings.water>=1000?(settings.water/1000).toFixed(1)+'L':settings.water+'ml')+' goal';
-  document.getElementById('waterBar').style.width = Math.min(100, Math.round((waterTotal/settings.water)*100)) + '%';
-
-  document.getElementById('alcVal').textContent = weekAlc.toFixed(1);
-  document.getElementById('alcBar').style.width = Math.min(100, Math.round((weekAlc/14)*100)) + '%';
-
-  // Burned card
-  document.getElementById('burnedVal').textContent = totalBurned;
-  document.getElementById('burnedSub').textContent = totalBurned > 0 ? 'kcal burned today' : 'tell me via chat';
-  document.getElementById('burnedBar').style.width = Math.min(100, Math.round((totalBurned/settings.budget)*100)) + '%';
-
-  // Fat, carbs, sugar cards
-  const totalFat = Math.round(meals.reduce((s,m)=>s+(m.fat||0),0));
-  const totalCarbs = Math.round(meals.reduce((s,m)=>s+(m.carbs||0),0));
-  const totalSugar = Math.round(meals.reduce((s,m)=>s+(m.sugar||0),0));
-  document.getElementById('fatVal').textContent = totalFat + 'g';
-  document.getElementById('carbsVal').textContent = totalCarbs + 'g';
-  document.getElementById('sugarVal').textContent = totalSugar + 'g';
-  // Progress bars: fat vs ~70g ref, carbs vs ~300g ref, sugar vs ~50g ref
-  document.getElementById('fatBar').style.width = Math.min(100, Math.round((totalFat/70)*100)) + '%';
-  document.getElementById('carbsBar').style.width = Math.min(100, Math.round((totalCarbs/300)*100)) + '%';
-  document.getElementById('sugarBar').style.width = Math.min(100, Math.round((totalSugar/50)*100)) + '%';
-
-  renderLogSlots(meals, waterTotal, day.water||[], day.burned||[]);
-  renderWaterLog(day.water || [], waterTotal);
-  updateWaterInline(waterTotal);
-  renderWeek();
-}
-
-function getWeekAlcohol() {
-  const dow = (new Date().getDay()+6)%7;
-  let total = 0;
-  for (let i = -dow; i <= 0; i++) {
-    const d = loadDay(dateKey(i));
-    total += (d.meals||[]).reduce((s,m)=>s+(m.alcohol||0),0);
-  }
-  return total;
-}
-
-
-function getMealTypeBadge(type) {
-  const map = {
-    breakfast: ['Breakfast','badge-breakfast'],
-    lunch:     ['Lunch','badge-lunch'],
-    dinner:    ['Dinner','badge-dinner'],
-    snack:     ['Snack','badge-snack'],
-    apero:     ['Apéro','badge-apero'],
-    drink:     ['Drink','badge-apero'],
-  };
-  const t = (type||'').toLowerCase();
-  const [label, cls] = map[t] || [];
-  return label ? `<span class="meal-type-badge ${cls}">${label}</span>` : '';
-}
-
-function renderMealList(meals) {
-  const list = document.getElementById('mealList');
-  const count = document.getElementById('mealCount');
-  const dayTotal = document.getElementById('dayTotal');
-  if (!meals || meals.length === 0) {
-    list.innerHTML = '<div class="empty-state">Nothing logged yet.<br>Tell me what you ate on the left.</div>';
-    count.textContent = '0 entries'; dayTotal.style.display = 'none'; return;
-  }
-  count.textContent = meals.length + ' ' + (meals.length===1?'entry':'entries');
-  dayTotal.style.display = 'flex';
-  document.getElementById('dayTotalVal').textContent = Math.round(meals.reduce((s,m)=>s+m.kcal,0)) + ' kcal';
-
-  // Build meal rows + any burned entries interspersed by time
-  const day = getCurrentDay();
-  const burnedEntries = (day.burned||[]).map(b => ({ ...b, _isBurned: true }));
-  const allEntries = [...meals.map((m,i)=>({...m,_idx:i})), ...burnedEntries]
-    .sort((a,b) => (a.time||'00:00').localeCompare(b.time||'00:00'))
-    .reverse();
-
-  list.innerHTML = allEntries.map(entry => {
-    if (entry._isBurned) {
-      return `<div class="burned-item">
-        <span class="burned-label">🔥 ${entry.label} <span style="font-weight:400;font-size:11px;">+${entry.kcal} kcal to budget</span></span>
-        <span class="burned-time">${entry.time}</span>
-      </div>`;
-    }
-    const i = entry._idx;
-    const m = entry;
-    const hasItems = m.items && m.items.length > 0;
-    const ingredientsHTML = hasItems
-      ? m.items.map((it, j) => `<div class="meal-ingredient-row">
-          <span>${it.name}</span>
-          <span style="display:flex;align-items:center;gap:6px;">
-            <span class="ing-kcal" id="ing-kcal-${i}-${j}">${Math.round(it.kcal)} kcal</span>
-            <button class="ing-edit-btn" onclick="editIngredientKcal(${i},${j})" title="Correct kcal">✎</button>
-          </span>
-        </div>`).join('')
-      : '<div class="meal-ingredient-row"><span style="color:var(--text-tertiary);">No ingredients saved — use ✏ Edit to re-parse this meal.</span></div>';
-    return `<div class="meal-item">
-      <div class="meal-header">
-        <div class="meal-name-wrap">
-          ${getMealTypeBadge(m.mealType)}
-          <span class="meal-name" id="mn-${i}">${m.label}</span>
-        </div>
-        <span class="meal-kcal">${Math.round(m.kcal)} kcal</span>
-        <button class="meal-fulledit-btn" onclick="openEditModal(${i})" title="Edit meal">✏ Edit</button>
-        <button class="meal-delete-btn" onclick="deleteMeal(${i})" title="Delete">✕</button>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;">
-        <span class="meal-macros">P${Math.round(m.protein)}g F${Math.round(m.fat)}g C${Math.round(m.carbs)}g${m.alcohol>0?' · '+m.alcohol.toFixed(1)+'u':''}</span>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <button class="meal-expand-btn" onclick="toggleIngredients('ing-${i}')" id="expand-btn-${i}">▸ ingredients</button>
-          <span class="meal-time">${m.time}</span>
-        </div>
-      </div>
-      ${m.uncertain?'<div class="meal-uncertainty">⚠ Est: '+m.uncertain+'</div>':''}
-      <div class="meal-ingredients" id="ing-${i}">
-        ${ingredientsHTML}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-
-
-// ── Inline ingredient kcal editing ──
-function editIngredientKcal(mealIdx, ingIdx) {
-  const day = getCurrentDay();
-  const meal = day.meals[mealIdx];
-  if (!meal || !meal.items || !meal.items[ingIdx]) return;
-  const it = meal.items[ingIdx];
-  const spanEl = document.getElementById(`ing-kcal-${mealIdx}-${ingIdx}`);
-  if (!spanEl) return;
-
-  const inp = document.createElement('input');
-  inp.type = 'number'; inp.className = 'ing-kcal-input'; inp.value = Math.round(it.kcal);
-  spanEl.replaceWith(inp); inp.focus(); inp.select();
-
-  function commit() {
-    const newKcal = parseFloat(inp.value);
-    if (!isNaN(newKcal) && newKcal >= 0) {
-      const diff = newKcal - it.kcal;
-      it.kcal = newKcal;
-      meal.kcal = Math.round(meal.kcal + diff);
-      day.meals[mealIdx] = meal;
-      saveCurrentDay(day);
-    }
-    updateUI();
-  }
-  inp.onblur = commit;
-  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') updateUI(); };
-}
-
-function editRelogIngredient(ingIdx) {
-  if (!relogMeal || !relogMeal.items || !relogMeal.items[ingIdx]) return;
-  const it = relogMeal.items[ingIdx];
-  const spanEl = document.getElementById(`relog-ing-${ingIdx}`);
-  if (!spanEl) return;
-
-  const inp = document.createElement('input');
-  inp.type = 'number'; inp.className = 'ing-kcal-input'; inp.value = Math.round(it.kcal);
-  spanEl.replaceWith(inp); inp.focus(); inp.select();
-
-  function commit() {
-    const newKcal = parseFloat(inp.value);
-    if (!isNaN(newKcal) && newKcal >= 0) {
-      const diff = newKcal - it.kcal;
-      it.kcal = newKcal;
-      relogMeal.kcal = Math.round(relogMeal.kcal + diff);
-      // Update the totals display
-      document.getElementById('relogMacros').textContent =
-        `${Math.round(relogMeal.kcal)} kcal · P${Math.round(relogMeal.protein)}g F${Math.round(relogMeal.fat)}g C${Math.round(relogMeal.carbs)}g`;
-    }
-    // Re-render just that span
-    const newSpan = document.createElement('span');
-    newSpan.className = 'ing-kcal'; newSpan.id = `relog-ing-${ingIdx}`;
-    newSpan.textContent = Math.round(relogMeal.items[ingIdx].kcal) + ' kcal';
-    inp.replaceWith(newSpan);
-  }
-  inp.onblur = commit;
-  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { inp.replaceWith(spanEl); } };
-}
-
-function toggleIngredients(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const isOpen = el.classList.toggle('open');
-  // Update the button label
-  const idx = id.replace('ing-', '');
-  const btn = document.getElementById('expand-btn-' + idx);
-  if (btn) btn.textContent = isOpen ? '▾ ingredients' : '▸ ingredients';
-}
-
-function deleteMeal(i) {
-  const day=getCurrentDay(); day.meals.splice(i,1); saveCurrentDay(day); updateUI();
-}
-// ── Full meal edit modal ──
-let editingMealIndex = null;
-
-function openEditModal(i) {
-  const day = getCurrentDay();
-  const meal = day.meals[i];
-  editingMealIndex = i;
-
-  const input = document.getElementById('editModalInput');
-
-  // Pre-fill with full ingredient list if available, otherwise the meal label
-  const hasIngredients = meal.items && meal.items.length > 0;
-  if (hasIngredients) {
-    input.value = meal.items.map(it => it.name).join(', ');
-  } else {
-    input.value = meal.label;
-  }
-
-  // Show current meal info + contextual hint
-  const mealTypeLabel = meal.mealType ? meal.mealType.charAt(0).toUpperCase() + meal.mealType.slice(1) + ' · ' : '';
-  document.getElementById('editModalCurrentInfo').innerHTML =
-    `<strong>${meal.label}</strong> &nbsp;·&nbsp; ${mealTypeLabel}${Math.round(meal.kcal)} kcal &nbsp;·&nbsp; P${Math.round(meal.protein)}g F${Math.round(meal.fat)}g C${Math.round(meal.carbs)}g`
-    + (hasIngredients
-      ? `<div style="margin-top:5px;font-size:11px;color:var(--text-tertiary);">Ingredients pre-filled below — edit what changed, then hit Re-parse.</div>`
-      : `<div style="margin-top:5px;font-size:11px;color:var(--amber);">⚠ No ingredients saved for this meal. Describe it fully below and hit Re-parse.</div>`);
-
-  document.getElementById('editModalStatus').innerHTML = '';
-  document.getElementById('editModalSaveBtn').disabled = false;
-  document.getElementById('editModalSaveBtn').textContent = 'Re-parse & save';
-  document.getElementById('editModalSaveBtn').onclick = submitEditModal;
-  document.getElementById('editModal').style.display = 'flex';
-
-  setTimeout(() => { input.focus(); input.select(); }, 50);
-}
-
-function closeEditModal(e) {
-  if (e.target.id === 'editModal') {
-    document.getElementById('editModal').style.display = 'none';
-  }
-}
-
-async function submitEditModal() {
-  const text = document.getElementById('editModalInput').value.trim();
-  if (!text || editingMealIndex === null) return;
-
-  const saveBtn = document.getElementById('editModalSaveBtn');
-  saveBtn.disabled = true;
-  document.getElementById('editModalStatus').innerHTML =
-    '<div class="edit-modal-analysing"><div class="dot-anim"><span></span><span></span><span></span></div> Re-parsing…</div>';
-
-  const prompt = `You are a nutrition expert. Analyse this meal and return ONLY a valid JSON object, no markdown, no explanation.
-Meal: "${text}"
-Return exactly: {"label":"short meal name max 45 chars","meal_type":"breakfast|lunch|dinner|snack|apero|drink","kcal":number,"protein":number,"fat":number,"carbs":number,"sugar":number,"alcohol_units":number,"uncertain":"range or null","items":[{"name":"item","kcal":number}]}
-Be realistic. French brands and restaurant meals: use your best knowledge. Return only JSON.`;
-
-  try {
-    const data = await callAPI([{ role:'user', content: prompt }], 1000);
-    const raw = data.content[0].text.trim().replace(/```json|```/g,'').trim();
-    const p = JSON.parse(raw);
-
-    // Show preview in modal before committing
-    const itemsHTML = (p.items||[]).map(it =>
-      `<div class="edit-modal-preview-item"><span>${it.name}</span><span>${Math.round(it.kcal)} kcal</span></div>`
-    ).join('');
-    const uncHTML = p.uncertain ? `<div class="edit-note">⚠ Uncertain: ${p.uncertain}</div>` : '';
-
-    document.getElementById('editModalStatus').innerHTML = `
-      <div class="edit-modal-preview">
-        ${itemsHTML}
-        <div class="edit-modal-preview-total">
-          <span>${p.label}</span>
-          <span>${Math.round(p.kcal)} kcal · P${Math.round(p.protein)}g F${Math.round(p.fat)}g C${Math.round(p.carbs)}g</span>
-        </div>
-      </div>
-      ${uncHTML}`;
-
-    // Replace save button with confirm flow
-    saveBtn.textContent = '✓ Confirm & replace';
-    saveBtn.disabled = false;
-    saveBtn.onclick = () => commitEdit(p);
-
-  } catch(e) {
-    document.getElementById('editModalStatus').innerHTML =
-      `<div class="error-box"><strong>Parse failed:</strong> ${e.message}</div>`;
-    saveBtn.disabled = false;
-  }
-}
-
-function commitEdit(p) {
-  if (editingMealIndex === null) return;
-  const day = getCurrentDay();
-  const original = day.meals[editingMealIndex];
-
-  // Replace the meal, keeping original time
-  day.meals[editingMealIndex] = {
-    label:    p.label,
-    kcal:     p.kcal,
-    protein:  p.protein,
-    fat:      p.fat,
-    carbs:    p.carbs,
-    sugar:    p.sugar || 0,
-    alcohol:  p.alcohol_units || 0,
-    uncertain: p.uncertain || null,
-    mealType: p.meal_type || original.mealType || null,
-    items:    p.items || original.items || [],
-    time:     original.time  // preserve original log time
-  };
-
-  saveCurrentDay(day);
-  document.getElementById('editModal').style.display = 'none';
-
-  // Reset modal for next use
-  document.getElementById('editModalSaveBtn').textContent = 'Re-parse & save';
-  document.getElementById('editModalSaveBtn').onclick = submitEditModal;
-  editingMealIndex = null;
-
-  updateUI();
-  addChatMsg('system', `✓ Meal updated: ${p.label} (${Math.round(p.kcal)} kcal)`);
-}
-
-
-
-function renderWaterLog(entries, total) {
-  const summary = document.getElementById('waterSummary');
-  const logList = document.getElementById('waterLogList');
-  if (!entries || entries.length===0) {
-    if (summary) summary.textContent = 'No water logged yet';
-    if (logList) logList.innerHTML = '';
-    return;
-  }
-  if (summary) summary.textContent = (total>=1000?(total/1000).toFixed(1)+'L':total+'ml') + ' logged today';
-  if (logList) logList.innerHTML = entries.slice().reverse().map(e =>
-    `<div class="water-entry-item"><span class="water-label">💧 ${e.label}</span><span class="water-time">${e.time}</span></div>`
-  ).join('');
-}
-
-function renderWeek() {
-  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const viewKey = getCurrentKey();
-  const keys=[], totals=[];
-  for(let i=-6;i<=0;i++){ const k=dateKey(i); keys.push(k); const d=loadDay(k); totals.push((d.meals||[]).reduce((s,m)=>s+m.kcal,0)); }
-  const max=Math.max(...totals,settings.budget);
-  document.getElementById('weekBars').innerHTML=keys.map((k,idx)=>{
-    const val=totals[idx], pct=max>0?Math.round((val/max)*100):0;
-    const isActive=k===viewKey, isToday=k===todayKey();
-    const d=new Date(k+'T12:00:00'), label=days[(d.getDay()+6)%7];
-    const color=isToday?'var(--green)':isActive?'var(--blue)':'var(--text-tertiary)';
-    return `<div class="week-bar-wrap" onclick="jumpToDay(${idx-6})" title="${formatDisplay(k)}">
-      <div class="week-bar-val">${val>0?Math.round(val):''}</div>
-      <div class="week-bar-bg"><div class="week-bar-fill" style="height:${pct}%;background:${color};"></div></div>
-      <div class="week-bar-label" style="font-weight:${isActive?'500':'400'};color:${isActive?'var(--text-primary)':'var(--text-tertiary)'};">${label}</div>
-    </div>`;
-  }).join('');
-  const nonZero=totals.filter(v=>v>0);
-  const avg=nonZero.length>0?Math.round(nonZero.reduce((a,b)=>a+b,0)/nonZero.length):0;
-  document.getElementById('weekAvg').textContent=avg>0?'7-day avg: '+avg+' kcal/day':'Log meals to see your week';
-
-  // Water bars
-  const waterTotals=keys.map(k=>loadDay(k).waterTotal||0);
-  const waterMax=Math.max(...waterTotals,settings.water);
-  const waterBarsEl=document.getElementById('weekBarsWater');
-  if(waterBarsEl){
-    waterBarsEl.innerHTML=keys.map((k,idx)=>{
-      const val=waterTotals[idx];
-      const pct=waterMax>0?Math.round((val/waterMax)*100):0;
-      const isActive=k===viewKey,isToday=k===todayKey();
-      const d=new Date(k+'T12:00:00'),label=days[(d.getDay()+6)%7];
-      const color=isToday?'var(--teal)':isActive?'#5DCAA588':'rgba(93,202,165,0.35)';
-      return `<div class="week-bar-wrap" onclick="jumpToDay(${idx-6})" title="${val>=1000?(val/1000).toFixed(1)+'L':val+'ml'}">
-        <div class="week-bar-bg" style="border-color:rgba(93,202,165,0.2);"><div class="week-bar-fill" style="height:${pct}%;background:${color};"></div></div>
-        <div class="week-bar-label" style="color:${isActive?'var(--teal)':'var(--text-tertiary)'};">${label}</div>
-      </div>`;
-    }).join('');
-    const nonZeroW=waterTotals.filter(v=>v>0);
-    const avgW=nonZeroW.length>0?Math.round(nonZeroW.reduce((a,b)=>a+b,0)/nonZeroW.length):0;
-    document.getElementById('weekAvgWater').textContent=avgW>0?(avgW>=1000?(avgW/1000).toFixed(1)+'L':''+avgW+'ml')+' avg/day':'';
-  }
-}
-
-// ── API ──
-async function callAPI(messages, maxTokens, system) {
-  const body = { model:'claude-sonnet-4-5', max_tokens:maxTokens, messages };
-  if (system) body.system = system;
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'x-api-key':API_KEY, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-    body: JSON.stringify(body)
-  });
-  if (!r.ok) { const e=await r.json().catch(()=>({})); throw new Error(e.error?.message||'API error '+r.status); }
-  return r.json();
-}
-
-// ── Chat ──
-function addChatMsg(role, html, isHTML) {
-  const container = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  if (role==='user') div.className='msg msg-user';
-  else if (role==='assistant') div.className='msg msg-assistant';
-  else if (role==='system') div.className='msg msg-system';
-  else if (role==='log') div.className='msg msg-log';
-  else if (role==='water') div.className='msg msg-water';
-  else if (role==='thinking') { div.className='msg-thinking'; div.innerHTML='<div class="dot-anim"><span></span><span></span><span></span></div>'; }
-  if (role!=='thinking') { if(isHTML) div.innerHTML=html; else div.textContent=html; }
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-  return div;
-}
-
-function handleKey(e) {
-  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
-}
-
-function useSuggestion(el) {
-  document.getElementById('chatInput').value = el.textContent;
-  sendChat();
-}
-
-function buildDayContext() {
-  const day = getCurrentDay();
-  const meals = day.meals || [];
-  const totalKcal = Math.round(meals.reduce((s,m)=>s+m.kcal,0));
-  const totalProt = Math.round(meals.reduce((s,m)=>s+m.protein,0));
-  const totalAlc = meals.reduce((s,m)=>s+(m.alcohol||0),0);
-  const totalBurnedCtx = (day.burned||[]).reduce((s,b)=>s+b.kcal,0);
-  const effectiveBudget = settings.budget + totalBurnedCtx;
-  const recent = getRecentMeals();
-  return `CURRENT DAY CONTEXT (${formatDisplay(getCurrentKey())}):
-- Calorie budget: ${effectiveBudget} kcal (${settings.budget} base + ${totalBurnedCtx} burned today)
-- Calories consumed: ${totalKcal} kcal (${effectiveBudget-totalKcal} remaining)
-- Protein: ${totalProt}g of ${settings.protein}g goal (${settings.protein-totalProt}g remaining)
-- Water: ${day.waterTotal||0}ml of ${settings.water}ml goal
-- Alcohol this week: ${totalAlc.toFixed(1)} units
-- Weight: ${settings.weight}kg
-- Meals logged: ${meals.length>0?meals.map(m=>m.label+' ('+Math.round(m.kcal)+' kcal)').join(', '):'none yet'}
-- Recent meals from past 2 weeks: ${recent.length>0?recent.map(m=>m.label).join(', '):'none yet'}`;
-}
-
-async function sendChat() {
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if (!text) return;
-  const btn = document.getElementById('sendBtn');
-  btn.disabled = true;
-  btn.textContent = '…';
-  input.value = '';
-
-  addChatMsg('user', text);
-  chatHistory.push({ role:'user', content: text, _type:'chat' });
-
-  // Show pending area immediately so spinner is visible
-  showPendingArea(true);
-  const thinking = addChatMsg('thinking');
-
-  const system = `You are KALS, an intelligent nutrition assistant inside the KALS Track app. You handle THREE things:
-
-1. LOG FOOD: When the user describes eating something.
-2. LOG WATER: When the user mentions drinking water or hydrating.
-3. LOG BURNED CALORIES: When the user mentions calories burned (from Fitbit or workout).
-4. ANSWER QUESTIONS: Nutrition advice, goal tracking, diet questions.
-
-${buildDayContext()}
-
-RESPONSE RULES — always return a valid JSON object:
-
-For food logging:
-{"type":"log_food","label":"short name max 40 chars","meal_type":"breakfast|lunch|dinner|snack|apero|drink","kcal":number,"protein":number,"fat":number,"carbs":number,"sugar":number,"alcohol_units":number,"uncertain":"range or null","items":[{"name":"item","kcal":number}],"reply":"brief warm confirmation"}
-
-For water logging:
-{"type":"log_water","ml":number,"label":"short description","reply":"brief confirmation"}
-
-For burned calories logging:
-{"type":"log_burned","kcal":number,"label":"short description e.g. 'Morning workout' or 'Fitbit daily burn'","reply":"brief confirmation e.g. 'Nice work! +900 kcal added to your budget.'"}
-
-For conversation/questions:
-{"type":"chat","reply":"warm, concise, 2-4 sentences, no markdown"}
-
-INTENT DETECTION:
-- Eating/drinking food → log_food. Detect meal_type from context or time of day.
-- Water, gourde, hydration, electrolytes → log_water
-- "burned X kcal", "Fitbit says X", "workout burned X", "moved X kcal", "sleep burn" → log_burned
-- "same as before", "my usual X", pre-filled memory descriptions → log_food using the provided description
-- Questions, advice, "how am I doing" → chat
-
-meal_type rules: if user says "breakfast"→breakfast, "lunch"→lunch, "dinner"→dinner, "snack"→snack, "apéro"/"aperitif"/"drink"→apero. If not stated, infer from time: before 10h→breakfast, 11-14h→lunch, 19h+→dinner, otherwise→snack.
-
-CRITICAL: Your response MUST be a single valid JSON object. No text before or after it. No markdown fences. If you are unsure what type to use, return {"type":"chat","reply":"your message here"}. Never return plain text.
-
-${activeSlot ? `The user has selected the meal slot: "${SLOT_LABELS[activeSlot]||activeSlot}". Set meal_type accordingly in your log_food response.` : ''}
-
-${pendingLogBubble ? `IMPORTANT — PENDING MEAL AWAITING CONFIRMATION:
-The user has a meal confirmation bubble currently visible with this data:
-${JSON.stringify(pendingLogBubble.data, null, 2)}
-If the user's message is a correction to this pending meal (e.g. "actually the X was Y kcal", "change X to Y", "the package says Z", "it was a small one"), apply the correction and return a new log_food with all the same items but corrected values. The user wants to replace the pending bubble with the corrected one. Set the reply to confirm the correction briefly.
-If the user is logging something completely different or asking a question, respond normally.` : ''}`;
-
-  try {
-    // Only send role+content to API — strip internal _type field
-    const cleanHistory = chatHistory.map(m => ({ role: m.role, content: m.content }));
-    const data = await callAPI(cleanHistory, 1000, system);
-
-    if (!data.content || !data.content[0]) throw new Error('Empty API response');
-    const raw = data.content[0].text.trim().replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-
-    // Try to parse JSON; if it fails show the raw text as a fallback chat message
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch(parseErr) {
-      thinking.remove();
-      // Claude returned plain text instead of JSON — show it as a chat message
-      addChatMsg('assistant', raw);
-      chatHistory.push({ role:'assistant', content: raw, _type:'chat' });
-      btn.disabled = false;
-      input.focus();
-      return;
-    }
-
-    thinking.remove();
-
-    if (parsed.type === 'log_food') {
-      if (pendingLogBubble) {
-        replaceFoodLogBubble(parsed);
-      } else {
-        handleFoodLog(parsed);
-      }
-      chatHistory.push({ role:'assistant', content: parsed.reply || 'Logged.', _type:'chat' });
-    } else if (parsed.type === 'log_water') {
-      handleWaterLog(parsed);
-      chatHistory.push({ role:'assistant', content: parsed.reply || 'Water logged.', _type:'chat' });
-    } else if (parsed.type === 'log_burned') {
-      handleBurnedLog(parsed);
-      chatHistory.push({ role:'assistant', content: parsed.reply || 'Burned calories logged.', _type:'chat' });
-    } else {
-      addChatMsg('assistant', parsed.reply || raw);
-      chatHistory.push({ role:'assistant', content: parsed.reply || raw, _type:'chat' });
-    }
-
-    // Keep history lean — only last 12 exchanges
-    if (chatHistory.length > 24) chatHistory = chatHistory.slice(-24);
-
-  } catch(e) {
-    thinking.remove();
-    addChatMsg('assistant', 'Something went wrong: ' + e.message + '. Please try again.');
-    console.error('[KALS sendChat]', e);
-  }
-
-  btn.disabled = false;
-  btn.textContent = 'Analyse ↗';
-  input.focus();
-  const cm = document.getElementById('chatMessages');
-  if (cm) cm.scrollTop = cm.scrollHeight;
-}
-
-function buildLogBubbleHTML(p) {
-  const itemsHTML = (p.items||[]).map(it=>`<div style="display:flex;justify-content:space-between;"><span>${it.name}</span><span>${Math.round(it.kcal)} kcal</span></div>`).join('');
-  const alcHTML = p.alcohol_units > 0 ? `<div style="display:flex;justify-content:space-between;"><span>Alcohol</span><span>${p.alcohol_units.toFixed(1)} units</span></div>` : '';
-  const uncHTML = p.uncertain ? `<div style="font-size:11px;color:var(--amber);margin-top:3px;">⚠ Est: ${p.uncertain}</div>` : '';
-  return `<div class="log-confirm">
-    <div class="log-confirm-title">${p.label}</div>
-    <div class="log-confirm-items">${itemsHTML}${alcHTML}</div>
-    <div class="log-confirm-total">${Math.round(p.kcal)} kcal · P${Math.round(p.protein)}g F${Math.round(p.fat)}g C${Math.round(p.carbs)}g${uncHTML}</div>
-    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">${p.reply||''}</div>
-    <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;">Reply in chat to correct anything before adding.</div>
-    <div class="log-confirm-btns">
-      <button class="btn-add" onclick="confirmFood(this)">✓ Add to log</button>
-      <button class="btn-skip" onclick="skipFood(this)">Skip</button>
-    </div>
-  </div>`;
-}
-
-function handleFoodLog(p) {
-  // If there's already a pending bubble, replace it silently
-  if (pendingLogBubble) {
-    pendingLogBubble.el.innerHTML = buildLogBubbleHTML(p);
-    pendingLogBubble.el._foodData = p;
-    pendingLogBubble.data = p;
-    return;
-  }
-  const msgEl = addChatMsg('log', '', true);
-  msgEl.innerHTML = buildLogBubbleHTML(p);
-  msgEl._foodData = p;
-  pendingLogBubble = { el: msgEl, data: p };
-  showPendingArea(true);
-  // Also open the input area if not already open
-  const inputArea = document.getElementById('logInputArea');
-  if (!inputArea.classList.contains('open')) toggleLogInput();
-}
-
-function replaceFoodLogBubble(p) {
-  if (!pendingLogBubble) { handleFoodLog(p); return; }
-  pendingLogBubble.el.innerHTML = buildLogBubbleHTML(p);
-  // Critical: re-set _foodData after innerHTML replacement
-  pendingLogBubble.el._foodData = p;
-  pendingLogBubble.data = p;
-}
-
-function confirmFood(btn) {
-  const msgEl = btn.closest('.msg');
-  const p = msgEl._foodData || (pendingLogBubble && pendingLogBubble.data);
-  if (!p) { console.error('[KALS] confirmFood: no food data found'); return; }
-
-  // Resolve meal type: Claude's detection > active slot > fallback
-  const mealType = p.meal_type || activeSlot || null;
-
-  const day = getCurrentDay();
-  day.meals.push({
-    label: p.label, kcal: p.kcal, protein: p.protein,
-    fat: p.fat, carbs: p.carbs, sugar: p.sugar||0,
-    alcohol: p.alcohol_units||0, uncertain: p.uncertain||null,
-    mealType, items: p.items||[], time: getTime()
-  });
-  saveCurrentDay(day);
-
-  // Replace bubble with confirmation line
-  msgEl.className = 'msg msg-system';
-  msgEl.innerHTML = `✓ ${p.label} logged (${Math.round(p.kcal)} kcal)`;
-  msgEl._foodData = null;
-
-  pendingLogBubble = null;
-  activeSlot = null; // reset slot after logging
-
-  // Reset slot pill selection
-  document.querySelectorAll('.slot-pill').forEach(p => p.classList.remove('selected'));
-
-  showPendingArea(false);
-  const inputArea = document.getElementById('logInputArea');
-  if (inputArea) { inputArea.classList.remove('open'); }
-  const triggerBtn = document.getElementById('logTriggerBtn');
-  if (triggerBtn) triggerBtn.classList.remove('active');
-  const chatInput = document.getElementById('chatInput');
-  if (chatInput) chatInput.value = '';
-  updateUI();
-}
-
-function skipFood(btn) {
-  btn.closest('.msg').remove();
-  pendingLogBubble = null;
-  showPendingArea(false);
-}
-
-function handleWaterLog(p) {
-  const day = getCurrentDay();
-  day.waterTotal = (day.waterTotal||0) + p.ml;
-  day.water = day.water||[];
-  day.water.push({ label: p.label + ' (' + p.ml + 'ml)', ml: p.ml, time: getTime() });
-  saveCurrentDay(day);
-  addChatMsg('water', `💧 ${p.label} — ${p.ml}ml logged. ${p.reply}`);
-  showPendingArea(true);
-  updateUI();
-}
-
-function handleBurnedLog(p) {
-  const day = getCurrentDay();
-  if (!day.burned) day.burned = [];
-  day.burned.push({ label: p.label, kcal: p.kcal, time: getTime() });
-  saveCurrentDay(day);
-  addChatMsg('log', `🔥 ${p.label} — +${p.kcal} kcal to your budget. ${p.reply}`, false);
-  updateUI();
-}
-
-function quickWater(ml) {
-  const day = getCurrentDay();
-  day.waterTotal = (day.waterTotal||0) + ml;
-  day.water = day.water||[];
-  const label = ml>=1000?(ml/1000).toFixed(1)+'L':ml+'ml';
-  day.water.push({ label, ml, time: getTime() });
-  saveCurrentDay(day);
-  addChatMsg('water', `💧 +${label} water logged.`);
-  showPendingArea(true);
-  updateUI();
-}
-
-// ── Weekly narrative ──
-async function generateNarrative() {
-  const btn = document.getElementById('narrativeBtn');
-  const content = document.getElementById('narrativeContent');
-  btn.disabled = true;
-  content.innerHTML = `<div class="narrative-generating"><div class="dot-anim"><span></span><span></span><span></span></div> Analysing your week...</div>`;
-
-  const weekSummary=[], weekStart = getWeekStart();
-  let totalKcal=0,totalProt=0,totalWater=0,totalAlc=0,daysLogged=0;
-  for(let i=-6;i<=0;i++){
-    const key=dateKey(i), day=loadDay(key), meals=day.meals||[];
-    const kcal=meals.reduce((s,m)=>s+m.kcal,0);
-    const prot=meals.reduce((s,m)=>s+m.protein,0);
-    const alc=meals.reduce((s,m)=>s+(m.alcohol||0),0);
-    const water=day.waterTotal||0;
-    if(meals.length>0){
-      daysLogged++; totalKcal+=kcal; totalProt+=prot; totalAlc+=alc; totalWater+=water;
-      weekSummary.push({ date:formatDisplay(key).split(',')[0], kcal:Math.round(kcal), protein:Math.round(prot), alcohol:parseFloat(alc.toFixed(1)), water, meals:meals.map(m=>m.label) });
-    }
-  }
-
-  if(daysLogged===0){
-    content.innerHTML='<div class="narrative-empty">No data logged this week yet.</div>';
-    btn.disabled=false; return;
-  }
-
-  const avgKcal=Math.round(totalKcal/daysLogged);
-  const avgProt=Math.round(totalProt/daysLogged);
-  const avgWater=Math.round(totalWater/daysLogged);
-
-  const prompt=`You are a warm, direct nutrition coach. User data for the last 7 days:
-Budget: ${settings.budget} kcal/day, Protein goal: ${settings.protein}g/day, Water goal: ${settings.water}ml/day
-Days logged: ${daysLogged}/7, Avg calories: ${avgKcal}, Avg protein: ${avgProt}g, Avg water: ${avgWater}ml, Total alcohol: ${totalAlc.toFixed(1)} units
-Daily breakdown: ${JSON.stringify(weekSummary)}
-Write a personalised recap in 3-4 short paragraphs. Specific, use real numbers, encouraging but honest. Note patterns and wins. One or two concrete suggestions. Plain text, no markdown, no bullets. Conversational tone.`;
-
-  try {
-    const data=await callAPI([{role:'user',content:prompt}],600);
-    const text=data.content[0].text.trim();
-    const narrativeHTML=`
-      <div class="narrative-stats">
-        <div class="narrative-stat"><div class="narrative-stat-val">${avgKcal}</div><div class="narrative-stat-label">Avg kcal</div></div>
-        <div class="narrative-stat"><div class="narrative-stat-val">${avgProt}g</div><div class="narrative-stat-label">Avg protein</div></div>
-        <div class="narrative-stat"><div class="narrative-stat-val">${totalAlc.toFixed(1)}</div><div class="narrative-stat-label">Alc units</div></div>
-      </div>
-      <div class="narrative-text">${text.split('\n').filter(p=>p.trim()).map(p=>`<p>${p}</p>`).join('')}</div>`;
-    content.innerHTML = narrativeHTML;
-
-    // Save this recap
-    saveRecap({ weekStart, avgKcal, avgProt, totalAlc: parseFloat(totalAlc.toFixed(1)), daysLogged, text, generatedAt: new Date().toISOString() });
-    checkPastRecaps();
-  } catch(e) {
-    content.innerHTML=`<div class="error-box"><strong>Failed:</strong> ${e.message}</div>`;
-  }
-  btn.disabled=false;
-}
-
-// ── Past recaps ──
-function checkPastRecaps() {
-  const recaps = loadRecaps();
-  document.getElementById('pastRecapsBtn').style.display = recaps.length > 0 ? '' : 'none';
-}
-function togglePastRecaps() {
-  const list = document.getElementById('pastRecapsList');
-  const showing = list.style.display !== 'none';
-  if (showing) { list.style.display = 'none'; return; }
-  list.style.display = '';
-  renderRecapList();
-}
-function renderRecapList() {
-  const recaps = loadRecaps();
-  document.getElementById('recapListInner').innerHTML = recaps.map((r,i) => {
-    const d = new Date(r.weekStart+'T12:00:00');
-    const weekLabel = 'Week of ' + d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    return `<div class="recap-item" onclick="openRecap(${i})">
-      <div class="recap-item-header">
-        <span class="recap-item-date">${weekLabel}</span>
-        <span class="recap-item-stats">${r.avgKcal} kcal · ${r.avgProt}g prot · ${r.totalAlc}u alc</span>
-      </div>
-      <div class="recap-item-preview">${r.text.slice(0,90)}…</div>
-    </div>`;
-  }).join('');
-}
-function openRecap(i) {
-  const recaps = loadRecaps();
-  const r = recaps[i];
-  const d = new Date(r.weekStart+'T12:00:00');
-  document.getElementById('modalTitle').textContent = 'Week of ' + d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-  document.getElementById('modalStats').innerHTML = `
-    <div class="narrative-stat"><div class="narrative-stat-val">${r.avgKcal}</div><div class="narrative-stat-label">Avg kcal</div></div>
-    <div class="narrative-stat"><div class="narrative-stat-val">${r.avgProt}g</div><div class="narrative-stat-label">Avg protein</div></div>
-    <div class="narrative-stat"><div class="narrative-stat-val">${r.totalAlc}</div><div class="narrative-stat-label">Alc units</div></div>`;
-  document.getElementById('modalText').innerHTML = r.text.split('\n').filter(p=>p.trim()).map(p=>`<p>${p}</p>`).join('');
-  document.getElementById('recapModal').style.display = 'flex';
-}
-function closeModal(e) {
-  if (e.target.id==='recapModal') document.getElementById('recapModal').style.display='none';
-}
-
-// ── Google Drive Sync ──
+'use strict';
+
+// ════════════════════════════════════════════════════════════════════
+//  CONFIG & STATE
+// ════════════════════════════════════════════════════════════════════
+const LS_KEY      = 'kals_balance_v1';
 const GD_FILENAME = 'kalstrack_data.json';
-let gdStatusTimer = null;
+const KCAL_PER_KG = 7700;            // energy in 1 kg of body-weight change (standard approximation)
+const ETOH_DENSITY = 0.789;          // g alcohol per ml
+const STD_DRINK_G  = 10;             // French "verre standard" = 10 g alcohol
+const BEER_VOL = { d: 250, b: 330, p: 500 };          // demi, bouteille, pinte (ml)
+const BEER_KEYS = ['bd', 'bb', 'bp', 'fd', 'fb', 'fp']; // b* = blonde, f* = forte; 2nd letter = format
+const DEFAULT_SETTINGS = { defLo: 200, defHi: 300, protKg: 1.6, sleepH: 7, abvB: 5, abvF: 7 };
 
+let state = { v: 2, settings: { ...DEFAULT_SETTINGS }, weeks: {} };
+let workoutSessions = [];
+let rangeWeeks = 13;
+
+// ════════════════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════════════════
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseISO = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const addDays = (s, n) => { const d = parseISO(s); d.setDate(d.getDate() + n); return iso(d); };
+const dayNum = s => Math.round(parseISO(s).getTime() / 86400000);
+function mondayOf(d) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return iso(x); }
+function isoWeek(s) {
+  const d = parseISO(s); d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const w1 = new Date(d.getFullYear(), 0, 4, 12);
+  return 1 + Math.round(((d - w1) / 86400000 - 3 + ((w1.getDay() + 6) % 7)) / 7);
+}
+const fmtInt = n => Math.round(n).toLocaleString('de-DE');
+const fmt1 = n => n.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const signed = (n, f = fmt1) => { const t = f(Math.abs(n)); return (t === f(0) ? '±' : n > 0 ? '+' : '−') + t; };
+const shortDate = s => parseISO(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const fmtSleep = min => `${Math.floor(min / 60)} h ${pad(Math.round(min % 60))}`;
+const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+const num = v => typeof v === 'number' && isFinite(v);
+// European input: "2.350" → 2350 for integers; "74,4" or "74.4" → 74.4 for decimals
+function parseIntEU(s) { s = String(s ?? '').replace(/[.\s ]/g, ''); if (!/^\d+$/.test(s)) return null; return parseInt(s, 10); }
+function parseDec(s) { s = String(s ?? '').trim().replace(',', '.'); if (!/^\d+(\.\d+)?$/.test(s)) return null; return parseFloat(s); }
+function parseSleep(s) {
+  s = String(s ?? '').trim().toLowerCase();
+  if (!s) return null;
+  let m = s.match(/^(\d{1,2})\s*(?:h|:)\s*(\d{1,2})?\s*(?:m|min)?$/);
+  if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2] || '0', 10);
+  const h = parseDec(s);
+  return h !== null && h < 24 ? Math.round(h * 60) : null;
+}
+function linreg(pts) {
+  const n = pts.length; if (n < 2) return null;
+  const mx = mean(pts.map(p => p.x)), my = mean(pts.map(p => p.y));
+  let sxx = 0, sxy = 0;
+  pts.forEach(p => { sxx += (p.x - mx) ** 2; sxy += (p.x - mx) * (p.y - my); });
+  if (sxx === 0) return null;
+  return { slope: sxy / sxx, intercept: my - (sxy / sxx) * mx };
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ════════════════════════════════════════════════════════════════════
+//  CALCULATIONS (pure: compute(state, sessions) → everything shown)
+// ════════════════════════════════════════════════════════════════════
+function beerStats(beer, set) {
+  let ml = 0, grams = 0, count = 0;
+  BEER_KEYS.forEach(k => {
+    const n = (beer && beer[k]) || 0; if (!n) return;
+    const vol = BEER_VOL[k[1]], abv = k[0] === 'f' ? set.abvF : set.abvB;
+    count += n; ml += n * vol; grams += n * vol * (abv / 100) * ETOH_DENSITY;
+  });
+  return { count, litres: ml / 1000, std: grams / STD_DRINK_G, alcKcal: grams * 7 };
+}
+
+function workoutWeek(sessions, mon) {
+  const sun = addDays(mon, 6);
+  const ss = sessions.filter(s => s && s.d >= mon && s.d <= sun);
+  return { n: ss.length, pu: ss.reduce((a, s) => a + (s.pu || 0), 0), dom: ss.reduce((a, s) => a + (s.dom || 0), 0),
+           dip: ss.reduce((a, s) => a + (s.dip || 0), 0), sq: ss.reduce((a, s) => a + (s.sq || 0), 0) };
+}
+
+// Reps per session over [from, to] (inclusive dates)
+function repsPerSession(sessions, from, to) {
+  const ss = sessions.filter(s => s && s.d >= from && s.d <= to);
+  if (!ss.length) return null;
+  const per = k => ss.reduce((a, s) => a + (s[k] || 0), 0) / ss.length;
+  return { n: ss.length, pu: per('pu'), dom: per('dom'), dip: per('dip'), sq: per('sq') };
+}
+
+// Real maintenance over the 4 calendar weeks ending with week `mon`:
+// mean intake − (weight slope in kg/day × 7700). Needs ≥ 2 weeks with kcal and ≥ 4 weigh-ins spanning ≥ 10 days.
+function maintenanceAt(weeks, weighins, mon) {
+  const start = addDays(mon, -21), end = addDays(mon, 6);
+  const kc = weeks.filter(w => w.mon >= start && w.mon <= mon && num(w.kcal)).map(w => w.kcal);
+  const wi = weighins.filter(p => p.d >= start && p.d <= end);
+  if (kc.length < 2 || wi.length < 4) return null;
+  if (dayNum(wi[wi.length - 1].d) - dayNum(wi[0].d) < 10) return null;
+  const fit = linreg(wi.map(p => ({ x: dayNum(p.d), y: p.kg })));
+  if (!fit) return null;
+  return { value: Math.round(mean(kc) - fit.slope * KCAL_PER_KG), weeks: kc.length, slopeWeek: fit.slope * 7 };
+}
+
+function compute(st, sessions) {
+  const set = { ...DEFAULT_SETTINGS, ...(st.settings || {}) };
+  const keys = Object.keys(st.weeks || {}).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+  // All weigh-ins, chronological
+  const weighins = [];
+  keys.forEach(k => Object.entries(st.weeks[k].w || {}).forEach(([d, kg]) => { if (num(kg)) weighins.push({ d, kg }); }));
+  weighins.sort((a, b) => a.d.localeCompare(b.d));
+  // Trend: exponential moving average, 10 % per day (time-aware for irregular weigh-ins)
+  const trend = []; let t = null, prev = null;
+  weighins.forEach(p => {
+    if (t === null) t = p.kg;
+    else t += (1 - Math.pow(0.9, dayNum(p.d) - dayNum(prev))) * (p.kg - t);
+    prev = p.d; trend.push({ d: p.d, kg: t });
+  });
+  const trendAt = date => { let v = null; for (const p of trend) { if (p.d <= date) v = p.kg; else break; } return v; };
+
+  const weeks = keys.map(mon => {
+    const e = st.weeks[mon], sun = addDays(mon, 6);
+    const ws = Object.values(e.w || {}).filter(num);
+    const beer = beerStats(e.beer, set);
+    const hasBeer = e.beer && BEER_KEYS.some(k => (e.beer[k] || 0) > 0) || e.beerLogged;
+    return { mon, sun, label: 'W' + isoWeek(mon), wAvg: ws.length ? mean(ws) : null,
+      kcal: num(e.kcal) ? e.kcal : null, prot: num(e.prot) ? e.prot : null, steps: num(e.steps) ? e.steps : null,
+      rhr: num(e.rhr) ? e.rhr : null, sleep: num(e.sleep) ? e.sleep : null, waist: num(e.waist) ? e.waist : null,
+      beerLogged: !!hasBeer, std: beer.std, litres: beer.litres, beers: beer.count,
+      alcPct: num(e.kcal) && e.kcal > 0 ? beer.alcKcal / (e.kcal * 7) * 100 : null,
+      trend: trendAt(sun) };
+  });
+  weeks.forEach(w => {
+    const m = maintenanceAt(weeks, weighins, w.mon);
+    w.maint = m ? m.value : null; w.maintWeeks = m ? m.weeks : 0;
+    w.zoneLo = w.maint !== null ? w.maint - set.defHi : null;
+    w.zoneHi = w.maint !== null ? w.maint - set.defLo : null;
+    w.status = w.kcal === null || w.maint === null ? null : w.kcal > w.zoneHi ? 'above' : w.kcal < w.zoneLo ? 'below' : 'in';
+    w.protTarget = w.trend !== null ? w.trend * set.protKg : null;
+    const wo = workoutWeek(sessions, w.mon); w.sessions = wo.n;
+  });
+
+  const latest = weeks[weeks.length - 1] || null;
+  const lastWith = f => { for (let i = weeks.length - 1; i >= 0; i--) if (weeks[i][f] !== null) return weeks[i]; return null; };
+  const maintW = lastWith('maint');
+  const trendNow = trend.length ? trend[trend.length - 1].kg : null;
+  const verdict = computeVerdict(weeks, weighins, sessions, set, latest, maintW);
+  return { set, weeks, weighins, trend, latest, trendNow, maintNow: maintW ? maintW.maint : null,
+           maintWeeks: maintW ? maintW.maintWeeks : 0, verdict, lastWith };
+}
+
+// Recomposition verdict over the last 8 weeks (needs ≥ 4 check-ins in that window)
+function computeVerdict(weeks, weighins, sessions, set, latest, maintW) {
+  if (!latest) return { code: 'wait', label: 'No data yet', text: 'Do your first weekly check-in.' };
+  const end = latest.sun, start = addDays(latest.mon, -49);
+  const win = weeks.filter(w => w.mon >= start);
+  if (win.length < 4) return { code: 'wait', label: 'Collecting data', text: `Verdict after 4 weekly check-ins (${win.length} so far).` };
+  const wi = weighins.filter(p => p.d >= start && p.d <= end);
+  const wFit = wi.length >= 4 ? linreg(wi.map(p => ({ x: dayNum(p.d), y: p.kg }))) : null;
+  const dW = wFit ? wFit.slope * 56 : null;                      // kg per 8 weeks
+  const wa = win.filter(w => w.waist !== null);
+  const waFit = wa.length >= 3 && dayNum(wa[wa.length - 1].mon) - dayNum(wa[0].mon) >= 21 ? linreg(wa.map(w => ({ x: dayNum(w.mon), y: w.waist }))) : null;
+  const dWaist = waFit ? waFit.slope * 56 : null;                // cm per 8 weeks
+  const recent = repsPerSession(sessions, addDays(end, -27), end), before = repsPerSession(sessions, addDays(end, -55), addDays(end, -28));
+  const tot = r => r ? r.pu + r.dom + r.dip : null;
+  const dStr = recent && before && tot(before) > 0 ? (tot(recent) / tot(before) - 1) * 100 : null;
+  const parts = [];
+  if (dWaist !== null) parts.push(`waist ${signed(dWaist)} cm`);
+  if (dW !== null) parts.push(`weight ${signed(dW)} kg`);
+  if (dStr !== null) parts.push(`reps/session ${signed(dStr, x => Math.round(x) + '%')}`);
+  const facts = parts.length ? parts.join(', ') + ' over 8 weeks.' : '';
+  let v;
+  if (dWaist === null) v = { code: 'wait', label: 'Collecting data', text: 'Needs waist readings spanning 3+ weeks.' };
+  else if (dWaist >= 0.5) v = { code: 'warn', label: 'Waist rising', text: `${facts} Check kcal and beer.` };
+  else if (dStr !== null && dStr <= -10) v = { code: 'warn', label: 'Strength dropping', text: `${facts} Check protein and sleep.` };
+  else if (dWaist <= -0.5) v = { code: 'good', label: 'On track', text: facts };
+  else v = { code: 'neutral', label: 'Holding steady', text: `${facts} A −${set.defLo}/−${set.defHi} kcal week moves fat.` };
+  if (dStr === null && v.code !== 'wait') v.text += ' No Workout data for strength.';
+  if (latest.sleep !== null && latest.sleep < set.sleepH * 60 && latest.kcal !== null && maintW && latest.kcal < maintW.maint)
+    v.text += ' Short sleep in a deficit risks muscle.';
+  return v;
+}
+
+// Observations over the selected weeks (each compares groups of ≥ 2 weeks)
+function insights(weeks, set) {
+  const out = [];
+  if (weeks.length < 6) return [`Insights appear after 6 weekly check-ins (${weeks.length} so far).`];
+  const avgOf = (ws, f) => mean(ws.map(w => w[f]).filter(num));
+  // Beer → resting HR and sleep
+  const heavy = weeks.filter(w => w.beerLogged && w.std > 10), light = weeks.filter(w => w.beerLogged && w.std <= 10);
+  if (heavy.length >= 2 && light.length >= 2) {
+    const bits = [];
+    const dr = avgOf(heavy, 'rhr') !== null && avgOf(light, 'rhr') !== null ? avgOf(heavy, 'rhr') - avgOf(light, 'rhr') : null;
+    const ds = avgOf(heavy, 'sleep') !== null && avgOf(light, 'sleep') !== null ? avgOf(heavy, 'sleep') - avgOf(light, 'sleep') : null;
+    if (dr !== null) bits.push(`resting HR <b>${signed(dr, x => Math.round(x) + ' bpm')}</b>`);
+    if (ds !== null) bits.push(`sleep <b>${signed(ds, x => Math.round(x) + ' min')}</b>`);
+    if (bits.length) out.push(`Weeks with more than 10 verres std: ${bits.join(' and ')} vs the other weeks (${heavy.length} vs ${light.length} weeks).`);
+  }
+  // Sleep → waist change the following check-in
+  const chg = [];
+  for (let i = 0; i < weeks.length - 1; i++) {
+    const a = weeks[i], b = weeks[i + 1];
+    if (a.sleep !== null && a.waist !== null && b.waist !== null) chg.push({ good: a.sleep >= set.sleepH * 60, d: (b.waist - a.waist) / ((dayNum(b.mon) - dayNum(a.mon)) / 7) });
+  }
+  const g = chg.filter(c => c.good), s = chg.filter(c => !c.good);
+  if (g.length >= 2 && s.length >= 2)
+    out.push(`Weeks sleeping ${fmt1(set.sleepH).replace(',0', '')} h or more: waist <b>${signed(mean(g.map(c => c.d)))} cm/week</b>; under: <b>${signed(mean(s.map(c => c.d)))} cm/week</b>.`);
+  // Steps → real maintenance
+  const ms = weeks.filter(w => w.maint !== null && w.steps !== null);
+  if (ms.length >= 6) {
+    const med = [...ms].sort((a, b) => a.steps - b.steps)[Math.floor(ms.length / 2)].steps;
+    const hi = ms.filter(w => w.steps >= med), lo = ms.filter(w => w.steps < med);
+    if (hi.length >= 2 && lo.length >= 2)
+      out.push(`Weeks above ${fmtInt(med)} steps: real maintenance <b>${signed(avgOf(hi, 'maint') - avgOf(lo, 'maint'), fmtInt)} kcal/day</b> vs the others.`);
+  }
+  // Alcohol share
+  const ap = avgOf(weeks.filter(w => w.beerLogged), 'alcPct');
+  if (ap !== null) out.push(`Alcohol is <b>${Math.round(ap)}%</b> of your kcal on average.`);
+  // Protein hit rate
+  const pw = weeks.filter(w => w.prot !== null && w.protTarget !== null);
+  if (pw.length) out.push(`Protein on target in <b>${pw.filter(w => w.prot >= w.protTarget).length} of ${pw.length}</b> weeks.`);
+  return out.length ? out : ['Not enough contrast in the data yet for comparisons.'];
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  STORAGE
+// ════════════════════════════════════════════════════════════════════
+function normalize(data) {
+  if (!data || data.v !== 2 || typeof data.weeks !== 'object' || !data.weeks) return null;   // old KALS format → ignored (fresh start)
+  return { v: 2, settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) }, weeks: data.weeks };
+}
+function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (_) {} }
+function loadLocal() {
+  try { const s = normalize(JSON.parse(localStorage.getItem(LS_KEY))); if (s) state = s; } catch (_) {}
+  // The old day-by-day KALS data is retired (fresh start): remove its keys from this device
+  try { Object.keys(localStorage).filter(k => k.startsWith('kals_') && !k.startsWith('kals_balance')).forEach(k => localStorage.removeItem(k)); } catch (_) {}
+}
+function persist() { saveLocal(); scheduleCloudsave(); }
+
+// ════════════════════════════════════════════════════════════════════
+//  CLOUDFLARE WORKERS AUTO-SYNC
+// ════════════════════════════════════════════════════════════════════
+const CLOUD = LifeSync.cloud('kalstrack');
+let cfSaveTimer = null;
+
+function cfStatus(msg, type) {
+  const el = document.getElementById('cf-status');
+  document.getElementById('cf-status-msg').textContent = msg;
+  el.className = type || '';
+}
+
+// Small summary for the Life Hub tile (no timestamps inside)
+function hubSummary() {
+  const c = compute(state, workoutSessions);
+  if (!c.latest) return {};
+  const wa = c.lastWith('waist');
+  const hub = { wk: c.latest.mon, v: c.verdict.code, vt: c.verdict.label };
+  if (c.trendNow !== null) hub.tw = Math.round(c.trendNow * 10) / 10;
+  if (wa) hub.wa = wa.waist;
+  if (c.maintNow !== null) hub.mt = c.maintNow;
+  return hub;
+}
+function cloudPayload() { return { v: 2, settings: state.settings, weeks: state.weeks, hub: hubSummary() }; }
+
+function scheduleCloudsave() {
+  clearTimeout(cfSaveTimer);
+  CLOUD.stage(cloudPayload());   // kept as pending now, so leaving before the upload loses nothing
+  cfSaveTimer = setTimeout(() => { cfSaveTimer = null; cloudSave(); }, 3000);
+}
+// Leaving the page (Hub link, app switch): send a waiting save now instead of losing it
+LifeSync.onLeave(() => { if (cfSaveTimer) { clearTimeout(cfSaveTimer); cfSaveTimer = null; cloudSave(); } });
+
+async function cloudSave() {
+  try {
+    cfStatus('Syncing…', 'working');
+    await CLOUD.put(cloudPayload());
+    cfStatus('Synced at ' + LifeSync.time(), 'ok');
+  } catch (e) {
+    console.warn('Cloud save failed', e);
+    cfStatus('Sync failed', 'err');
+  }
+}
+async function cloudLoad() {
+  try {
+    const s = normalize(await CLOUD.get());
+    if (s) { state = s; saveLocal(); renderAll(); }
+    cfStatus('Synced at ' + LifeSync.time(), 'ok');
+  } catch (e) {
+    console.warn('Cloud load failed', e);
+    cfStatus('Sync failed', 'err');
+  }
+}
+
+// Workout sessions: read-only, from the Workout widget's cloud data (this device's copy as fallback)
+async function loadWorkout() {
+  let sessions = null;
+  try { const res = await LifeSync.request('/data/workout'); const d = await res.json(); if (Array.isArray(d.sessions)) sessions = d.sessions; } catch (_) {}
+  if (!sessions) { try { const d = JSON.parse(localStorage.getItem('workout_insights_v3')); if (d && Array.isArray(d.sessions)) sessions = d.sessions; } catch (_) {} }
+  workoutSessions = (sessions || []).filter(s => s && typeof s.d === 'string');
+  renderAll();
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  GOOGLE DRIVE BACKUP — shared logic in lib/drive.js
+// ════════════════════════════════════════════════════════════════════
+let gdStatusTimer = null;
 function gdStatus(msg, type) {
   const el = document.getElementById('drive-status');
-  if (!el) return;
   el.textContent = msg;
   el.className = 'visible' + (type ? ' ' + type : '');
-  el.style.opacity = '1';
   clearTimeout(gdStatusTimer);
-  if (type === 'ok') {
-    gdStatusTimer = setTimeout(() => {
-      el.classList.add('fading');
-      setTimeout(() => { el.className = ''; el.style.opacity = '1'; }, 650);
-    }, 5000);
-  }
+  if (type === 'ok') gdStatusTimer = setTimeout(() => { el.className = ''; }, 5000);
 }
-
 function gdSetBusy(busy) {
-  const s = document.getElementById('drivesavebtn');
-  const l = document.getElementById('driveloadbtn');
-  if (s) s.disabled = busy;
-  if (l) l.disabled = busy;
+  document.getElementById('drivesavebtn').disabled = busy;
+  document.getElementById('driveloadbtn').disabled = busy;
 }
-
-
-
-// Collect full widget state from localStorage
-function getStateToSave() {
-  const state = { settings: {}, days: {}, recaps: [] };
-  // Settings
-  try { state.settings = JSON.parse(localStorage.getItem('kals_settings')) || {}; } catch(e) {}
-  // All day entries
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith('kals_day_')) {
-      try { state.days[key] = JSON.parse(localStorage.getItem(key)); } catch(e) {}
-    }
-  }
-  // Recaps
-  try { state.recaps = JSON.parse(localStorage.getItem('kals_recaps')) || []; } catch(e) {}
-  // API key intentionally excluded for security
-  return state;
-}
-
-// Restore full widget state into localStorage and re-render
-function applyLoadedState(payload) {
-  if (!payload || typeof payload !== 'object') throw new Error('Invalid payload');
-  // Settings
-  if (payload.settings) {
-    localStorage.setItem('kals_settings', JSON.stringify(payload.settings));
-    Object.assign(settings, payload.settings);
-    try {
-      document.getElementById('setBudget').value = settings.budget;
-      document.getElementById('setProt').value = settings.protein;
-      document.getElementById('setWater').value = settings.water;
-      document.getElementById('setWeight').value = settings.weight;
-    } catch(e) {}
-  }
-  // Day entries
-  if (payload.days) {
-    Object.entries(payload.days).forEach(([key, val]) => {
-      localStorage.setItem(key, JSON.stringify(val));
-    });
-  }
-  // Recaps
-  if (payload.recaps) {
-    localStorage.setItem('kals_recaps', JSON.stringify(payload.recaps));
-  }
-  // Re-render everything
-  updateDayNav();
-  updateUI();
-  checkPastRecaps();
-}
-
-// Google Drive backup — shared logic in lib/drive.js
 const DRIVE = LifeDrive.create({
   filename: GD_FILENAME,
   status: gdStatus,
   busy: gdSetBusy,
-  payload: () => ({ version: 1, exportedAt: new Date().toISOString(), ...getStateToSave() }),
+  payload: () => ({ v: 2, exportedAt: new Date().toISOString(), settings: state.settings, weeks: state.weeks }),
   apply: payload => {
-      if (!payload) throw new Error('Empty file');
-      applyLoadedState(payload);
-    },
+    const s = normalize(payload);
+    if (!s) throw new Error('This backup is from the old KALS and was not loaded');
+    state = s; saveLocal(); renderAll(); scheduleCloudsave();
+  },
 });
 function gdriveSave() { DRIVE.save(); }
 
@@ -2706,77 +675,314 @@ function gdriveLoad() { DRIVE.load(); }
 document.getElementById('drivesavebtn').addEventListener('click', gdriveSave);
 document.getElementById('driveloadbtn').addEventListener('click', gdriveLoad);
 
-// ═══════════════════════════════════════════════
-// CLOUDFLARE WORKERS AUTO-SYNC
-// ═══════════════════════════════════════════════
-const CLOUD = LifeSync.cloud('kalstrack');
-let cfSaveTimer = null;
+// ════════════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════════════════════════════════
+const charts = {};
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
 
-function cfStatus(msg, type) {
-  const el = document.getElementById('cf-status');
-  const ms = document.getElementById('cf-status-msg');
-  if (!el || !ms) return;
-  ms.textContent = msg;
-  el.className = 'visible' + (type ? ' ' + type : '');
+function chart(id, cfg) {
+  if (typeof Chart === 'undefined') return;
+  const C = { grid: css('--grid'), text: css('--text2') };
+  const base = {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: C.text, font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+      y: { grid: { color: C.grid }, ticks: { color: C.text, font: { size: 11 }, maxTicksLimit: 5 } },
+    },
+  };
+  const opts = { ...base, ...(cfg.options || {}), scales: { x: { ...base.scales.x, ...((cfg.options || {}).scales || {}).x }, y: { ...base.scales.y, ...((cfg.options || {}).scales || {}).y } } };
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), { type: cfg.type, data: cfg.data, options: opts });
+}
+const refLine = (data, color, label) => ({ type: 'line', label, data, borderColor: color, borderWidth: 2, borderDash: [5, 4], pointRadius: 0, fill: false, spanGaps: true });
+
+function renderAll() { renderDash(); if (document.body.classList.contains('checkin')) renderCheckin(); }
+
+function renderDash() {
+  const c = compute(state, workoutSessions);
+  const has = c.weeks.length > 0;
+  document.getElementById('dash-empty').style.display = has ? 'none' : '';
+  document.getElementById('dash-body').style.display = has ? '' : 'none';
+  fillSettings(c.set);
+  if (!has) return;
+  const set = c.set;
+  const lastMon = c.latest.mon, firstMon = addDays(lastMon, -7 * (rangeWeeks - 1));
+  const W = c.weeks.filter(w => w.mon >= firstMon);
+  const labels = W.map(w => w.label);
+  const G = css('--green'), A = css('--amber-bar'), B = css('--blue'), P = css('--pink'), T = css('--text'), Z = css('--zone');
+
+  // Verdict
+  const v = c.verdict;
+  document.getElementById('verdict').className = 'card verdict ' + v.code;
+  document.getElementById('v-label').textContent = v.label;
+  document.getElementById('v-text').textContent = v.text;
+
+  // KPIs
+  const setKpi = (id, html, sub, cls) => {
+    document.getElementById(id).innerHTML = html;
+    const s = document.getElementById(id + '-sub'); s.textContent = sub || ''; s.className = 'sub' + (cls ? ' ' + cls : '');
+  };
+  const trIn = c.trend.filter(p => p.d >= firstMon);
+  if (c.trendNow !== null) {
+    const dW = trIn.length > 1 ? trIn[trIn.length - 1].kg - trIn[0].kg : null;
+    setKpi('k-weight', `${fmt1(c.trendNow)} <small>kg</small>`, dW !== null ? `${signed(dW)} kg in range` : 'trend needs more weigh-ins');
+  } else setKpi('k-weight', '—', 'no weigh-ins yet');
+  const wa = W.filter(w => w.waist !== null), waL = c.lastWith('waist');
+  if (waL) {
+    const d = wa.length > 1 ? wa[wa.length - 1].waist - wa[0].waist : null;
+    setKpi('k-waist', `${fmt1(waL.waist)} <small>cm</small>`, d !== null ? `${signed(d)} cm in range` : '', d !== null && d < 0 ? 'good' : d > 0 ? 'bad' : '');
+  } else setKpi('k-waist', '—', 'no waist yet');
+  if (c.maintNow !== null) setKpi('k-maint', `${fmtInt(c.maintNow)} <small>kcal/day</small>`, c.maintWeeks < 3 ? `estimating · ${c.maintWeeks} weeks of data` : `from your last ${c.maintWeeks} weeks`);
+  else setKpi('k-maint', '—', 'after 2 weeks with 4+ weigh-ins');
+  const pL = c.lastWith('prot');
+  if (pL) {
+    const tgt = pL.protTarget;
+    setKpi('k-prot', `${fmtInt(pL.prot)} <small>g/day</small>`, tgt ? `Target ${fmtInt(tgt)} g (${fmt1(set.protKg)} g/kg)` : '', tgt ? (pL.prot >= tgt ? 'good' : 'bad') : '');
+  } else setKpi('k-prot', '—', '');
+
+  // Weight: scale dots + trend line (x = day number)
+  const wIn = c.weighins.filter(p => p.d >= firstMon);
+  const dateTick = { callback: val => shortDate(iso(new Date(val * 86400000))) };
+  chart('ch-weight', { type: 'scatter', data: { datasets: [
+    { label: 'Scale', data: wIn.map(p => ({ x: dayNum(p.d), y: p.kg })), backgroundColor: css('--text3'), pointRadius: 3 },
+    { type: 'line', label: 'Trend', data: trIn.map(p => ({ x: dayNum(p.d), y: Math.round(p.kg * 10) / 10 })), borderColor: G, borderWidth: 3, pointRadius: 0, tension: 0.3 },
+  ] }, options: { scales: { x: { type: 'linear', ticks: dateTick }, y: { grace: '5%' } } } });
+
+  chart('ch-waist', { type: 'line', data: { labels: wa.map(w => w.label), datasets: [
+    { label: 'Waist (cm)', data: wa.map(w => w.waist), borderColor: css('--amber'), backgroundColor: css('--amber'), borderWidth: 3, pointRadius: 4, tension: 0.2 },
+  ] }, options: { scales: { y: { grace: '10%' } } } });
+
+  // Intake vs maintenance + zone
+  document.getElementById('zone-lbl').textContent = `−${set.defLo}/−${set.defHi}`;
+  const kc = W.map(w => w.kcal), allVals = [...kc, ...W.map(w => w.zoneLo), ...W.map(w => w.maint)].filter(num);
+  chart('ch-intake', { type: 'bar', data: { labels, datasets: [
+    { type: 'line', label: 'Zone top', data: W.map(w => w.zoneHi), borderWidth: 0, pointRadius: 0, fill: false, spanGaps: true, order: 3 },
+    { type: 'line', label: 'Zone bottom', data: W.map(w => w.zoneLo), borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: Z, spanGaps: true, order: 3 },
+    { ...refLine(W.map(w => w.maint), T, 'Maintenance'), order: 1 },
+    { label: 'Kcal/day', data: kc, backgroundColor: W.map(w => w.status === 'in' ? G : w.status === 'below' ? B : w.status === 'above' ? A : css('--text3')), borderRadius: 4, order: 2 },
+  ] }, options: { scales: { y: { min: allVals.length ? Math.floor((Math.min(...allVals) - 250) / 100) * 100 : undefined } } } });
+
+  // Protein
+  const pl = W.filter(w => w.prot !== null);
+  document.getElementById('p-prot').textContent = pL ? fmtInt(pL.prot) + ' g' : '—';
+  document.getElementById('p-prot-sub').textContent = `g/day · line = ${fmt1(set.protKg)} g/kg`;
+  chart('ch-prot', { type: 'bar', data: { labels, datasets: [
+    { ...refLine(W.map(w => w.protTarget !== null ? Math.round(w.protTarget) : null), T, 'Target'), order: 1 },
+    { label: 'Protein g/day', data: W.map(w => w.prot), backgroundColor: W.map(w => w.protTarget !== null && w.prot !== null && w.prot < w.protTarget ? A : G), borderRadius: 3, order: 2 },
+  ] }, options: { scales: { y: { beginAtZero: true } } } });
+
+  // Sleep
+  const sL = c.lastWith('sleep');
+  document.getElementById('p-sleep').textContent = sL ? fmtSleep(sL.sleep) : '—';
+  document.getElementById('p-sleep-sub').textContent = `h/night · line = ${fmt1(set.sleepH).replace(',0', '')} h`;
+  chart('ch-sleep', { type: 'bar', data: { labels, datasets: [
+    { ...refLine(W.map(() => set.sleepH), T, 'Target'), order: 1 },
+    { label: 'Sleep h', data: W.map(w => w.sleep !== null ? Math.round(w.sleep / 6) / 10 : null), backgroundColor: W.map(w => w.sleep !== null && w.sleep < set.sleepH * 60 ? A : B), borderRadius: 3, order: 2 },
+  ] }, options: { scales: { y: { min: 4 } } } });
+
+  // Resting HR
+  const rL = c.lastWith('rhr');
+  document.getElementById('p-rhr').textContent = rL ? rL.rhr + ' bpm' : '—';
+  chart('ch-rhr', { type: 'line', data: { labels, datasets: [
+    { label: 'Resting HR', data: W.map(w => w.rhr), borderColor: P, backgroundColor: P, borderWidth: 3, pointRadius: 4, spanGaps: true, tension: 0.2 },
+  ] }, options: { scales: { y: { grace: '10%' } } } });
+
+  // Beer (averages over weeks where beers were logged)
+  const bw = W.filter(w => w.beerLogged);
+  document.getElementById('b-std').textContent = bw.length ? fmt1(mean(bw.map(w => w.std))) : '—';
+  document.getElementById('b-l').textContent = bw.length ? fmt1(mean(bw.map(w => w.litres))) + ' L' : '—';
+  const ap = mean(bw.map(w => w.alcPct).filter(num));
+  document.getElementById('b-pct').textContent = ap !== null ? Math.round(ap) + '%' : '—';
+  chart('ch-beer', { type: 'bar', data: { labels, datasets: [
+    { ...refLine(W.map(() => 10), T, 'Reference'), order: 1 },
+    { label: 'Verres std', data: W.map(w => w.beerLogged ? Math.round(w.std * 10) / 10 : null), backgroundColor: W.map(w => w.std > 10 ? A : B), borderRadius: 3, order: 2 },
+  ] }, options: { scales: { y: { beginAtZero: true } } } });
+
+  // Steps & strength
+  const stL = c.lastWith('steps');
+  document.getElementById('s-steps').textContent = stL ? fmtInt(stL.steps) : '—';
+  const today = iso(new Date());
+  const recent = repsPerSession(workoutSessions, addDays(today, -27), today), before = repsPerSession(workoutSessions, addDays(today, -83), addDays(today, -56));
+  document.getElementById('s-wo').textContent = fmt1((recent ? recent.n : 0) / 4);
+  const ex = [['Push-ups', 'pu'], ['Dominadas', 'dom'], ['Dips', 'dip'], ['Squats', 'sq']];
+  let rows = '<span class="h">Reps per session · last 4 weeks</span><span class="h r">now</span><span class="h r">vs 8 wks</span>';
+  ex.forEach(([name, k]) => {
+    const now = recent ? Math.round(recent[k]) : null, was = before ? Math.round(before[k]) : null;
+    const d = now !== null && was !== null ? now - was : null;
+    rows += `<span>${name}</span><span class="r">${now !== null ? fmtInt(now) : '—'}</span><span class="r ${d === null ? 'flat' : d > 0 ? 'up' : d < 0 ? 'down' : 'flat'}">${d === null ? '—' : d === 0 ? '=' : signed(d, fmtInt)}</span>`;
+  });
+  document.getElementById('s-reps').innerHTML = rows;
+  document.getElementById('s-note').textContent = workoutSessions.length ? 'Read automatically from the Workout widget' : 'No Workout data found yet';
+
+  // Report
+  const month = parseISO(c.latest.sun).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  document.getElementById('r-title').textContent = 'Report · ' + (rangeWeeks === 13 ? 'last 3 months' : rangeWeeks === 26 ? 'last 6 months' : 'last year') + ' · up to ' + month;
+  document.getElementById('r-list').innerHTML = insights(W, set).map(t => `<li>${t}</li>`).join('');
 }
 
-function scheduleCloudsave() {
-  clearTimeout(cfSaveTimer);
-  CLOUD.stage(cloudPayload());   // kept as pending now, so leaving before the upload loses nothing
-  cfSaveTimer = setTimeout(() => { cfSaveTimer = null; cloudSave(); }, 4000);
+function fillSettings(set) {
+  const map = { defLo: set.defLo, defHi: set.defHi, protKg: set.protKg, sleepH: set.sleepH, abvB: set.abvB, abvF: set.abvF };
+  Object.entries(map).forEach(([k, v]) => { const el = document.getElementById('set-' + k); if (document.activeElement !== el) el.value = String(v).replace('.', ','); });
+}
+Object.keys(DEFAULT_SETTINGS).forEach(k => {
+  document.getElementById('set-' + k).addEventListener('change', e => {
+    const v = parseDec(e.target.value);
+    if (v === null || v < 0 || v > 5000) { fillSettings({ ...DEFAULT_SETTINGS, ...state.settings }); return; }
+    state.settings = { ...DEFAULT_SETTINGS, ...state.settings, [k]: v };
+    persist(); renderDash();
+  });
+});
+document.querySelectorAll('#range-pills button').forEach(b => b.addEventListener('click', () => {
+  rangeWeeks = parseInt(b.dataset.w, 10);
+  document.querySelectorAll('#range-pills button').forEach(x => x.classList.toggle('on', x === b));
+  try { localStorage.setItem('kals_balance_range', String(rangeWeeks)); } catch (_) {}
+  renderDash();
+}));
+
+// ════════════════════════════════════════════════════════════════════
+//  WEEKLY CHECK-IN
+// ════════════════════════════════════════════════════════════════════
+let ciMon = null, ciBeer = {};
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+// Default week: the one ending on the last Sunday up to today (on Sunday: this week)
+function defaultWeek() { const t = new Date(); const m = mondayOf(t); return t.getDay() === 0 ? m : addDays(m, -7); }
+const currentWeek = () => mondayOf(new Date());
+
+function openCheckin(mon) {
+  ciMon = mon || defaultWeek();
+  document.body.classList.add('checkin');
+  loadCheckinFields();
+  window.scrollTo(0, 0);
+}
+function closeCheckin() { document.body.classList.remove('checkin'); renderDash(); window.scrollTo(0, 0); }
+
+function prevEntry(mon) {
+  const keys = Object.keys(state.weeks).filter(k => k < mon).sort();
+  return keys.length ? state.weeks[keys[keys.length - 1]] : null;
 }
 
-// Leaving the page (Hub link, app switch): send a waiting save now instead of losing it
-LifeSync.onLeave(() => { if (cfSaveTimer) { clearTimeout(cfSaveTimer); cfSaveTimer = null; cloudSave(); } });
-
-// Small summary for the Life Hub tile: the most recent day with entries + budget
-function hubSummary(state) {
-  const sum = arr => Math.round((arr || []).reduce((s, x) => s + (x?.kcal || 0), 0));
-  const keys = Object.keys(state.days || {}).filter(k => /^kals_day_\d{4}-\d{2}-\d{2}$/.test(k)).sort().reverse();
-  const hub = { budget: state.settings?.budget || 2650 };
-  for (const k of keys) {
-    const day = state.days[k] || {};
-    const c = sum(day.meals), b = sum(day.burned), w = day.waterTotal || 0;
-    if (c || b || w) { hub.d = k.slice(9); hub.c = c; hub.b = b; hub.w = w; break; }
-  }
-  return hub;
+function loadCheckinFields() {
+  const e = state.weeks[ciMon] || {}, prev = prevEntry(ciMon) || {};
+  const fmtInEU = (v, dec) => num(v) ? (dec ? String(v).replace('.', ',') : fmtInt(v)) : '';
+  // Week header
+  document.getElementById('wk-title').textContent = 'Week ' + isoWeek(ciMon);
+  document.getElementById('wk-dates').textContent = `${parseISO(ciMon).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} – ${parseISO(addDays(ciMon, 6)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`;
+  document.getElementById('wk-saved').textContent = state.weeks[ciMon] ? '· saved' : '';
+  document.getElementById('wk-next').disabled = ciMon >= currentWeek();
+  document.getElementById('btn-clear').style.display = state.weeks[ciMon] ? '' : 'none';
+  // Weights: one input per day
+  document.getElementById('ci-days').innerHTML = DAY_NAMES.map((n, i) => {
+    const d = addDays(ciMon, i), v = (e.w || {})[d];
+    return `<label>${n}<input data-d="${d}" inputmode="decimal" placeholder="—" value="${num(v) ? String(v).replace('.', ',') : ''}" aria-label="Weight ${n} ${shortDate(d)}"></label>`;
+  }).join('');
+  // Numbers (placeholders show last week's values)
+  const fields = [['ci-kcal', 'kcal'], ['ci-prot', 'prot'], ['ci-steps', 'steps'], ['ci-rhr', 'rhr']];
+  fields.forEach(([id, k]) => { const el = document.getElementById(id); el.value = fmtInEU(e[k]); el.placeholder = num(prev[k]) ? fmtInt(prev[k]) : ''; });
+  const sl = document.getElementById('ci-sleep');
+  sl.value = num(e.sleep) ? fmtSleep(e.sleep).replace(' h ', 'h') : '';
+  sl.placeholder = num(prev.sleep) ? fmtSleep(prev.sleep).replace(' h ', 'h') : '';
+  const wst = document.getElementById('ci-waist');
+  wst.value = num(e.waist) ? fmt1(e.waist) : '';
+  wst.placeholder = num(prev.waist) ? fmt1(prev.waist) : '—';
+  ciBeer = { ...(e.beer || {}) };
+  renderCheckin();
 }
 
-function cloudPayload() {
-  const payload = getStateToSave();
-  payload.hub = hubSummary(payload);
-  return payload;
+function readCheckin() {
+  const e = { w: {} };
+  document.querySelectorAll('#ci-days input').forEach(inp => { const v = parseDec(inp.value); if (v !== null && v > 20 && v < 300) e.w[inp.dataset.d] = v; });
+  const ints = { kcal: 'ci-kcal', prot: 'ci-prot', steps: 'ci-steps', rhr: 'ci-rhr' };
+  Object.entries(ints).forEach(([k, id]) => { const v = parseIntEU(document.getElementById(id).value); if (v !== null) e[k] = v; });
+  const sl = parseSleep(document.getElementById('ci-sleep').value); if (sl !== null) e.sleep = sl;
+  const wa = parseDec(document.getElementById('ci-waist').value); if (wa !== null && wa > 30 && wa < 250) e.waist = wa;
+  const beer = {}; BEER_KEYS.forEach(k => { if (ciBeer[k] > 0) beer[k] = ciBeer[k]; });
+  e.beer = beer;
+  return e;
 }
-async function cloudSave() {
-  try {
-    const payload = cloudPayload();
-    cfStatus('Syncing…', 'working');
-    await CLOUD.put(payload);
-    const t = new Date();
-    cfStatus('Synced at ' + t.getHours() + ':' + String(t.getMinutes()).padStart(2,'0'), 'ok');
-  } catch(e) {
-    console.warn('Cloud save failed', e);
-    cfStatus('Sync failed', 'err');
-  }
+const entryHasData = e => Object.keys(e.w).length || ['kcal', 'prot', 'steps', 'rhr', 'sleep', 'waist'].some(k => num(e[k])) || Object.keys(e.beer).length;
+
+function renderCheckin() {
+  const set = { ...DEFAULT_SETTINGS, ...state.settings };
+  const e = readCheckin();
+  // Weight average
+  const ws = Object.values(e.w);
+  document.getElementById('ci-wavg').innerHTML = ws.length ? `avg <b>${fmt1(mean(ws))} kg</b> · ${ws.length} weigh-in${ws.length > 1 ? 's' : ''}` : '';
+  // Beer grid
+  const fmts = [['d', 'Demi', '25 cl'], ['b', 'Bouteille', '33 cl'], ['p', 'Pinte', '50 cl']];
+  let g = `<span></span><span class="ch">Blonde ~${fmt1(set.abvB).replace(',0', '')}%</span><span class="ch">Forte / IPA ~${fmt1(set.abvF).replace(',0', '')}%</span>`;
+  fmts.forEach(([f, name, vol]) => {
+    g += `<span style="font-size: 14px">${name}<span class="hint" style="display: block; font-size: 11px; color: var(--text2)">${vol}</span></span>`;
+    ['b', 'f'].forEach(t => {
+      const k = t + f, n = ciBeer[k] || 0, lbl = `${t === 'b' ? 'Blonde' : 'Forte'} ${name.toLowerCase()}`;
+      g += `<div class="stepper"><button data-k="${k}" data-s="-1" aria-label="${lbl} minus">−</button><span class="sv${n ? '' : ' zero'}">${n}</span><button data-k="${k}" data-s="1" aria-label="${lbl} plus">+</button></div>`;
+    });
+  });
+  document.getElementById('ci-beer').innerHTML = g;
+  const bs = beerStats(e.beer, set);
+  document.getElementById('ci-beer-sum').innerHTML = bs.count ? `${bs.count} beer${bs.count > 1 ? 's' : ''} · ${fmt1(bs.litres)} L · <b>${fmt1(bs.std)} verres std</b>` : 'No beers this week';
+  // Workout line
+  const wo = workoutWeek(workoutSessions, ciMon);
+  document.getElementById('ci-auto').innerHTML = wo.n
+    ? `From Workout: <b>${wo.n} session${wo.n > 1 ? 's' : ''}</b> · ${fmtInt(wo.pu / wo.n)} push-ups and ${fmtInt(wo.dom / wo.n)} dominadas per session`
+    : 'From Workout: no sessions logged this week';
+  // Preview, computed as if this check-in were saved
+  const trial = { ...state, weeks: { ...state.weeks } };
+  if (entryHasData(e)) trial.weeks[ciMon] = e; else delete trial.weeks[ciMon];
+  const c = compute(trial, workoutSessions), w = c.weeks.find(x => x.mon === ciMon);
+  const bits = [];
+  if (w && w.kcal !== null && w.maint !== null) {
+    bits.push(`${signed(w.kcal - w.maint, fmtInt)} kcal/day vs maintenance`);
+    bits.push(w.status === 'in' ? 'in target zone' : w.status === 'above' ? 'above target zone' : 'below target zone');
+  } else bits.push('maintenance after 2 weeks with 4+ weigh-ins');
+  if (w && w.prot !== null && w.protTarget !== null) bits.push(w.prot >= w.protTarget ? 'protein on target' : `protein ${fmtInt(w.protTarget - w.prot)} g short`);
+  if (w && w.sleep !== null) bits.push(w.sleep >= set.sleepH * 60 ? 'sleep on target' : `sleep under ${fmt1(set.sleepH).replace(',0', '')} h`);
+  if (bs.std > 10) bits.push('beer above 10 verres std');
+  document.getElementById('ci-preview').innerHTML = `<b>Preview:</b> ${esc(bits.join(' · '))}`;
 }
 
-async function cloudLoad() {
-  try {
-    const data = await CLOUD.get();
-    if (data && Object.keys(data).length > 0) {
-      applyLoadedState(data);
-      const t = new Date();
-      cfStatus('Synced at ' + t.getHours() + ':' + String(t.getMinutes()).padStart(2,'0'), 'ok');
-    }
-  } catch(e) {
-    console.warn('Cloud load failed', e);
-    cfStatus('Sync failed', 'err');
-  }
+document.getElementById('ci-beer').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-k]'); if (!b) return;
+  const k = b.dataset.k; ciBeer[k] = Math.max(0, (ciBeer[k] || 0) + parseInt(b.dataset.s, 10));
+  renderCheckin();
+});
+document.getElementById('view-checkin').addEventListener('input', ev => { if (ev.target.matches('input')) renderCheckin(); });
+function stepWaist(d) {
+  const el = document.getElementById('ci-waist');
+  const base = parseDec(el.value) ?? parseDec(el.placeholder) ?? 85;
+  el.value = fmt1(Math.max(30, base + (parseDec(el.value) === null ? 0 : d)));
+  renderCheckin();
 }
+document.getElementById('waist-minus').addEventListener('click', () => stepWaist(-0.5));
+document.getElementById('waist-plus').addEventListener('click', () => stepWaist(0.5));
+document.getElementById('wk-prev').addEventListener('click', () => { ciMon = addDays(ciMon, -7); loadCheckinFields(); });
+document.getElementById('wk-next').addEventListener('click', () => { if (ciMon < currentWeek()) { ciMon = addDays(ciMon, 7); loadCheckinFields(); } });
+document.getElementById('btn-open-checkin').addEventListener('click', () => openCheckin());
+document.getElementById('btn-cancel').addEventListener('click', closeCheckin);
+document.getElementById('btn-save').addEventListener('click', () => {
+  const e = readCheckin();
+  if (entryHasData(e)) { if (Object.keys(e.beer).length === 0) e.beerLogged = true; state.weeks[ciMon] = e; }
+  else delete state.weeks[ciMon];
+  persist(); closeCheckin();
+});
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!confirm('Clear the check-in of week ' + isoWeek(ciMon) + '?')) return;
+  delete state.weeks[ciMon]; persist(); closeCheckin();
+});
 
+// ════════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════════
+try {
+  const r = parseInt(localStorage.getItem('kals_balance_range'), 10);
+  if ([13, 26, 52].includes(r)) { rangeWeeks = r; document.querySelectorAll('#range-pills button').forEach(x => x.classList.toggle('on', parseInt(x.dataset.w, 10) === r)); }
+} catch (_) {}
+loadLocal();
+renderDash();
 cloudLoad();
-
-init();
+loadWorkout();
 </script>
 </body>
 </html>
