@@ -668,13 +668,31 @@ def fire_sim_rules(b):
     # Latent gains: only the share above what was paid in is taxed
     setup({**base, 'pea': 0, 'av': 0, 'liv': 0, 'cash': 0, 'lock': 0, 'infl': 0, 'cto': 100, 'cto-basis': 40, 'per': 0, 'salary': 0, 'are2': 0}, 2000, 0)
     r = ev("() => { const x = allRows[0]; return { tax: x.taxPaid, drawn: x.sources.reduce((t, s) => t + s.amount, 0), r: rateFor('cto', 0) }; }")
-    near(r['tax'], r['drawn'] * (1 - 40 / (100 * (1 + r['r']))) * 0.314, 'CTO tax on the gain share')
+    near(r['tax'], r['drawn'] * (1 - 40 / (100 * (1 + r['r']) ** 0.5)) * 0.314, 'CTO tax on the gain share (drawn mid-year)')
     # PER: never drawn before the pension age, drawn after; phases follow the pension age
     setup({**base, 'pea': 0, 'cto': 0, 'av': 0, 'liv': 0, 'cash': 50, 'lock': 0, 'infl': 0, 'per': 100, 'pensionAge': 64, 'retraite': 500}, 2000, 0)
     rows = ev("() => allRows.map(x => ({ age: x.age, phase: x.phase, per: x.sources.some(s => s.label.startsWith('PER')), short: x.shortfall, inflow: x.inflow }))")
     assert not any(x['per'] for x in rows if x['age'] < 64) and any(x['per'] for x in rows if x['age'] >= 64), rows
     assert [x['phase'] for x in rows if x['age'] in (63, 64)] == [3, 4] and next(x for x in rows if x['age'] == 64)['inflow'] == 500 * 12 + 0, rows
     assert ev("() => simulate().lastsUntil") < 64, 'without accessible money before the pension age the plan must fail then, PER untouched'
+    # Mid-year withdrawals: balance_end = (balance_start × √(1+r) − withdrawal) × √(1+r)
+    zero = {k: 0 for k in ('pea', 'cto', 'av', 'cash', 'per', 'cop1', 'salary', 'are2', 'infl', 'lock', 'partner1')}
+    setup({**base, **zero, 'liv': 100, 'liv-r': 4}, 1000, 0)
+    near(ev("() => allRows[0].total"), (100000 * 1.04 ** 0.5 - 12000) * 1.04 ** 0.5, 'mid-year withdrawal')
+    # Colombian assets in euros grow by (1 + COP return) / (1 + peso depreciation)
+    setup({**base, **zero, 'liv': 0, 'cop1': 500, 'cop1-r': 5, 'cop-depr': 3}, 0, 0, cols=('cop1',))
+    near(ev("() => allRows[0].total"), ev("() => 500e6 / COP_EUR") * 1.05 / 1.03, 'peso depreciation')
+    assert not errs, errs
+    ctx.close()
+
+@test
+def fire_live_cop_rate(b):
+    ctx = new_context(b, FakeWorker())
+    pg = ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
+    pg.route('**/api.frankfurter.dev/**', lambda r: r.fulfill(status=200, body='{"date":"2026-10-22","base":"EUR","quote":"COP","rate":4321.5}', headers=JSONH))
+    pg.goto('file://' + os.path.join(ROOT, 'FIRE_SIM.html'))
+    assert wait_until(pg, lambda: pg.evaluate('COP_EUR') == 4321.5), 'live COP rate (Frankfurter v2) not applied'
+    assert 'fallback' not in pg.evaluate("document.getElementById('cop-rate-display').textContent")
     assert not errs, errs
     ctx.close()
 

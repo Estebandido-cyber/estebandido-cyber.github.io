@@ -796,6 +796,8 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
         <p class="col-total-now" id="cop-total-cop">—</p>
         <p class="col-total-eur" id="cop-total-eur">—</p>
         <div class="total-proj-grid" id="cop-total-proj"></div>
+        <div class="row" style="margin:10px 0 0"><label>Peso vs euro, depreciation (%/yr)</label><div class="stepper"><button onclick="step('cop-depr',-0.5)">−</button><span class="sval" id="cop-depr-v">0%</span><button onclick="step('cop-depr',0.5)">+</button></div></div>
+        <p style="font-size:11px;color:var(--color-text-tertiary);margin:4px 0 0">Returns are in COP; the peso has lost ~2–4%/yr against the euro over the long run (inflation gap). Applied to projections and the simulation.</p>
       </div>
     </div>
   </div>
@@ -950,7 +952,7 @@ const S = {
   liv:37, 'liv-r':1.75, cash:30,
   cop1:130, 'cop1-r':5, cop2:300, 'cop2-r':3, cop3:150, 'cop3-r':2, cop4:30, 'cop4-r':2,
   salary:2700, are2:2450, areM:18, areDelay:0, lock:3, infl:2, startAge:46, pensionAge:64,
-  'pea-basis':100, 'cto-basis':45, per:0, 'per-r':5,
+  'pea-basis':100, 'cto-basis':45, per:0, 'per-r':5, 'cop-depr':0,
   partner1:0, spend2:1800, side2:200, partner2:0,
   spend3:1800, side3:200, partner3:0, retraite:400,
 };
@@ -960,7 +962,7 @@ const LIM = {
   cop1:[10,500], 'cop1-r':[0,15], cop2:[10,1000], 'cop2-r':[0,15],
   cop3:[10,500], 'cop3-r':[1,5],  cop4:[10,200],  'cop4-r':[1,5],
   salary:[0,8000], are2:[0,8000], areM:[0,24], areDelay:[0,6], lock:[0,10], infl:[0,6], startAge:[46,52], pensionAge:[62,67],
-  'pea-basis':[0,200], 'cto-basis':[0,200], per:[0,200], 'per-r':[0,10],
+  'pea-basis':[0,200], 'cto-basis':[0,200], per:[0,200], 'per-r':[0,10], 'cop-depr':[0,10],
   partner1:[0,2000], spend2:[500,3000], side2:[0,3000], partner2:[0,2000],
   spend3:[500,3000], side3:[0,1000], partner3:[0,2000], retraite:[0,1500],
 };
@@ -1013,6 +1015,7 @@ function migrateState(src) {
   if (src['cto-basis'] === undefined) src['cto-basis'] = src.cto ?? S.cto;
   if (src.per === undefined) { src.per = 0; src['per-r'] = 5; }
   if (src.pensionAge === undefined) src.pensionAge = 65;
+  if (src['cop-depr'] === undefined) src['cop-depr'] = 0;
   return src;
 }
 function migrateReturns(src) {
@@ -1026,14 +1029,14 @@ function migrateReturns(src) {
   return src;
 }
 
-function saveState() {
+function saveState(silent) {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify({
       S: { ...S }, colChecks: getColChecks(),
       scenarios, activeScenario, savedAt: new Date().toISOString()
     }));
     cloudSaveDebounced();
-    showToast('Saved ✓');
+    if (!silent) showToast('Saved ✓');
   } catch(e) { console.warn('Save failed', e); }
 }
 
@@ -1132,8 +1135,8 @@ async function cloudLoad() {
     applyColChecks(p.colChecks);
     if (p.scenarios)      p.scenarios.forEach((s, i) => { if (s?.snap?.S) migrateState(s.snap.S); scenarios[i] = s || null; });
     if (p.activeScenario !== undefined) activeScenario = p.activeScenario;
-    saveState();
-    draw();
+    saveState(true);
+    draw(true);
     cfStatus('ok');
   } catch(e) { console.warn('Cloud load failed', e); cfStatus('err'); }
 }
@@ -1226,7 +1229,7 @@ function areInYear(y) {
 // not be fully paid because the capital is gone; null = lasts the horizon.
 function simulate(p2Side = null) {
   const sa = S.startAge, infl = S.infl/100, lockYrs = S.lock;
-  const avR = S['av-r']/100, livR = S['liv-r']/100, perR = S['per-r']/100;
+  const avR = S['av-r']/100, livR = S['liv-r']/100, perR = S['per-r']/100, copDepr = S['cop-depr']/100;
   let bPea=S.pea*1000, bAv=S.av*1000, bCto=S.cto*1000, bLiv=S.liv*1000, bCash=S.cash*1000, bPer=S.per*1000;
   // Cost basis = what was paid in (latent gains are taxed when drawn); never above the balance
   let basePea=Math.min(bPea, S['pea-basis']*1000), baseAv=bAv, baseCto=Math.min(bCto, S['cto-basis']*1000), basePer=bPer;
@@ -1246,7 +1249,7 @@ function simulate(p2Side = null) {
   for (let y = 0; y < HORIZON; y++) {
     const age = sa+y, locked = y < lockYrs, phase = getPhase(age);
     let spend, side, partner, ret;
-    if      (phase===1) { spend=S[`p2s_${sa+1}`]||1800; side=0;                                partner=S.partner1; ret=0; }
+    if      (phase===1) { spend=S[`p2s_${sa+1}`]??1800; side=0;                                partner=S.partner1; ret=0; }
     else if (phase===2) { spend=S[`p2s_${age}`];         side=p2Side ?? S[`p2i_${age}`];       partner=S.partner1; ret=0; }
     else if (phase===3) { spend=S.spend2;                 side=S.side2;                         partner=S.partner2; ret=0; }
     else                { spend=S.spend3;                 side=S.side3;                         partner=S.partner3; ret=S.retraite; }
@@ -1254,8 +1257,14 @@ function simulate(p2Side = null) {
     const idx       = Math.pow(1+infl, y);
     const inflSpend = spend * idx;
     const chomage   = areInYear(y);
-    bPea*=(1+rateFor('pea',y)); bAv*=(1+avR); bCto*=(1+rateFor('cto',y)); bLiv*=(1+livR); bPer*=(1+perR);
-    COL_ENTRIES.forEach(e => { if (col[e.id].active) col[e.id].bal *= (1+col[e.id].rD); });
+    // Withdrawals happen through the year: modelled as one mid-year draw between two half-years of growth.
+    // 🇨🇴 growth in EUR = COP return minus the peso's depreciation against the euro.
+    const gPea = Math.sqrt(1+rateFor('pea',y)), gAv = Math.sqrt(1+avR), gCto = Math.sqrt(1+rateFor('cto',y)), gLiv = Math.sqrt(1+livR), gPer = Math.sqrt(1+perR);
+    const halfYear = () => {
+      bPea*=gPea; bAv*=gAv; bCto*=gCto; bLiv*=gLiv; bPer*=gPer;
+      COL_ENTRIES.forEach(e => { if (col[e.id].active) col[e.id].bal *= Math.sqrt((1+col[e.id].rD) / (1+copDepr)); });
+    };
+    halfYear();
 
     const inflow     = chomage + (side + partner + ret) * 12 * idx;
     const netCash    = inflow - inflSpend*12;
@@ -1307,6 +1316,7 @@ function simulate(p2Side = null) {
       sources.push({cls:'bk-cash', label:'Cash', amount:Math.min(-netCash, cashBefore)});
     }
 
+    halfYear();
     if (y === lockYrs && atLock === null) atLock = bPea+bAv+bCto;
     bPea=Math.max(0,bPea); bAv=Math.max(0,bAv); bCto=Math.max(0,bCto); bLiv=Math.max(0,bLiv); bCash=Math.max(0,bCash); bPer=Math.max(0,bPer);
     COL_ENTRIES.forEach(e => { col[e.id].bal = Math.max(0, col[e.id].bal); });
@@ -1397,6 +1407,7 @@ const getP2Ages = () => { const a=[],sa=S.startAge; for(let i=sa+1;i<=59;i++) a.
 function fmtLabel(k, v) {
   if (k === 'lock')    return v + ' yr' + (v !== 1 ? 's' : '');
   if (k === 'startAge' || k === 'pensionAge') return 'Age ' + v;
+  if (k === 'cop-depr') return v + '%';
   if (k === 'areM' || k === 'areDelay') return v + ' mo';
   if (/-r\d$/.test(k)) return (v < 0 ? '−' + Math.abs(v) : v) + '%';
   if (/-(r)$/.test(k) || k === 'infl') return v + '%';
@@ -1556,16 +1567,16 @@ function buildPh2UI() {
 function buildProjGrid(elId, amtM, rD) {
   const el = document.getElementById(elId); if (!el) return;
   el.innerHTML = [10,20,30].map(y => {
-    const f = amtM * Math.pow(1+rD, y);
-    return `<div class="proj-cell"><p class="py">In ${y} yrs</p><p class="pcop">~${fmt(f)}M COP</p><p class="peur">≈ €${fmt((f*1e6)/COP_EUR)}</p></div>`;
+    const f = amtM * Math.pow(1+rD, y), rate = COP_EUR * Math.pow(1 + S['cop-depr']/100, y);
+    return `<div class="proj-cell"><p class="py">In ${y} yrs</p><p class="pcop">~${fmt(f)}M COP</p><p class="peur">≈ €${fmt((f*1e6)/rate)}</p></div>`;
   }).join('');
 }
 
 function buildTotalProjGrid(elId, entries) {
   const el = document.getElementById(elId); if (!el) return;
   el.innerHTML = [10,20,30].map(y => {
-    const t = entries.reduce((s,e) => s + e.amtM * Math.pow(1+e.rD, y), 0);
-    return `<div class="total-proj-cell"><p class="tpy">In ${y} yrs</p><p class="tpcop">~${fmt(t)}M COP</p><p class="tpeur">≈ €${fmt((t*1e6)/COP_EUR)}</p></div>`;
+    const t = entries.reduce((s,e) => s + e.amtM * Math.pow(1+e.rD, y), 0), rate = COP_EUR * Math.pow(1 + S['cop-depr']/100, y);
+    return `<div class="total-proj-cell"><p class="tpy">In ${y} yrs</p><p class="tpcop">~${fmt(t)}M COP</p><p class="tpeur">≈ €${fmt((t*1e6)/rate)}</p></div>`;
   }).join('');
 }
 
@@ -1633,7 +1644,8 @@ function updateStickyHeader(frTotal, totCopEur, grandTotal, depleteAge) {
 /* ═══════════════════════════════════════════════
    MAIN DRAW — orchestrates every update
 ═══════════════════════════════════════════════ */
-function draw() {
+// silent = programmatic redraw (page open, rate update, cloud load): saves without the toast
+function draw(silent) {
   ensureAllP2();
   buildPh2UI();
   buildRetUI();
@@ -1759,6 +1771,12 @@ function draw() {
     if (colOn(e.id))
       datasets.push({label:'🇨🇴 '+e.label, data:sim.hist.col[e.id], borderColor:e.chartColor, backgroundColor:e.chartBg, fill:true, tension:0.35, pointRadius:0, borderWidth:2, borderDash:[5,3]});
   });
+  const sameSeries = chart && chart.data.datasets.map(d => d.label).join() === datasets.map(d => d.label).join();
+  if (sameSeries) {
+    chart.data.labels = labels;
+    datasets.forEach((d, i) => { chart.data.datasets[i].data = d.data; });
+    chart.update('none');
+  } else {
   if (chart) chart.destroy();
   chart = new Chart(document.getElementById('chart'), {
     type:'line', data:{labels, datasets},
@@ -1775,11 +1793,12 @@ function draw() {
       }
     }
   });
+  }
 
   renderTable();
   renderScenarioCards();
   updateBreakEven();
-  saveState();
+  saveState(silent);
 }
 
 /* ═══════════════════════════════════════════════
@@ -1847,7 +1866,7 @@ function updateRateBadge() {
   const el = document.getElementById('cop-rate-badge');
   const display = document.getElementById('cop-rate-display');
   const rate = Math.round(COP_EUR).toLocaleString('fr-FR');
-  if (display) display.textContent = rate;
+  if (display) display.textContent = rate + (copEurSavedAt ? '' : ' · fallback');
   if (copEurSavedAt) {
     const d = new Date(copEurSavedAt);
     const today = new Date();
@@ -1856,7 +1875,7 @@ function updateRateBadge() {
       ? 'today ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })
       : d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' });
     el.textContent = 'COP/EUR ' + rate + ' · ' + label;
-    el.title = 'Source: European Central Bank via frankfurter.app';
+    el.title = 'Source: central banks via frankfurter.dev';
   } else {
     el.textContent = 'COP/EUR ' + rate + ' · fallback';
     el.title = 'Using fallback rate — live fetch unavailable';
@@ -1866,19 +1885,20 @@ function updateRateBadge() {
 async function fetchCopEurRate() {
   // Try live fetch from Frankfurter (ECB data, free, no key required)
   try {
-    const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=COP', { signal: AbortSignal.timeout(5000) });
+    // v2 (several central banks); v1 api.frankfurter.app is ECB-only and has no COP
+    const res = await fetch('https://api.frankfurter.dev/v2/rate/eur/cop', { signal: AbortSignal.timeout(5000) });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    if (!data.rates || !data.rates.COP) throw new Error('No COP rate in response');
-    // Frankfurter gives EUR→COP, so 1 EUR = data.rates.COP COP
-    COP_EUR = data.rates.COP;
+    if (!(data.rate > 0)) throw new Error('No COP rate in response');
+    // 1 EUR = data.rate COP
+    COP_EUR = data.rate;
     copEurSavedAt = new Date().toISOString();
     // Cache in localStorage for next time
     try {
       localStorage.setItem(LS_RATE_KEY, JSON.stringify({ rate: COP_EUR, savedAt: copEurSavedAt }));
     } catch(e) { /* storage full — not critical */ }
     updateRateBadge();
-    draw(); // redraw with real rate
+    draw(true); // redraw with real rate
     return;
   } catch(e) {
     console.warn('[COP/EUR] Live fetch failed:', e.message);
@@ -1892,7 +1912,7 @@ async function fetchCopEurRate() {
         COP_EUR = parsed.rate;
         copEurSavedAt = parsed.savedAt || null;
         updateRateBadge();
-        draw(); // redraw with cached rate
+        draw(true); // redraw with cached rate
         return;
       }
     }
@@ -1906,7 +1926,7 @@ async function fetchCopEurRate() {
 ═══════════════════════════════════════════════ */
 ensureAllP2();
 loadState();
-draw();           // first render with fallback rate (instant)
+draw(true);       // first render with fallback rate (instant)
 fetchCopEurRate(); // async: updates rate + redraws when ready
 cloudLoad();
 </script>
