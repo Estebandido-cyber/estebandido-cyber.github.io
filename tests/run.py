@@ -618,6 +618,46 @@ def hub_summary_values(b):
     assert saved('kals_track.html', '', 'kalstrack') == {}, 'empty Kals must send an empty summary'
 
 @test
+def fire_sim_rules(b):
+    ctx = new_context(b, FakeWorker())
+    pg, errs = open_page(ctx, 'FIRE_SIM.html'); pg.wait_for_timeout(500)
+    ev = pg.evaluate
+    near = lambda a, e, what: abs(a - e) < 1e-6 * max(1, abs(e)) or (_ for _ in ()).throw(AssertionError(f'{what}: {a} ≠ {e}'))
+    def setup(extra, p2s, p2i, cols=()):
+        ev("""([x, p2s, p2i, cols]) => { Object.assign(S, x); ensureAllP2();
+              for (let a = S.startAge + 1; a <= 59; a++) { S['p2s_' + a] = p2s; S['p2i_' + a] = p2i; }
+              COL_ENTRIES.forEach(e => { document.getElementById('cb-' + e.id).checked = cols.includes(e.id); }); draw(); }""", [extra, p2s, p2i, list(cols)])
+    base = {'pea': 120, 'cto': 40, 'av': 20, 'liv': 30, 'cash': 25, 'salary': 3000, 'lock': 2, 'infl': 3,
+            'partner1': 150, 'spend2': 1900, 'side2': 300, 'partner2': 100, 'spend3': 1700, 'side3': 0, 'partner3': 0, 'retraite': 900}
+    # One engine: break-even search, summary and table agree
+    setup(base, 1800, 400)
+    r = ev("() => ({ shadow: shadowRun(400), last: simulate().lastsUntil, shown: document.getElementById('m-age').textContent })")
+    assert r['shadow'] == r['last'] and r['shown'] == (str(r['last']) if r['last'] else '90+'), r
+    # Income grows with inflation like spending (amounts are in today's euros)
+    rows = ev("() => allRows.map(x => ({ age: x.age, phase: x.phase, inflow: x.inflow, spend: x.spend, y: x.year - 1 }))")
+    for x in rows:
+        idx = 1.03 ** x['y']
+        if x['phase'] == 2: near(x['inflow'], (400 + 150) * 12 * idx, f"P2 income at {x['age']}")
+        if x['phase'] == 4: near(x['inflow'], (0 + 0 + 900) * 12 * idx, f"P4 income at {x['age']}")
+    # Spending nothing can pay while investments are locked is reported, not dropped
+    setup({**base, 'cash': 1, 'liv': 0, 'lock': 5, 'infl': 0}, 2500, 0)
+    r = ev("() => { const s = simulate(); return { last: s.lastsUntil, short: s.shortYears, sa: S.startAge, shown: document.getElementById('m-short').textContent }; }")
+    assert r['short'] and r['short'][0]['locked'] and r['last'] == r['short'][0]['age'] <= r['sa'] + 4, r
+    assert r['shown'] != 'None', r
+    # Colombian assets are not locked: they pay before PEA/AV/CTO unlock
+    setup({**base, 'cash': 0, 'liv': 0, 'lock': 10, 'infl': 0, 'cop1': 500}, 2500, 0, cols=('cop1',))
+    srcs = ev("() => allRows[1].sources.map(s => s.label)")
+    assert 'Fondo' in srcs and not ev("() => allRows[1].shortfall"), srcs
+    # Withdrawal tax: gross-up so the net covers the need; tax = drawn × gain share × rate
+    for rate in (0.186, 0.314):
+        d = ev("r => drawFrom(1000, 10000, 4000, r)", rate)
+        near(d['netReceived'], 1000, 'net covers the need'); near(d['taxPaid'], d['drawn'] * 0.6 * rate, 'tax on the gain share')
+        near(d['newBasis'], 4000 - d['drawn'] * 0.4, 'basis reduced by the principal part')
+    assert ev("() => [TAX.pea, TAX.cto]") == [0.186, 0.314], 'tax rates 2026'
+    assert not errs, errs
+    ctx.close()
+
+@test
 def fire_summary_matches_widget(b):
     worker = FakeWorker(); ctx = new_context(b, worker)
     pg, errs = open_page(ctx, 'FIRE_SIM.html'); wait_until(pg, lambda: 'fire-sim' in worker.keys('GET')); pg.wait_for_timeout(300)

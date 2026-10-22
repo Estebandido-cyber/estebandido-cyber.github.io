@@ -365,6 +365,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
 .bk-col2 { background: rgba(245,160,32,0.22); color: var(--color-text-warning); }
 .bk-col3 { background: rgba(245,100,32,0.22); color: var(--color-text-danger); }
 .bk-col4 { background: rgba(160,200,48,0.22); color: var(--color-text-success); }
+.bk-short { background: var(--color-bg-danger, rgba(224,69,69,0.15)); color: var(--color-text-danger); font-weight: 500; }
 
 /* ── NUMERIC RENDERING FIX — all header/block totals ── */
 /* Prevents digit spacing, baseline drift, and proportional-digit gaps
@@ -662,7 +663,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">PEA (WPEA + DCAM)</span>
-          <span class="tax-tag tax-pea">17.2% charges sociales on gains</span>
+          <span class="tax-tag tax-pea">18.6% prélèvements sociaux on gains</span>
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('pea',-5)">−</button><span class="sval" id="pea-v">100K</span><button onclick="step('pea',5)">+</button></div></div>
         <div class="ret-sum" onclick="toggleRet('pea')"><span class="ret-lbl">Annual return by period</span><span class="ret-avg" id="pea-cagr">5.0%/yr avg</span><span class="ret-chev" id="pea-ret-chev">▸</span></div>
@@ -675,7 +676,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">CTO (AAPL + S&amp;P500)</span>
-          <span class="tax-tag tax-cto">30% PFU on gains</span>
+          <span class="tax-tag tax-cto">31.4% PFU on gains</span>
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('cto',-5)">−</button><span class="sval" id="cto-v">45K</span><button onclick="step('cto',5)">+</button></div></div>
         <div class="ret-sum" onclick="toggleRet('cto')"><span class="ret-lbl">Annual return by period</span><span class="ret-avg" id="cto-cagr">5.0%/yr avg</span><span class="ret-chev" id="cto-ret-chev">▸</span></div>
@@ -687,7 +688,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
           </div>
           <p class="ret-sync-note" id="cto-sync-note" style="display:none">Copies the PEA periods — both are equities, a crash hits both.</p>
         </div>
-        <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">30% on realised gains. Principal tax-free.</p>
+        <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">31.4% on realised gains. Principal tax-free.</p>
       </div>
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -815,7 +816,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
   <div class="panel panel-infl">
     <p class="panel-title">Inflation rate</p>
     <div class="row" style="margin:0"><label>Annual inflation (%)</label><div class="stepper"><button onclick="step('infl',-0.25)">−</button><span class="sval" id="infl-v">2%</span><button onclick="step('infl',0.25)">+</button></div></div>
-    <p style="font-size:11px;color:var(--color-text-success);margin:6px 0 0">Compounds spending annually across all phases.</p>
+    <p style="font-size:11px;color:var(--color-text-success);margin:6px 0 0">Compounds spending, side income, partner and pension annually — enter all amounts in today's euros.</p>
   </div>
 
   <hr class="divider">
@@ -863,7 +864,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
     <div class="metrics" style="margin-top:0">
       <div class="met"><p class="ml">Capital lasts until age</p><p class="mv" id="m-age">—</p></div>
       <div class="met"><p class="ml">PEA+AV+CTO at lock-lift</p><p class="mv" id="m-atlock">—</p></div>
-      <div class="met"><p class="ml">&nbsp;</p><p class="mv">&nbsp;</p></div>
+      <div class="met"><p class="ml">Spending not covered</p><p class="mv" id="m-short">—</p></div>
     </div>
     <div class="metrics" style="margin-top:8px;margin-bottom:0">
       <div class="met"><p class="ml">Net burn phase 2 (avg/mo)</p><p class="mv" id="m-burn1">—</p></div>
@@ -913,7 +914,8 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
 ═══════════════════════════════════════════════ */
 let COP_EUR = 3500;
 let copEurSavedAt = null; // timestamp of last successful fetch
-const TAX     = { pea: 0.172, av: 0.18, cto: 0.30 };
+// Tax on gains at withdrawal (2026): PEA 18.6% prélèvements sociaux, CTO 31.4% PFU, AV ~18% effective after 8 yrs
+const TAX     = { pea: 0.186, av: 0.18, cto: 0.314 };
 const LS_KEY  = 'fire-sim-v1';
 
 const COL_ENTRIES = [
@@ -1175,59 +1177,109 @@ function rateFor(a, y) { return S[retKey(a, Math.min(RET_N, Math.floor(y / RET_L
 // Annualised equivalent (geometric mean / CAGR) over the full horizon
 function cagr(a) { let g = 1; for (let y = 0; y < HORIZON; y++) g *= 1 + rateFor(a, y); return Math.pow(g, 1 / HORIZON) - 1; }
 
-// Shadow drawdown run with a given uniform Phase 2 side income.
-// Returns depletion age, or null if capital lasts all 44 years.
-function shadowRun(p2Side) {
-  const sa   = S.startAge;
+// ── Simulation engine — the ONLY place the year-by-year projection is computed ──
+// p2Side: optional uniform Phase 2 side income (break-even search); null = per-year values.
+// All monthly amounts are in today's euros and grow with inflation (spend AND income).
+// Returns rows for the table, balances for the chart, and lastsUntil = first age whose spending
+// could not be fully paid (capital gone, or what is left is still locked); null = lasts the horizon.
+function simulate(p2Side = null) {
+  const sa = S.startAge, infl = S.infl/100, lockYrs = S.lock;
   const avR = S['av-r']/100, livR = S['liv-r']/100;
-  const infl = S.infl/100, lockYrs = S.lock;
   const chomageY1 = S.salary * 9; // 6 × full + 6 × half
-
-  const col = {};
-  COL_ENTRIES.forEach(e => {
-    const on = colOn(e.id);
-    col[e.id] = { bal: on ? (S[e.id]*1e6)/COP_EUR : 0, basis: on ? (S[e.id]*1e6)/COP_EUR : 0, rD: S[e.id+'-r']/100, active: on };
-  });
-
   let bPea=S.pea*1000, bAv=S.av*1000, bCto=S.cto*1000, bLiv=S.liv*1000, bCash=S.cash*1000;
   let basePea=bPea, baseAv=bAv, baseCto=bCto;
+  const col = {};
+  COL_ENTRIES.forEach(e => {
+    const on = colOn(e.id), v = on ? (S[e.id]*1e6)/COP_EUR : 0;
+    col[e.id] = { bal:v, basis:v, rD:S[e.id+'-r']/100, active:on, everDrawn:false };
+  });
+  const colSum = () => COL_ENTRIES.reduce((t,e) => t + (col[e.id].active ? col[e.id].bal : 0), 0);
+  const initTotal = bPea+bAv+bCto+bLiv+bCash + colSum();
+  const everDrawn = { cto:false, pea:false, av:false, liv:false };
+  const hist = { pea:[], av:[], cto:[], liv:[], cash:[], col:{} };
+  COL_ENTRIES.forEach(e => { hist.col[e.id] = []; });
+  const rows = [], shortYears = [];
+  let depleteAge = null, firstShortAge = null, atLock = null;
 
-  for (let y = 0; y <= 43; y++) {
+  for (let y = 0; y < HORIZON; y++) {
     const age = sa+y, locked = y < lockYrs, phase = getPhase(age);
     let spend, side, partner, ret;
-    if      (phase===1) { spend=S[`p2s_${sa+1}`]||1800; side=0;      partner=S.partner1; ret=0; }
-    else if (phase===2) { spend=S[`p2s_${age}`];         side=p2Side; partner=S.partner1; ret=0; }
-    else if (phase===3) { spend=S.spend2;                 side=S.side2; partner=S.partner2; ret=0; }
-    else                { spend=S.spend3;                 side=S.side3; partner=S.partner3; ret=S.retraite; }
+    if      (phase===1) { spend=S[`p2s_${sa+1}`]||1800; side=0;                                partner=S.partner1; ret=0; }
+    else if (phase===2) { spend=S[`p2s_${age}`];         side=p2Side ?? S[`p2i_${age}`];       partner=S.partner1; ret=0; }
+    else if (phase===3) { spend=S.spend2;                 side=S.side2;                         partner=S.partner2; ret=0; }
+    else                { spend=S.spend3;                 side=S.side3;                         partner=S.partner3; ret=S.retraite; }
 
-    const inflSpend = spend * Math.pow(1+infl, y);
+    const idx       = Math.pow(1+infl, y);
+    const inflSpend = spend * idx;
+    const chomage   = phase===1 ? chomageY1 : 0;
     bPea*=(1+rateFor('pea',y)); bAv*=(1+avR); bCto*=(1+rateFor('cto',y)); bLiv*=(1+livR);
     COL_ENTRIES.forEach(e => { if (col[e.id].active) col[e.id].bal *= (1+col[e.id].rD); });
 
-    const inflow = (phase===1 ? chomageY1 : 0) + side*12 + partner*12 + ret*12;
-    bCash += inflow - inflSpend*12;
+    const inflow     = chomage + (side + partner + ret) * 12 * idx;
+    const netCash    = inflow - inflSpend*12;
+    const cashBefore = bCash;
+    bCash += netCash;
 
+    let yearTaxPaid = 0, shortfall = 0;
+    const sources = [], unlocks = [];
+    const take = (label, cls, bal, basis, rate, key, colEntry) => {
+      const r = drawFrom(need, bal, basis, rate);
+      if (r.drawn <= 1) return null;
+      const seen = colEntry ? colEntry.everDrawn : everDrawn[key];
+      if (!seen) { unlocks.push({ label, bal }); if (colEntry) colEntry.everDrawn = true; else everDrawn[key] = true; }
+      sources.push({ cls, label: colEntry ? label.replace('🇨🇴 ', '') : label, amount: r.drawn });
+      yearTaxPaid += r.taxPaid; need -= r.netReceived;
+      return r;
+    };
+    let need = 0;
     if (bCash < 0) {
-      let need = -bCash; bCash = 0;
-      if (bLiv > 0 && need > 0) { const d=Math.min(bLiv,need); bLiv-=d; need-=d; }
-      if (!locked && need > 0) {
-        if (bCto > 0 && need > 0) { const r=drawFrom(need,bCto,baseCto,TAX.cto); bCto=r.newBal; baseCto=r.newBasis; need-=r.netReceived; }
-        if (bPea > 0 && need > 0) { const r=drawFrom(need,bPea,basePea,TAX.pea); bPea=r.newBal; basePea=r.newBasis; need-=r.netReceived; }
-        if (bAv  > 0 && need > 0) { const r=drawFrom(need,bAv,baseAv,TAX.av);   bAv=r.newBal;  baseAv=r.newBasis;  need-=r.netReceived; }
-        for (const e of COL_ENTRIES) {
-          const c = col[e.id];
-          if (c.active && c.bal > 0 && need > 0) { const r=drawFrom(need,c.bal,c.basis,0); c.bal=r.newBal; c.basis=r.newBasis; need-=r.netReceived; }
+      need = -bCash; bCash = 0;
+      if (cashBefore > 0) sources.push({ cls:'bk-cash', label:'Cash', amount:cashBefore });
+      if (bLiv > 0 && need > 0) {
+        const d = Math.min(bLiv, need);
+        if (d > 1) {
+          if (!everDrawn.liv) { unlocks.push({label:'Livrets', bal:bLiv}); everDrawn.liv = true; }
+          sources.push({cls:'bk-liv', label:'Livrets', amount:d}); bLiv -= d; need -= d;
         }
       }
+      if (!locked) {
+        if (bCto > 0 && need > 0) { const r = take('CTO','bk-cto',bCto,baseCto,TAX.cto,'cto'); if (r) { bCto=r.newBal; baseCto=r.newBasis; } }
+        if (bPea > 0 && need > 0) { const r = take('PEA','bk-pea',bPea,basePea,TAX.pea,'pea'); if (r) { bPea=r.newBal; basePea=r.newBasis; } }
+        if (bAv  > 0 && need > 0) { const r = take('AV','bk-av',bAv,baseAv,TAX.av,'av');       if (r) { bAv=r.newBal;  baseAv=r.newBasis;  } }
+      }
+      // Colombian assets are not part of the lock (lock = PEA, AV, CTO only)
+      for (const e of COL_ENTRIES) {
+        const c = col[e.id];
+        if (c.active && c.bal > 0 && need > 0) { const r = take('🇨🇴 '+e.label, e.bkCls, c.bal, c.basis, 0, null, c); if (r) { c.bal=r.newBal; c.basis=r.newBasis; } }
+      }
+      if (need > 1) shortfall = need;   // spending that nothing could pay this year
+    } else if (netCash < 0 && cashBefore > 0) {
+      sources.push({cls:'bk-cash', label:'Cash', amount:Math.min(-netCash, cashBefore)});
     }
+
+    if (y === lockYrs && atLock === null) atLock = bPea+bAv+bCto;
     bPea=Math.max(0,bPea); bAv=Math.max(0,bAv); bCto=Math.max(0,bCto); bLiv=Math.max(0,bLiv); bCash=Math.max(0,bCash);
     COL_ENTRIES.forEach(e => { col[e.id].bal = Math.max(0, col[e.id].bal); });
 
-    const total = bPea+bAv+bCto+bLiv+bCash + COL_ENTRIES.reduce((s,e)=>s+(col[e.id].active?col[e.id].bal:0),0);
-    if (total <= 0) return age;
+    const totalAfter = bPea+bAv+bCto+bLiv+bCash + colSum();
+    if (shortfall > 0) {
+      shortYears.push({ age, amount: shortfall, locked: locked && (bPea+bAv+bCto) > 1 });
+      if (firstShortAge === null) firstShortAge = age;
+    }
+    if (totalAfter <= 0 && depleteAge === null) depleteAge = age;
+
+    hist.pea.push(Math.round(bPea/1000)); hist.av.push(Math.round(bAv/1000)); hist.cto.push(Math.round(bCto/1000));
+    hist.liv.push(Math.round(bLiv/1000)); hist.cash.push(Math.round(bCash/1000));
+    COL_ENTRIES.forEach(e => { hist.col[e.id].push(col[e.id].active ? Math.round(col[e.id].bal/1000) : null); });
+    rows.push({ year:y+1, age, phase, locked, inflow, spend:inflSpend*12, taxPaid:yearTaxPaid, net:netCash-yearTaxPaid,
+                shortfall, sources, unlocks, total:Math.max(0,totalAfter), initTotal });
   }
-  return null;
+  const cand = [firstShortAge, depleteAge].filter(a => a !== null);
+  return { rows, hist, shortYears, atLock, initTotal, depleteAge, lastsUntil: cand.length ? Math.min(...cand) : null };
 }
+
+// Break-even helper: age the capital lasts until with a uniform Phase 2 side income (null = whole horizon)
+function shadowRun(p2Side) { return simulate(p2Side).lastsUntil; }
 
 // Binary search for minimum uniform Phase 2 side income to reach targetAge.
 // Returns €amount (rounded to nearest €10), 0 if already achieved, null if impossible.
@@ -1475,8 +1527,8 @@ function buildLegend(activeColEntries) {
     items.map(c => `<span><span class="legend-dot" style="background:${c.color}"></span>${c.label}</span>`).join('');
 }
 
-function buildSourceCell(sources) {
-  if (!sources?.length) return '<span style="color:var(--color-text-tertiary);font-size:11px">— surplus</span>';
+function buildSourceCell(sources, shortfall) {
+  if (!sources?.length && !shortfall) return '<span style="color:var(--color-text-tertiary);font-size:11px">— surplus</span>';
   return sources.map(s => `<span class="bk ${s.cls}">${s.label} €${fmt(s.amount)}</span>`).join('');
 }
 
@@ -1510,7 +1562,7 @@ function renderTable() {
       `<td>€${fmt(r.spend)}</td>` +
       `<td style="color:var(--color-text-danger)">${r.taxPaid>0?'−€'+fmt(r.taxPaid):'—'}</td>` +
       `<td style="${nc}">${ns}€${fmt(Math.abs(r.net))}</td>` +
-      `<td style="text-align:left">${ul}${buildSourceCell(r.sources)}</td>` +
+      `<td style="text-align:left">${ul}${buildSourceCell(r.sources, r.shortfall)}${r.shortfall > 0 ? `<span class="bk bk-short">Not covered €${fmt(r.shortfall)}${r.locked ? ' 🔒' : ''}</span>` : ''}</td>` +
       `<td style="${dc}">${fmtK(r.total)}</td>`;
     tbody.appendChild(tr);
   });
@@ -1596,116 +1648,44 @@ function draw() {
   document.getElementById('chomage-desc').textContent =
     'Months 1–6: ~€'+fmt(salary)+'/mo  ·  Months 7–12: ~€'+fmt(Math.round(salary*0.5))+'/mo  ·  Year 2+: €0';
   document.getElementById('lock-info').innerHTML =
-    '<strong>PEA, AV and CTO</strong> locked until age <strong>'+(sa+lockYrs)+'</strong>. Cash and Livrets available from day one.';
+    '<strong>PEA, AV and CTO</strong> locked until age <strong>'+(sa+lockYrs)+'</strong>. Cash, Livrets and ticked 🇨🇴 assets available from day one.';
 
   // ── Net burn metrics ──
   const n = ages.length;
   const avgP2Spend = n > 0 ? ages.reduce((s,a)=>s+S[`p2s_${a}`],0)/n : 0;
   const avgP2Side  = n > 0 ? ages.reduce((s,a)=>s+S[`p2i_${a}`],0)/n : 0;
+  // Today's euros: capital covers spending only with its REAL return (nominal return − inflation)
+  const passiveReal = passive - frTotal * infl;
   const burns = [
-    avgP2Spend - avgP2Side  - S.partner1 - passive/12,
-    S.spend2   - S.side2    - S.partner2 - passive/12,
-    S.spend3   - S.side3    - S.partner3 - S.retraite - passive/12,
+    avgP2Spend - avgP2Side  - S.partner1 - passiveReal/12,
+    S.spend2   - S.side2    - S.partner2 - passiveReal/12,
+    S.spend3   - S.side3    - S.partner3 - S.retraite - passiveReal/12,
   ];
   ['m-burn1','m-burn2','m-burn3'].forEach((id, i) => {
     document.getElementById(id).textContent = fmtBurn(burns[i]);
     document.getElementById(id).style.color = burnColor(burns[i]);
   });
 
-  // ── Simulation loop ──
-  const labels=[],hPea=[],hAv=[],hCto=[],hLiv=[],hCash=[];
-  const hCol = { cop1:[],cop3:[],cop4:[],cop2:[] };
-  allRows = [];
-  let depleteAge=null, lockSetDone=false;
-  let bPea=pea, bAv=av, bCto=cto, bLiv=liv, bCash=cash;
-  let basePea=pea, baseAv=av, baseCto=cto;
-  const colState = {};
-  COL_ENTRIES.forEach(e => {
-    const active = colOn(e.id);
-    const initEur = active ? (S[e.id]*1e6)/COP_EUR : 0;
-    colState[e.id] = { bal:initEur, basis:initEur, rD:S[e.id+'-r']/100, everDrawn:false, active };
-  });
-  const everDrawn  = { cto:false, pea:false, av:false, liv:false };
-  const chomageY1  = salary * 9; // 6 full + 6 half months
-  const initTotal  = frTotal + COL_ENTRIES.reduce((s,e)=>s+(colOn(e.id)?(S[e.id]*1e6)/COP_EUR:0),0);
-
-  for (let y = 0; y <= 43; y++) {
-    const age=sa+y, locked=y<lockYrs, phase=getPhase(age);
-    let spend, side, partner, ret;
-    if      (phase===1) { spend=S[`p2s_${sa+1}`]||1800; side=0;           partner=S.partner1; ret=0; }
-    else if (phase===2) { spend=S[`p2s_${age}`];          side=S[`p2i_${age}`]; partner=S.partner1; ret=0; }
-    else if (phase===3) { spend=S.spend2;                  side=S.side2;      partner=S.partner2; ret=0; }
-    else                { spend=S.spend3;                  side=S.side3;      partner=S.partner3; ret=S.retraite; }
-
-    const inflSpend = spend * Math.pow(1+infl, y);
-    const chomage   = phase===1 ? chomageY1 : 0;
-    bPea*=(1+rateFor('pea',y)); bAv*=(1+avR); bCto*=(1+rateFor('cto',y)); bLiv*=(1+livR);
-    COL_ENTRIES.forEach(e => { if (colState[e.id].active) colState[e.id].bal *= (1+colState[e.id].rD); });
-
-    const inflow  = chomage + side*12 + partner*12 + ret*12;
-    const netCash = inflow - inflSpend*12;
-    const cashBefore = bCash;
-    bCash += netCash;
-
-    let yearTaxPaid = 0;
-    const sources = [], unlocks = [];
-
-    if (bCash < 0) {
-      let need = -bCash; bCash = 0;
-      if (cashBefore > 0) sources.push({ cls:'bk-cash', label:'Cash', amount:cashBefore });
-      if (bLiv > 0 && need > 0) {
-        const d = Math.min(bLiv, need);
-        if (d > 1) {
-          if (!everDrawn.liv) { unlocks.push({label:'Livrets',bal:bLiv}); everDrawn.liv=true; }
-          sources.push({cls:'bk-liv',label:'Livrets',amount:d}); bLiv-=d; need-=d;
-        }
-      }
-      if (!locked && need > 0) {
-        if (bCto > 0 && need > 0) { const bb=bCto, r=drawFrom(need,bCto,baseCto,TAX.cto); if(r.drawn>1){if(!everDrawn.cto){unlocks.push({label:'CTO',bal:bb});everDrawn.cto=true;}sources.push({cls:'bk-cto',label:'CTO',amount:r.drawn});bCto=r.newBal;baseCto=r.newBasis;yearTaxPaid+=r.taxPaid;need-=r.netReceived;} }
-        if (bPea > 0 && need > 0) { const bb=bPea, r=drawFrom(need,bPea,basePea,TAX.pea); if(r.drawn>1){if(!everDrawn.pea){unlocks.push({label:'PEA',bal:bb});everDrawn.pea=true;}sources.push({cls:'bk-pea',label:'PEA',amount:r.drawn});bPea=r.newBal;basePea=r.newBasis;yearTaxPaid+=r.taxPaid;need-=r.netReceived;} }
-        if (bAv  > 0 && need > 0) { const bb=bAv,  r=drawFrom(need,bAv,baseAv,TAX.av);   if(r.drawn>1){if(!everDrawn.av){unlocks.push({label:'AV',bal:bb});everDrawn.av=true;}sources.push({cls:'bk-av',label:'AV',amount:r.drawn});bAv=r.newBal;baseAv=r.newBasis;yearTaxPaid+=r.taxPaid;need-=r.netReceived;} }
-        for (const e of COL_ENTRIES) {
-          const cs = colState[e.id];
-          if (cs.active && cs.bal > 0 && need > 0) {
-            const bb=cs.bal, r=drawFrom(need,cs.bal,cs.basis,0);
-            if (r.drawn > 1) {
-              if (!cs.everDrawn) { unlocks.push({label:'🇨🇴 '+e.label, bal:bb}); cs.everDrawn=true; }
-              sources.push({cls:e.bkCls, label:e.label, amount:r.drawn});
-              cs.bal=r.newBal; cs.basis=r.newBasis; need-=r.netReceived;
-            }
-          }
-        }
-      }
-    } else if (netCash < 0 && cashBefore > 0) {
-      sources.push({cls:'bk-cash', label:'Cash', amount:Math.min(-netCash, cashBefore)});
-    }
-
-    if (y === lockYrs && !lockSetDone) {
-      document.getElementById('m-atlock').textContent = fmtK(bPea+bAv+bCto);
-      lockSetDone = true;
-    }
-    bPea=Math.max(0,bPea); bAv=Math.max(0,bAv); bCto=Math.max(0,bCto);
-    bLiv=Math.max(0,bLiv); bCash=Math.max(0,bCash);
-    COL_ENTRIES.forEach(e => { colState[e.id].bal = Math.max(0, colState[e.id].bal); });
-
-    const colTotal  = COL_ENTRIES.reduce((s,e) => s+(colState[e.id].active?colState[e.id].bal:0), 0);
-    const totalAfter = bPea+bAv+bCto+bLiv+bCash+colTotal;
-    if (totalAfter <= 0 && depleteAge === null) depleteAge = age;
-
-    labels.push('Age '+age);
-    hPea.push(Math.round(bPea/1000)); hAv.push(Math.round(bAv/1000));
-    hCto.push(Math.round(bCto/1000)); hLiv.push(Math.round(bLiv/1000));
-    hCash.push(Math.round(Math.max(0,bCash)/1000));
-    COL_ENTRIES.forEach(e => { hCol[e.id].push(colState[e.id].active ? Math.round(colState[e.id].bal/1000) : null); });
-    allRows.push({ year:y+1, age, phase, locked, inflow, spend:inflSpend*12, taxPaid:yearTaxPaid, net:netCash-yearTaxPaid, sources, unlocks, total:Math.max(0,totalAfter), initTotal });
-  }
-
-  // ── Post-loop UI ──
-  if (!lockSetDone) document.getElementById('m-atlock').textContent = fmtK(pea+av+cto);
+  // ── Simulation (shared engine) ──
+  const sim = simulate();
+  allRows = sim.rows;
+  const depleteAge = sim.lastsUntil;
+  const labels = sim.rows.map(r => 'Age ' + r.age);
+  document.getElementById('m-atlock').textContent = fmtK(sim.atLock ?? (pea+av+cto));
   const mAge = document.getElementById('m-age');
   mAge.textContent = depleteAge ? String(depleteAge) : '90+';
   mAge.style.color = !depleteAge||depleteAge>80 ? 'var(--color-text-success)'
     : depleteAge>70 ? 'var(--color-text-warning)' : 'var(--color-text-danger)';
+  const mShort = document.getElementById('m-short');
+  if (sim.shortYears.length) {
+    // While investments are locked: how much could not be paid; otherwise: from when the capital is gone
+    const lk = sim.shortYears.filter(x => x.locked);
+    if (lk.length) {
+      const a0 = lk[0].age, a1 = lk[lk.length-1].age;
+      mShort.textContent = '€' + fmt(lk.reduce((t, x) => t + x.amount, 0)/1000) + 'K at ' + (a0 === a1 ? a0 : a0 + '–' + a1) + ' 🔒 locked';
+    } else mShort.textContent = 'From age ' + sim.shortYears[0].age + ' (capital gone)';
+    mShort.style.color = 'var(--color-text-danger)';
+  } else { mShort.textContent = 'None'; mShort.style.color = 'var(--color-text-success)'; }
 
   updateStickyHeader(frTotal, totCopEur, grandTotalEur, depleteAge);
   buildLegend(activeColEntries);
@@ -1713,15 +1693,15 @@ function draw() {
   const tc = getCSS('--color-text-secondary') || '#aaa';
   const gc = getCSS('--color-border-tertiary') || 'rgba(128,128,128,0.15)';
   const datasets = [
-    {label:'PEA',    data:hPea,  borderColor:'#5B9BD5', backgroundColor:'rgba(91,155,213,0.15)',  fill:true, tension:0.35, pointRadius:0, borderWidth:2},
-    {label:'AV',     data:hAv,   borderColor:'#4DC79A', backgroundColor:'rgba(77,199,154,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
-    {label:'CTO',    data:hCto,  borderColor:'#E8A040', backgroundColor:'rgba(232,160,64,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
-    {label:'Livrets',data:hLiv,  borderColor:'#7DC94E', backgroundColor:'rgba(125,201,78,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
-    {label:'Cash',   data:hCash, borderColor:'#9E9D97', backgroundColor:'rgba(158,157,151,0.10)',  fill:true, tension:0.35, pointRadius:0, borderWidth:2},
+    {label:'PEA',    data:sim.hist.pea,  borderColor:'#5B9BD5', backgroundColor:'rgba(91,155,213,0.15)',  fill:true, tension:0.35, pointRadius:0, borderWidth:2},
+    {label:'AV',     data:sim.hist.av,   borderColor:'#4DC79A', backgroundColor:'rgba(77,199,154,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
+    {label:'CTO',    data:sim.hist.cto,  borderColor:'#E8A040', backgroundColor:'rgba(232,160,64,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
+    {label:'Livrets',data:sim.hist.liv,  borderColor:'#7DC94E', backgroundColor:'rgba(125,201,78,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
+    {label:'Cash',   data:sim.hist.cash, borderColor:'#9E9D97', backgroundColor:'rgba(158,157,151,0.10)',  fill:true, tension:0.35, pointRadius:0, borderWidth:2},
   ];
   COL_ENTRIES.forEach(e => {
-    if (colState[e.id].active)
-      datasets.push({label:'🇨🇴 '+e.label, data:hCol[e.id], borderColor:e.chartColor, backgroundColor:e.chartBg, fill:true, tension:0.35, pointRadius:0, borderWidth:2, borderDash:[5,3]});
+    if (colOn(e.id))
+      datasets.push({label:'🇨🇴 '+e.label, data:sim.hist.col[e.id], borderColor:e.chartColor, backgroundColor:e.chartBg, fill:true, tension:0.35, pointRadius:0, borderWidth:2, borderDash:[5,3]});
   });
   if (chart) chart.destroy();
   chart = new Chart(document.getElementById('chart'), {
