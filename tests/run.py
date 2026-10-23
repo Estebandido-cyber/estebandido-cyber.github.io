@@ -431,15 +431,24 @@ def xpenses_calculator_rules(b):
         pg.locator(f"#{tab}-spin-{first['key']} button").last.click()
         la = pg.evaluate("tab => derived(states[tab]).leftover", tab)
         approx(lb - la, first['step'] / 2, 'a shared stepper moves Left at end of month by half its step')
-        # Info-only tracker: its total is the sum of its rows, and its steppers change nothing else
+        # Breakdown: rows without a link change nothing else; its total is the sum of its rows
         tb = pg.evaluate("tab => ({ d: derived(states[tab]), donut: charts[tab].data.datasets[0].data.reduce((a, b) => a + b, 0) })", tab)
-        tk = pg.evaluate("() => TRACKER_DEF[0]")
+        tk = pg.evaluate("() => TRACKER_DEF.find(d => !d.to)")
         pg.locator(f"#{tab}-spin-{tk['key']} button").last.click()
         ta = pg.evaluate("""tab => ({ d: derived(states[tab]), donut: charts[tab].data.datasets[0].data.reduce((a, b) => a + b, 0),
             total: document.getElementById(tab + '-total-tracker').textContent,
             want: fmt(TRACKER_DEF.reduce((s, x) => s + states[tab][x.key], 0)) })""", tab)
-        assert ta['d'] == tb['d'], f'[{tab}] tracker stepper changed totals'
-        approx(ta['donut'], tb['donut'], 'tracker stepper must not change the donut')
+        assert ta['d'] == tb['d'], f'[{tab}] unlinked Breakdown row changed totals'
+        approx(ta['donut'], tb['donut'], 'unlinked Breakdown row must not change the donut')
+        # Linked rows: Shared line = 2 × sum of its Breakdown rows (your part), Personal line = sum; no stepper on them;
+        # +step on any linked Breakdown row costs you exactly step (your half of 2 × step, or step)
+        lk = pg.evaluate("""tab => Object.entries(LINKED).map(([t, srcs]) => ({ t, got: states[tab][t], want: linkFactor(t) * srcs.reduce((a, k) => a + states[tab][k], 0),
+            buttons: document.querySelectorAll('#' + tab + '-spin-' + t + ' button').length }))""", tab)
+        assert lk and all(abs(x['got'] - x['want']) < 1e-9 and x['buttons'] == 0 for x in lk), f'[{tab}] links wrong: {lk}'
+        for src in pg.evaluate("() => TRACKER_DEF.filter(d => d.to).map(d => ({ key: d.key, step: d.step }))"):
+            lb = pg.evaluate("tab => derived(states[tab]).leftover", tab)
+            pg.locator(f"#{tab}-spin-{src['key']} button").last.click()
+            approx(lb - pg.evaluate("tab => derived(states[tab]).leftover", tab), src['step'], f"linked {src['key']} costs its step")
         assert ta['total'] == ta['want'], f'[{tab}] tracker total {ta["total"]!r} ≠ {ta["want"]!r}'
         # Weekly hint = monthly × 12 / 52, on flagged variable rows and every Breakdown row; none on fixed bills
         wk = pg.evaluate("""tab => [...SHARED_DEF, ...PERSONAL_DEF, ...TRACKER_DEF].map(d => ({ key: d.key,

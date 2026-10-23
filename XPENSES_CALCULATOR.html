@@ -454,6 +454,10 @@ body {
 .box-shared .box-title   { color: var(--blue);  }
 .box-personal .box-title { color: var(--green); }
 .box-tracker .box-title  { color: var(--amber); }
+.link-tag { font-size: 10px; font-weight: 500; color: var(--amber); opacity: .8; margin-left: 6px; white-space: nowrap; }
+.spin-wrap .spin-val.linked-val { border: 1px dashed var(--border-2); border-radius: 4px; min-width: 96px; background: transparent; color: var(--text-2); }
+@media (max-width: 580px) { .link-tag { display: block; margin-left: 0; white-space: normal; } }
+.linked-val::after { content: ' 🔗'; font-size: 10px; }
 .box-title-note { font-weight: 400; text-transform: none; letter-spacing: 0; opacity: .75; margin-left: 6px; }
 
 .box-chevron {
@@ -730,7 +734,8 @@ const SHARED_DEF = [
 
 const PERSONAL_DEF = [
   { key: 'insurance',   label: 'Home insurance',        step: 1  },
-  { key: 'lunch',       label: 'Lunch',                 step: 10, weekly: true },
+  { key: 'lunch',       label: 'Mercado Lunch',         step: 10, weekly: true },
+  { key: 'delivSolo',   label: 'Deliv Solo',            step: 5,  weekly: true },
   { key: 'extras',      label: 'Extras',                step: 10 },
   { key: 'health',      label: 'Health',                step: 10 },
   { key: 'beer',        label: 'Beer',                  step: 5, weekly: true },
@@ -745,27 +750,29 @@ const PERSONAL_DEF = [
   { key: 'claude',      label: 'Claude',                step: 1  },
 ];
 
-// Info-only Breakdown tracker (Mercado / Restos / Beer / Extras) — NOT part of derived(), totals, chart or Hub
+// Breakdown (your part): rows with `to` feed a Shared / Personal line (see LINKED below); the others are info only
 // Each group shows its rows + a subtotal; the box total sums all groups.
 const TRACKER_GROUPS = [
-  { id: 'mercado', title: 'Mercado', rows: [
-    { key: 'trkSaumon',   label: 'Saumon / Poulet', step: 1 },
-    { key: 'trkLait',     label: 'Lait',      step: 1 },
-    { key: 'trkLegumes',  label: 'Légumes',   step: 1 },
-    { key: 'trkSmoothieNoix',   label: 'Smoothie noix',   step: 5 },
-    { key: 'trkSmoothiePoudre', label: 'Smoothie poudre', step: 2 },
+  { id: 'mercado', title: 'Mercado Lunch', rows: [
+    { key: 'trkSaumon',   label: 'Saumon / Poulet', step: 1, to: 'lunch' },
+    { key: 'trkLait',     label: 'Lait',      step: 1, to: 'lunch' },
+    { key: 'trkLegumes',  label: 'Légumes',   step: 1, to: 'lunch' },
     { key: 'trkMercadoExtras',  label: 'Extras (prot bar, choco, bonbon)', step: 2 },
   ]},
+  { id: 'smoothie', title: 'Smoothie', rows: [
+    { key: 'trkSmoothieNoix',   label: 'Smoothie noix',   step: 5, to: 'smoothie' },
+    { key: 'trkSmoothiePoudre', label: 'Smoothie poudre', step: 2, to: 'smoothie' },
+  ]},
   { id: 'restos', title: 'Restos', rows: [
-    { key: 'trkSat',      label: 'SAT',       step: 5 },
-    { key: 'trkDelivMel', label: 'Deliv Mel', step: 2 },
-    { key: 'trkDelivSolo',label: 'Deliv solo',step: 2 },
-    { key: 'trkApero',    label: 'Apéro',     step: 2 },
+    { key: 'trkSat',      label: 'SAT',       step: 5, to: 'sharedResto' },
+    { key: 'trkDelivMel', label: 'Deliv Mel', step: 2, to: 'deliveroo' },
+    { key: 'trkDelivSolo',label: 'Deliv solo',step: 2, to: 'delivSolo' },
+    { key: 'trkApero',    label: 'Apéro',     step: 2, to: 'sharedBar' },
   ]},
   { id: 'beer', title: 'Beer / Bar', rows: [
-    { key: 'trkBar',      label: 'Pola Bar',     step: 2 },
-    { key: 'trkSuperM',   label: 'Pola Super M', step: 2 },
-    { key: 'trkBarBouffe',label: 'Bar Bouffe',   step: 2 },
+    { key: 'trkBar',      label: 'Pola Bar',     step: 2, to: 'sharedBar' },
+    { key: 'trkSuperM',   label: 'Pola Super M', step: 2, to: 'beer' },
+    { key: 'trkBarBouffe',label: 'Bar Bouffe',   step: 2, to: 'sharedBar' },
   ]},
   { id: 'extras', title: 'Extras', rows: [
     { key: 'trkConcert',    label: 'Concert',     step: 5,  weekly: false },
@@ -776,6 +783,17 @@ const TRACKER_GROUPS = [
 ];
 const TRACKER_DEF = TRACKER_GROUPS.flatMap(g => g.rows);
 
+// Breakdown → Shared / Personal links. A Breakdown row with `to` feeds that line; Breakdown amounts
+// are YOUR part, so a Shared line (full bill, split 50/50) = 2 × the sum, a Personal line = the sum.
+// Linked lines have no stepper: they are set from Breakdown only (syncLinked, before every render).
+const LINKED = {};
+TRACKER_DEF.forEach(d => { if (d.to) (LINKED[d.to] = LINKED[d.to] || []).push(d.key); });
+const linkFactor = key => SHARED_DEF.some(d => d.key === key) ? 2 : 1;
+const linkLabel  = key => [...SHARED_DEF, ...PERSONAL_DEF].find(d => d.key === key)?.label || key;
+function syncLinked(s) {
+  Object.entries(LINKED).forEach(([target, srcs]) => { s[target] = linkFactor(target) * srcs.reduce((t, k) => t + (s[k] || 0), 0); });
+}
+
 // Chart slices — fn() returns the slice value from state
 const CHART_CATS = [
   // Shared bills are paid from the joint account (both put in sharedAcc) → your half of each
@@ -783,7 +801,7 @@ const CHART_CATS = [
   { label: 'Electricity',      color: '#1aaa84', fn: s => s.electricity / 2 },
   { label: 'Utilities & svcs', color: '#4a9fd0', fn: s => (s.internet + s.netflix) / 2 + s.insurance },
   { label: 'Bobs',            color: '#d08a3a', fn: s => (s.bobsFood + s.bobsLitiere) / 2 },
-  { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.beer + (s.courses + s.sharedResto + s.deliveroo + s.sharedBar) / 2 },
+  { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.delivSolo + s.beer + (s.courses + s.sharedResto + s.deliveroo + s.sharedBar) / 2 },
   { label: 'Health & sport',   color: '#d05830', fn: s => s.health + s.smoothie + s.billarMonth + s.billar/12 + s.chess/12 + s.drums },
   { label: 'Subscriptions',    color: '#c04880', fn: s => s.amazonPrime/12 + s.phone + s.claude },
   { label: 'Savings',          color: '#6a9a20', fn: s => s.savings },
@@ -802,7 +820,7 @@ const DEFAULTS = {
     bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, deliveroo: 100, sharedBar: 200, sharedExtras: 60,
     sharedAcc: 600,
     phone: 10, claude: 20, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
-    billar: 150, billarMonth: 10, lunch: 100, extras: 100,
+    billar: 150, billarMonth: 10, lunch: 100, delivSolo: 50, extras: 100,
     health: 120, drums: 10, savings: 50,
     trkSaumon: 20, trkLait: 10, trkLegumes: 10, trkSmoothieNoix: 20, trkSmoothiePoudre: 30, trkMercadoExtras: 20, trkSat: 100, trkDelivMel: 50, trkDelivSolo: 50, trkApero: 50, trkBar: 30, trkSuperM: 30, trkBarBouffe: 30,
     trkConcert: 50, trkConcertBar: 30, trkVacs: 200, trkHome: 50,
@@ -813,7 +831,7 @@ const DEFAULTS = {
     bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, deliveroo: 100, sharedBar: 200, sharedExtras: 60,
     sharedAcc: 400,
     phone: 10, claude: 20, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
-    billar: 150, billarMonth: 10, lunch: 60, extras: 150,
+    billar: 150, billarMonth: 10, lunch: 60, delivSolo: 50, extras: 150,
     health: 120, drums: 10, savings: 0,
     trkSaumon: 20, trkLait: 10, trkLegumes: 10, trkSmoothieNoix: 20, trkSmoothiePoudre: 30, trkMercadoExtras: 20, trkSat: 100, trkDelivMel: 50, trkDelivSolo: 50, trkApero: 50, trkBar: 30, trkSuperM: 30, trkBarBouffe: 30,
     trkConcert: 50, trkConcertBar: 30, trkVacs: 200, trkHome: 50,
@@ -908,6 +926,7 @@ function cfSetStatus(ok) {
 function hubSummary() {
   const hub = {};
   ['now', 'fire'].forEach(tab => {
+    syncLinked(states[tab]);
     const d = derived(states[tab]);
     hub[tab] = { leftover: Math.round(d.leftover), net: Math.round(d.net), income: Math.round(d.income) };
   });
@@ -1012,9 +1031,11 @@ function makeSpin(containerId, tab, key, step, min = 0) {
 function buildCard(tab) {
   const rowsHTML = defs => defs.map(def => `
     <div class="erow">
-      <span class="ename">${def.label}</span>
+      <span class="ename">${def.label}${def.to ? `<span class="link-tag">→ ${linkLabel(def.to)}${linkFactor(def.to) === 2 ? ' ×2' : ''}</span>` : ''}</span>
       <span class="enote" id="${tab}-note-${def.key}"></span>
-      <div class="spin-wrap" id="${tab}-spin-${def.key}"></div>
+      ${LINKED[def.key]
+        ? `<div class="spin-wrap" title="Set from Breakdown"><div class="spin-val linked-val" id="${tab}-sv-${def.key}"></div></div>`
+        : `<div class="spin-wrap" id="${tab}-spin-${def.key}"></div>`}
       <span class="eamt" id="${tab}-amt-${def.key}">—</span>
     </div>`).join('');
 
@@ -1094,7 +1115,7 @@ function buildCard(tab) {
 
     <div class="box-tracker" id="${tab}-box-tracker">
       <div class="box-title" onclick="toggleBox('${tab}-box-tracker')">
-        <span>Breakdown<span class="box-title-note">· info only, not in totals</span></span>
+        <span>Breakdown<span class="box-title-note">· your part · rows with → fill Shared / Personal</span></span>
         <span class="box-chevron">▼</span>
       </div>
       <div class="expense-rows">${TRACKER_GROUPS.map(g => `
@@ -1102,7 +1123,7 @@ function buildCard(tab) {
         ${rowsHTML(g.rows)}
         <div class="trk-subtotal"><span>Subtotal ${g.title}</span><span id="${tab}-sub-tracker-${g.id}">—</span></div>`).join('')}
       </div>
-      <div class="section-total"><span>Total</span><span id="${tab}-total-tracker">—</span></div>
+      <div class="section-total"><span>Total (your part)</span><span id="${tab}-total-tracker">—</span></div>
     </div>
 
     <hr class="divider">
@@ -1115,8 +1136,8 @@ function buildCard(tab) {
   makeSpin(`${tab}-spin-tickets`,      tab, 'tickets',      10);
   makeSpin(`${tab}-spin-mel`,          tab, 'mel',          1);
   makeSpin(`${tab}-spin-sharedAcc`,    tab, 'sharedAcc',    50);
-  SHARED_DEF.forEach(def   => makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step));
-  PERSONAL_DEF.forEach(def => makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step));
+  SHARED_DEF.forEach(def   => { if (!LINKED[def.key]) makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step); });
+  PERSONAL_DEF.forEach(def => { if (!LINKED[def.key]) makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step); });
   TRACKER_DEF.forEach(def  => makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step));
 }
 
@@ -1125,6 +1146,7 @@ function buildCard(tab) {
 // ════════════════════════════════════════════════════════════════════
 function render(tab) {
   const s = states[tab];
+  syncLinked(s);
   const d = derived(s);
   const p = tab + '-';
 
