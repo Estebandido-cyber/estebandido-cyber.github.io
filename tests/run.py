@@ -517,6 +517,13 @@ def kals_balance_rules(b):
     assert e['w'] == {mon: 74.4, ev("m => addDays(m, 3)", mon): 74} and e['kcal'] == 2350 and e['steps'] == 8900 and e['sleep'] == 412, e
     assert e['beer'] == {'fp': 2, 'bd': 1} and e['waist'] == 86, e
     assert wait_until(pg, lambda: (worker.posted('kalstrack') or {}).get('weeks', {}).get(mon), 6), 'check-in not synced'
+    # Edit the last check-in: it reopens with its saved values, and a correction replaces it
+    assert pg.is_visible('#btn-edit-last')
+    pg.click('#btn-edit-last')
+    assert ev('ciMon') == mon and pg.input_value('#ci-kcal') == '2.350' and pg.input_value('#ci-sleep') == '6h52', 'saved week not reloaded'
+    pg.click('#ci-beer button[data-k="bb"][data-s="1"]'); pg.click('#btn-save')
+    e2 = ev("m => state.weeks[m]", mon)
+    assert e2['beer'] == {'fp': 2, 'bd': 1, 'bb': 1} and e2['kcal'] == 2350 and e2['w'] == e['w'], e2
     assert not errs, errs
     ctx.close()
 

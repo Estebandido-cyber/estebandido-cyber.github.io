@@ -200,6 +200,7 @@ body.checkin #view-dash { display: none; }
       <button data-w="52">1 year</button>
     </div>
     <div class="spacer"></div>
+    <button class="btn-ghost" id="btn-edit-last" style="display: none">✎ Edit last</button>
     <button class="btn-primary" id="btn-open-checkin">+ Weekly check-in</button>
   </div>
 
@@ -702,6 +703,9 @@ function renderAll() { renderDash(); if (document.body.classList.contains('check
 
 function renderDash() {
   const c = compute(state, workoutSessions);
+  const lw = lastSavedWeek(), eb = document.getElementById('btn-edit-last');
+  eb.style.display = lw ? '' : 'none';
+  if (lw) eb.textContent = '✎ Edit week ' + isoWeek(lw);
   const has = c.weeks.length > 0;
   document.getElementById('dash-empty').style.display = has ? 'none' : '';
   document.getElementById('dash-body').style.display = has ? '' : 'none';
@@ -870,7 +874,8 @@ function loadCheckinFields() {
   // Week header
   document.getElementById('wk-title').textContent = 'Week ' + isoWeek(ciMon);
   document.getElementById('wk-dates').textContent = `${parseISO(ciMon).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} – ${parseISO(addDays(ciMon, 6)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`;
-  document.getElementById('wk-saved').textContent = state.weeks[ciMon] ? '· saved' : '';
+  document.getElementById('wk-saved').textContent = state.weeks[ciMon] ? '· saved — editing' : '';
+  document.getElementById('btn-save').textContent = state.weeks[ciMon] ? 'Save changes' : 'Save check-in';
   document.getElementById('wk-next').disabled = ciMon >= currentWeek();
   document.getElementById('btn-clear').style.display = state.weeks[ciMon] ? '' : 'none';
   // Weights: one input per day
@@ -960,6 +965,9 @@ document.getElementById('waist-plus').addEventListener('click', () => stepWaist(
 document.getElementById('wk-prev').addEventListener('click', () => { ciMon = addDays(ciMon, -7); loadCheckinFields(); });
 document.getElementById('wk-next').addEventListener('click', () => { if (ciMon < currentWeek()) { ciMon = addDays(ciMon, 7); loadCheckinFields(); } });
 document.getElementById('btn-open-checkin').addEventListener('click', () => openCheckin());
+// Re-open the most recent saved check-in to fix it (any other week: ‹ › in the check-in)
+const lastSavedWeek = () => Object.keys(state.weeks).sort().pop() || null;
+document.getElementById('btn-edit-last').addEventListener('click', () => { const m = lastSavedWeek(); if (m) openCheckin(m); });
 document.getElementById('btn-cancel').addEventListener('click', closeCheckin);
 document.getElementById('btn-save').addEventListener('click', () => {
   const e = readCheckin();
