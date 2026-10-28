@@ -250,10 +250,10 @@ body.checkin #view-dash { display: none; }
 
     <section class="grid2" style="margin-top: 12px">
       <div class="card">
-        <h2>Beer</h2>
+        <h2>Alcohol</h2>
         <div class="nums">
           <div><div class="n" id="b-std">—</div><div class="muted">verres std / week</div></div>
-          <div><div class="n" id="b-l">—</div><div class="muted">per week</div></div>
+          <div><div class="n" id="b-l">—</div><div class="muted">of beer / week</div></div>
           <div><div class="n" id="b-pct">—</div><div class="muted">of kcal from alcohol</div></div>
         </div>
         <div class="chart-box small"><canvas id="ch-beer" role="img" aria-label="Standard drinks per week against the reference of 10"></canvas></div>
@@ -317,7 +317,7 @@ body.checkin #view-dash { display: none; }
   </section>
 
   <section class="card">
-    <span class="sec-title">Beers this week</span>
+    <span class="sec-title">Drinks this week</span>
     <div class="beer-grid" id="ci-beer"></div>
     <div class="summary-line" id="ci-beer-sum"></div>
   </section>
@@ -356,6 +356,13 @@ const ETOH_DENSITY = 0.789;          // g alcohol per ml
 const STD_DRINK_G  = 10;             // French "verre standard" = 10 g alcohol
 const BEER_VOL = { d: 250, b: 330, p: 500 };          // demi, bouteille, pinte (ml)
 const BEER_KEYS = ['bd', 'bb', 'bp', 'fd', 'fb', 'fp']; // b* = blonde, f* = forte; 2nd letter = format
+// Other drinks, counted per glass (stored in the same `beer` object of a week)
+const OTHER_DRINKS = [
+  { k: 'wn', label: 'Wine',      hint: 'glass 12,5 cl · 12,5%',  ml: 125, abv: 12.5 },
+  { k: 'ch', label: 'Champagne', hint: 'flûte 12 cl · 12%',      ml: 120, abv: 12 },
+  { k: 'ck', label: 'Cocktail',  hint: '~6 cl spirits · 40%',    ml: 60,  abv: 40 },
+];
+const DRINK_KEYS = [...BEER_KEYS, ...OTHER_DRINKS.map(d => d.k)];
 const DEFAULT_SETTINGS = { defLo: 200, defHi: 300, protKg: 1.6, sleepH: 7, abvB: 5, abvF: 7 };
 
 let state = { v: 2, settings: { ...DEFAULT_SETTINGS }, weeks: {} };
@@ -414,7 +421,10 @@ function beerStats(beer, set) {
     const vol = BEER_VOL[k[1]], abv = k[0] === 'f' ? set.abvF : set.abvB;
     count += n; ml += n * vol; grams += n * vol * (abv / 100) * ETOH_DENSITY;
   });
-  return { count, litres: ml / 1000, std: grams / STD_DRINK_G, alcKcal: grams * 7 };
+  let others = 0;
+  OTHER_DRINKS.forEach(d => { const n = (beer && beer[d.k]) || 0; others += n; grams += n * d.ml * (d.abv / 100) * ETOH_DENSITY; });
+  // count / litres = beer only; std and alcKcal = all alcohol
+  return { count, others, litres: ml / 1000, std: grams / STD_DRINK_G, alcKcal: grams * 7 };
 }
 
 function workoutWeek(sessions, mon) {
@@ -465,7 +475,7 @@ function compute(st, sessions) {
     const e = st.weeks[mon], sun = addDays(mon, 6);
     const ws = Object.values(e.w || {}).filter(num);
     const beer = beerStats(e.beer, set);
-    const hasBeer = e.beer && BEER_KEYS.some(k => (e.beer[k] || 0) > 0) || e.beerLogged;
+    const hasBeer = e.beer && DRINK_KEYS.some(k => (e.beer[k] || 0) > 0) || e.beerLogged;
     return { mon, sun, label: 'W' + isoWeek(mon), wAvg: ws.length ? mean(ws) : null,
       kcal: num(e.kcal) ? e.kcal : null, prot: num(e.prot) ? e.prot : null, steps: num(e.steps) ? e.steps : null,
       rhr: num(e.rhr) ? e.rhr : null, sleep: num(e.sleep) ? e.sleep : null, waist: num(e.waist) ? e.waist : null,
@@ -903,7 +913,7 @@ function readCheckin() {
   Object.entries(ints).forEach(([k, id]) => { const v = parseIntEU(document.getElementById(id).value); if (v !== null) e[k] = v; });
   const sl = parseSleep(document.getElementById('ci-sleep').value); if (sl !== null) e.sleep = sl;
   const wa = parseDec(document.getElementById('ci-waist').value); if (wa !== null && wa > 30 && wa < 250) e.waist = wa;
-  const beer = {}; BEER_KEYS.forEach(k => { if (ciBeer[k] > 0) beer[k] = ciBeer[k]; });
+  const beer = {}; DRINK_KEYS.forEach(k => { if (ciBeer[k] > 0) beer[k] = ciBeer[k]; });
   e.beer = beer;
   return e;
 }
@@ -925,9 +935,18 @@ function renderCheckin() {
       g += `<div class="stepper"><button data-k="${k}" data-s="-1" aria-label="${lbl} minus">−</button><span class="sv${n ? '' : ' zero'}">${n}</span><button data-k="${k}" data-s="1" aria-label="${lbl} plus">+</button></div>`;
     });
   });
+  g += `<span class="ch" style="text-align: left; grid-column: 1 / -1; padding-top: 6px">Wine &amp; others · glasses</span>`;
+  OTHER_DRINKS.forEach(d => {
+    const n = ciBeer[d.k] || 0;
+    g += `<span style="font-size: 14px">${d.label}<span class="hint" style="display: block; font-size: 11px; color: var(--text2)">${d.hint}</span></span><span></span>` +
+         `<div class="stepper"><button data-k="${d.k}" data-s="-1" aria-label="${d.label} minus">−</button><span class="sv${n ? '' : ' zero'}">${n}</span><button data-k="${d.k}" data-s="1" aria-label="${d.label} plus">+</button></div>`;
+  });
   document.getElementById('ci-beer').innerHTML = g;
   const bs = beerStats(e.beer, set);
-  document.getElementById('ci-beer-sum').innerHTML = bs.count ? `${bs.count} beer${bs.count > 1 ? 's' : ''} · ${fmt1(bs.litres)} L · <b>${fmt1(bs.std)} verres std</b>` : 'No beers this week';
+  const parts = [];
+  if (bs.count) parts.push(`${bs.count} beer${bs.count > 1 ? 's' : ''} (${fmt1(bs.litres)} L)`);
+  OTHER_DRINKS.forEach(d => { const n = e.beer[d.k] || 0; if (n) parts.push(`${n} ${d.label.toLowerCase()}`); });
+  document.getElementById('ci-beer-sum').innerHTML = parts.length ? `${parts.join(' · ')} · <b>${fmt1(bs.std)} verres std</b>` : 'No alcohol this week';
   // Workout line
   const wo = workoutWeek(workoutSessions, ciMon);
   document.getElementById('ci-auto').innerHTML = wo.n
@@ -944,7 +963,7 @@ function renderCheckin() {
   } else bits.push('maintenance after 2 weeks with 4+ weigh-ins');
   if (w && w.prot !== null && w.protTarget !== null) bits.push(w.prot >= w.protTarget ? 'protein on target' : `protein ${fmtInt(w.protTarget - w.prot)} g short`);
   if (w && w.sleep !== null) bits.push(w.sleep >= set.sleepH * 60 ? 'sleep on target' : `sleep under ${fmt1(set.sleepH).replace(',0', '')} h`);
-  if (bs.std > 10) bits.push('beer above 10 verres std');
+  if (bs.std > 10) bits.push('alcohol above 10 verres std');
   document.getElementById('ci-preview').innerHTML = `<b>Preview:</b> ${esc(bits.join(' · '))}`;
 }
 

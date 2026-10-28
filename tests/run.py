@@ -487,6 +487,11 @@ def kals_balance_rules(b):
     # Beer: verres standard = ml × %alc × 0.789 / 10 g
     std = ev("beerStats({bd: 2, fp: 2, bb: 1}, {abvB: 4, abvF: 8}).std")
     near(std, (2 * 250 * 0.04 + 2 * 500 * 0.08 + 330 * 0.04) * 0.789 / 10, 'standard drinks')
+    # Wine / champagne / cocktail add to the alcohol (verres std) but not to the beer count or litres
+    o = ev("() => { const a = beerStats({bd: 1}, {abvB: 5, abvF: 7}), b = beerStats({bd: 1, wn: 2, ch: 1, ck: 1}, {abvB: 5, abvF: 7}); return { a, b, extra: OTHER_DRINKS }; }")
+    want = sum(n * d['ml'] * d['abv'] / 100 * 0.789 / 10 for n, d in zip((2, 1, 1), o['extra']))
+    near(o['b']['std'] - o['a']['std'], want, 'other drinks in verres std')
+    assert (o['b']['count'], o['b']['litres'], o['b']['others']) == (o['a']['count'], o['a']['litres'], 4), o
     # Maintenance = mean kcal − weight slope (kg/day) × 7700; needs 2 weeks with kcal
     st = {'v': 2, 'settings': {'defLo': 100, 'defHi': 400, 'protKg': 2},
           'weeks': {'2026-03-02': {'w': {'2026-03-02': 80.0, '2026-03-05': 79.7}, 'kcal': 2400, 'prot': 150},
@@ -521,9 +526,9 @@ def kals_balance_rules(b):
     assert pg.is_visible('#btn-edit-last')
     pg.click('#btn-edit-last')
     assert ev('ciMon') == mon and pg.input_value('#ci-kcal') == '2.350' and pg.input_value('#ci-sleep') == '6h52', 'saved week not reloaded'
-    pg.click('#ci-beer button[data-k="bb"][data-s="1"]'); pg.click('#btn-save')
+    pg.click('#ci-beer button[data-k="bb"][data-s="1"]'); pg.click('#ci-beer button[data-k="wn"][data-s="1"]'); pg.click('#btn-save')
     e2 = ev("m => state.weeks[m]", mon)
-    assert e2['beer'] == {'fp': 2, 'bd': 1, 'bb': 1} and e2['kcal'] == 2350 and e2['w'] == e['w'], e2
+    assert e2['beer'] == {'fp': 2, 'bd': 1, 'bb': 1, 'wn': 1} and e2['kcal'] == 2350 and e2['w'] == e['w'], e2
     assert not errs, errs
     ctx.close()
 
