@@ -728,7 +728,7 @@ const SHARED_DEF = [
   { key: 'bobsLitiere', label: 'Bobs Litière',   step: 5, weekly: true },
   { key: 'sharedResto', label: 'Restos',         step: 10, weekly: true },
   { key: 'deliveroo',   label: 'Deliveroo',      step: 5, weekly: true },
-  { key: 'sharedBar',   label: 'Bar',            step: 10, weekly: true },
+  { key: 'sharedBar',   label: 'Bar / Apéro',    step: 10, weekly: true },
   { key: 'sharedExtras',label: 'Extras',         step: 5  },
 ];
 
@@ -755,11 +755,11 @@ const PERSONAL_DEF = [
 const TRACKER_GROUPS = [
   { id: 'mercado', title: 'Mercado Lunch', rows: [
     { key: 'trkSaumon',   label: 'Saumon / Poulet', step: 1, to: 'lunch' },
-    { key: 'trkLait',     label: 'Lait',      step: 1, to: 'lunch' },
     { key: 'trkLegumes',  label: 'Légumes',   step: 1, to: 'lunch' },
     { key: 'trkMercadoExtras',  label: 'Extras (prot bar, choco, bonbon)', step: 2 },
   ]},
   { id: 'smoothie', title: 'Smoothie', rows: [
+    { key: 'trkLait',     label: 'Lait',      step: 1, to: 'smoothie' },
     { key: 'trkSmoothieNoix',   label: 'Smoothie noix',   step: 5, to: 'smoothie' },
     { key: 'trkSmoothiePoudre', label: 'Smoothie poudre', step: 2, to: 'smoothie' },
   ]},
@@ -767,7 +767,6 @@ const TRACKER_GROUPS = [
     { key: 'trkSat',      label: 'SAT',       step: 5, to: 'sharedResto' },
     { key: 'trkDelivMel', label: 'Deliv Mel', step: 2, to: 'deliveroo' },
     { key: 'trkDelivSolo',label: 'Deliv solo',step: 2, to: 'delivSolo' },
-    { key: 'trkApero',    label: 'Apéro',     step: 2, to: 'sharedBar' },
   ]},
   { id: 'beer', title: 'Beer / Bar', rows: [
     { key: 'trkBar',      label: 'Pola Bar',     step: 2, to: 'sharedBar' },
@@ -775,10 +774,11 @@ const TRACKER_GROUPS = [
     { key: 'trkBarBouffe',label: 'Bar Bouffe',   step: 2, to: 'sharedBar' },
   ]},
   { id: 'extras', title: 'Extras', rows: [
-    { key: 'trkConcert',    label: 'Concert',     step: 5,  weekly: false },
-    { key: 'trkConcertBar', label: 'Concert bar', step: 5  },
-    { key: 'trkVacs',       label: 'Vacs',        step: 10, weekly: false },
-    { key: 'trkHome',       label: 'Home',        step: 5,  weekly: false },
+    { key: 'trkApero',      label: 'Apéro',       step: 2,  to: 'sharedBar' },
+    { key: 'trkConcert',    label: 'Concert',     step: 5,  weekly: false, to: 'sharedExtras' },
+    { key: 'trkConcertBar', label: 'Concert bar', step: 5,  to: 'sharedExtras' },
+    { key: 'trkVacs',       label: 'Vacs',        step: 10, weekly: false, to: 'sharedExtras' },
+    { key: 'trkHome',       label: 'Home',        step: 5,  weekly: false, to: 'sharedExtras' },
   ]},
 ];
 const TRACKER_DEF = TRACKER_GROUPS.flatMap(g => g.rows);

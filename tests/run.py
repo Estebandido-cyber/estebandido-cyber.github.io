@@ -979,7 +979,10 @@ def edit_left_offline_is_kept_and_pushed(b):
     pg.evaluate("states.now.salary = 7777; saveLocal('now'); render('now')")
     worker.offline = True                                        # the request made while leaving never arrives
     pg.click('a.home-link'); pg.wait_for_url('**/index.html'); pg.wait_for_timeout(800)
-    assert '6' in stats_text(pg, 'calc') and pg.evaluate("LifeSync.localHub('xpenses-calculator').hub.now.leftover") > 0, \
+    # The tile shows this device's newer summary (salary 7777), not the synced one (salary 1000) — no reliance on defaults
+    local = pg.evaluate("LifeSync.localHub('xpenses-calculator').hub.now.leftover")
+    assert local != worker.posted('xpenses-calculator')['hub']['now']['leftover'], 'local summary is not the newer edit'
+    assert pg.evaluate("v => fmt(v)", local) in stats_text(pg, 'calc'), \
         'Hub must show the unsynced edit from this device'
     worker.offline = False
     pg.goto(srv.base + 'XPENSES_CALCULATOR.html'); pg.wait_for_timeout(1500)
