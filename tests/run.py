@@ -492,6 +492,15 @@ def xpenses_edit_lines(b):
     assert ev(f"() => [states.now['{nid}'], states.fire['{nid}']]") == [0, 0] and gross() == g0
     pg.click(P + '#now-personal-edit')   # Done
     assert pg.is_visible(f'#now-spin-{nid}') and ev("() => switchTab('fire')") is None and pg.is_visible(f'#fire-spin-{nid}')
+    # On/off switch: an optional line switched off counts nowhere, only in that tab
+    ev("() => { switchTab('now'); const l = layout.shared[0]; l.optional = true; render('now'); render('fire'); }")
+    sid = ev("() => layout.shared[0].id")
+    g1 = gross(); m = ev("() => lineAmount(states.now, layout.shared[0]) / (layout.shared[0].yearly ? 12 : 1)")
+    pg.uncheck(f'#pane-now input[data-act="onoff"][data-id="{sid}"]')
+    g2 = gross()
+    assert abs((g1[0] - g2[0]) - m / 2) < 1e-6 and g2[1] == g1[1], (g1, g2, m)
+    assert abs(ev("() => charts.now.data.datasets[0].data.reduce((a, b) => a + b, 0)") - g2[0]) < 1e-6, 'donut must follow the switch'
+    pg.check(f'#pane-now input[data-act="onoff"][data-id="{sid}"]'); assert gross() == g1
     # The layout travels with the data (cloud)
     ev("cloudPush()"); assert wait_until(pg, lambda: (worker.posted('xpenses-calculator') or {}).get('layout', {}).get('personal', [{}])[1].get('label') == 'Assurance habitation', 6)
     # Labels are text, never HTML
@@ -513,6 +522,7 @@ def xpenses_old_save_migrates(b):
                              lunch: lineAmount(states.now, layout.personal.find(l => l.id === 'lunch')) })""")
     assert (r['bar'], r['apero'], r['saumon'], r['rent']) == (20, 60, 5, 1000), r
     assert r['barLine'] == old_now['sharedBar'] and r['lunch'] == old_now['lunch'], f'totals changed by the migration: {r}'
+    assert pg.evaluate("() => layout.shared.find(l => l.id === 'sharedExtras').optional") is True
     assert not errs, errs
     ctx.close()
 

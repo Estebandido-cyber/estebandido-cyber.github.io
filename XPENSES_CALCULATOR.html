@@ -468,6 +468,17 @@ body {
 .box-shared.box-editing { outline-color: var(--blue-border); }
 .box-personal.box-editing { outline-color: var(--green-border); }
 .erow.has-subs { position: relative; }
+.erow.off .ename { color: var(--text-3); }
+.erow.off .enote, .erow.off .spin-wrap, .erow.off .eamt { opacity: .45; }
+.erow.off .eamt, .erow.off .sum-val { text-decoration: line-through; }
+.ln-switch { position: relative; display: inline-block; width: 30px; height: 17px; margin-left: 8px; vertical-align: middle; cursor: pointer; }
+.ln-switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.ln-switch span { position: absolute; inset: 0; border-radius: 99px; background: var(--border-2); transition: background .15s; pointer-events: none; }
+.ln-switch span::after { content: ''; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.ln-switch input:checked + span { background: var(--blue-border); }
+.box-personal .ln-switch input:checked + span { background: var(--green-border); }
+.ln-switch input:checked + span::after { transform: translateX(13px); }
+.ln-switch input:focus-visible + span { outline: 2px solid var(--blue-border); outline-offset: 2px; }
 /* ▸/▾ sits in the box's left margin, so every line name stays aligned */
 .ln-toggle { position: absolute; left: -17px; top: 3px; border: none; background: none; color: inherit; font-size: 11px; width: 22px; height: 26px; padding: 0; cursor: pointer; }
 .box-shared .ln-toggle { color: var(--blue); } .box-personal .ln-toggle { color: var(--green); }
@@ -775,6 +786,7 @@ const LS_KEY          = 'xpenses_calculator_v1';
 //    weekly — shows "≈ €X/wk" (monthly × 12 / 52), also on its sub-lines
 //    yearly — amount is per year (counted / 12)
 //    subs   — detail lines: the line's amount is their sum (no stepper on the line)
+//    optional — shows an on/off switch; switched off (per tab: states[tab]['off:' + id]) it counts nowhere
 //  Shared lines (and their sub-lines) are FULL bills paid by both; your half = / 2.
 // ════════════════════════════════════════════════════════════════════
 const CATS = [
@@ -791,6 +803,7 @@ const SECTIONS = ['shared', 'personal'];
 
 // Starting layout = the lines used until Oct 2026 (ids are the old state keys, so amounts carry over)
 const DEFAULT_LAYOUT = {
+  v: 2,
   shared: [
     { id: 'rent',        label: 'Rent',         cat: 'housing' },
     { id: 'internet',    label: 'Free',         cat: 'utilities' },
@@ -803,7 +816,7 @@ const DEFAULT_LAYOUT = {
     { id: 'deliveroo',   label: 'Deliveroo',    cat: 'food', weekly: true },
     { id: 'sharedBar',   label: 'Bar / Apéro',  cat: 'food', weekly: true, subs: [
       { id: 'trkBar', label: 'Pola Bar' }, { id: 'trkBarBouffe', label: 'Bar Bouffe' }, { id: 'trkApero', label: 'Apéro' } ] },
-    { id: 'sharedExtras', label: 'Extras',      cat: 'extras', subs: [
+    { id: 'sharedExtras', label: 'Extras',      cat: 'extras', optional: true, subs: [
       { id: 'trkConcert', label: 'Concert' }, { id: 'trkConcertBar', label: 'Concert bar' }, { id: 'trkVacs', label: 'Vacs' }, { id: 'trkHome', label: 'Home' } ] },
   ],
   personal: [
@@ -885,7 +898,9 @@ const esc      = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&
 // ════════════════════════════════════════════════════════════════════
 const hasSubs     = line => Array.isArray(line.subs) && line.subs.length > 0;
 const lineAmount  = (s, line) => hasSubs(line) ? line.subs.reduce((t, x) => t + (s[x.id] || 0), 0) : (s[line.id] || 0);
-const lineMonthly = (s, line) => lineAmount(s, line) / (line.yearly ? 12 : 1);
+const lineOn      = (s, line) => !(line.optional && s['off:' + line.id]);
+// Monthly cost counted in the totals (0 when an optional line is switched off)
+const lineMonthly = (s, line) => lineOn(s, line) ? lineAmount(s, line) / (line.yearly ? 12 : 1) : 0;
 // Stepper increment from the amount (no per-line setting): 1 under €30, 5 under €150, 10 above
 const stepFor = (v, dir) => { const x = dir > 0 ? v : v - 1; return x < 30 ? 1 : x < 150 ? 5 : 10; };
 
@@ -930,6 +945,10 @@ function applySaved(saved) {
     states[tab] = { ...DEFAULTS[tab], ...src };
   });
   layout = old ? JSON.parse(JSON.stringify(DEFAULT_LAYOUT)) : saved.layout;
+  if (!(layout.v >= 2)) {   // v2: on/off switch on Shared Extras
+    const x = layout.shared.find(l => l.id === 'sharedExtras'); if (x) x.optional = true;
+    layout.v = 2;
+  }
   return true;
 }
 
@@ -1160,7 +1179,7 @@ function buildCard(tab) {
   makeSpin(`${tab}-spin-sharedAcc`,    tab, 'sharedAcc',    50);
   const card = document.getElementById(`card-${tab}`);
   card.addEventListener('click', ev => onSectionClick(tab, ev));
-  card.addEventListener('change', onSectionChange);
+  card.addEventListener('change', ev => onSectionChange(ev, tab));
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1259,19 +1278,20 @@ function stepperHTML(tab, id, value) {
 function linesHTML(tab, sec) {
   const s = states[tab];
   return layout[sec].map(line => {
-    const raw = lineAmount(s, line), monthly = raw / (line.yearly ? 12 : 1), subs = hasSubs(line), open = subs && openLines.has(line.id);
+    const raw = lineAmount(s, line), monthly = raw / (line.yearly ? 12 : 1), subs = hasSubs(line), open = subs && openLines.has(line.id), on = lineOn(s, line);
     const note = line.yearly ? `€${fmt(raw).slice(1)}/yr → €${(raw / 12).toFixed(2).replace('.', ',')}/mo` : line.weekly ? fmtWeek(monthly) : '';
     const amt  = sec === 'shared' ? fmtSmart(monthly / 2) : fmtSmart(monthly);
-    let h = `<div class="erow${subs ? ' has-subs' : ''}" data-line="${line.id}">
+    let h = `<div class="erow${subs ? ' has-subs' : ''}${on ? '' : ' off'}" data-line="${line.id}">
       ${subs ? `<button class="ln-toggle" data-act="toggle" data-id="${line.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(line.label)}">${open ? '▾' : '▸'}</button>` : ''}
-      <span class="ename">${esc(line.label)}${subs ? `<span class="ln-count">· ${line.subs.length}</span>` : ''}</span>
+      <span class="ename">${esc(line.label)}${subs ? `<span class="ln-count">· ${line.subs.length}</span>` : ''}${line.optional
+        ? `<label class="ln-switch" title="Include in totals"><input type="checkbox" data-act="onoff" data-id="${line.id}"${on ? ' checked' : ''} aria-label="Include ${esc(line.label)} in totals"><span></span></label>` : ''}</span>
       <span class="enote" id="${tab}-note-${line.id}">${note}</span>
       ${subs ? `<div class="spin-wrap"><div class="spin-val sum-val" id="${tab}-sv-${line.id}">${fmt(raw)}</div></div>` : stepperHTML(tab, line.id, raw)}
       <span class="eamt" id="${tab}-amt-${line.id}">${amt}</span>
     </div>`;
     if (open) line.subs.forEach(x => {
       const v = s[x.id] || 0;
-      h += `<div class="erow sub">
+      h += `<div class="erow sub${on ? '' : ' off'}">
         <span class="ename">${esc(x.label)}</span>
         <span class="enote" id="${tab}-note-${x.id}">${line.weekly && !line.yearly ? fmtWeek(v) : ''}</span>
         ${stepperHTML(tab, x.id, v)}
@@ -1302,6 +1322,7 @@ function editHTML(sec) {
         <label><span>Donut category</span><select data-act="cat" ${a}>${CATS.map(c => `<option value="${c.id}"${c.id === line.cat ? ' selected' : ''}>${esc(c.label)}</option>`).join('')}</select></label>
         <label><span>Show ≈ per week</span><input type="checkbox" data-act="weekly" ${a}${line.weekly ? ' checked' : ''}></label>
         <label><span>Amount is yearly (/12)</span><input type="checkbox" data-act="yearly" ${a}${line.yearly ? ' checked' : ''}></label>
+        <label><span>On/off switch (can be left out of totals)</span><input type="checkbox" data-act="optional" ${a}${line.optional ? ' checked' : ''}></label>
       </div>`;
     if (hasSubs(line)) h += `<div class="ed-subs">` + line.subs.map(x => `<div class="ed-row">
         <input class="ed-name ed-sub" data-act="renamesub" ${a} data-sub="${x.id}" value="${esc(x.label)}" aria-label="Sub-line name">
@@ -1348,7 +1369,7 @@ function saveOpen() { try { localStorage.setItem('xpenses_open_lines', JSON.stri
 
 function onSectionClick(tab, ev) {
   const b = ev.target.closest('[data-act]');
-  if (!b || b.tagName === 'INPUT' || b.tagName === 'SELECT') return;
+  if (!b || b.tagName === 'INPUT' || b.tagName === 'SELECT' || ev.target.closest('.ln-switch')) return;
   const act = b.dataset.act, id = b.dataset.id, sec = b.dataset.sec;
   if (act === 'inc' || act === 'dec') {
     const s = states[tab], v = s[id] || 0, dir = act === 'inc' ? 1 : -1;
@@ -1397,8 +1418,12 @@ function onSectionClick(tab, ev) {
     layoutChanged(`[data-act="rename"][data-id="${nid}"]`); return;
   }
 }
-function onSectionChange(ev) {
+function onSectionChange(ev, tab) {
   const el = ev.target, act = el.dataset.act; if (!act) return;
+  if (act === 'onoff') {   // per tab: Now and FIRE can differ
+    if (el.checked) delete states[tab]['off:' + el.dataset.id]; else states[tab]['off:' + el.dataset.id] = true;
+    render(tab); saveLocal(tab); return;
+  }
   const line = findLine(el.dataset.sec, el.dataset.id); if (!line) return;
   if (act === 'rename' || act === 'renamesub') {   // no re-render, so focus can move to the next field
     const v = el.value.trim(), x = act === 'rename' ? line : line.subs.find(y => y.id === el.dataset.sub);
@@ -1408,6 +1433,7 @@ function onSectionChange(ev) {
   if (act === 'cat')       line.cat = el.value;
   if (act === 'weekly')    { if (el.checked) line.weekly = true; else delete line.weekly; }
   if (act === 'yearly')    { if (el.checked) line.yearly = true; else delete line.yearly; }
+  if (act === 'optional')  { if (el.checked) line.optional = true; else delete line.optional; }
   layoutChanged();
 }
 document.getElementById('undo-btn').addEventListener('click', () => {
