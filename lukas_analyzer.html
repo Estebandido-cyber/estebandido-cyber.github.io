@@ -458,7 +458,7 @@
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const STATIC_POSITIONS = [
   { ticker:'WPEA.PA',          name:'Amundi PEA Monde',           account:'PEA',  type:'ETF',   shares:16507,   avgPrice:6.56 },
-  { ticker:'DCAM.PA',          name:'Amundi CAC 40 ETF',          account:'PEA',  type:'ETF',   shares:407,     avgPrice:(171*6.40 + 236*6.338)/407 },   // 171 @ €6,40 + 236 @ €6,338 (Oct 2026)
+  { ticker:'DCAM.PA',          name:'Amundi CAC 40 ETF',          account:'PEA',  type:'ETF',   shares:565,     avgPrice:6.35 },   // broker totals Oct 2026 (incl. +236 @ €6,338)
   { ticker:'VUSA.AS',          name:'Vanguard S&P 500 UCITS',     account:'CTO',  type:'ETF',   shares:106,     avgPrice:71.57 },
   { ticker:'AAPL',             name:'Apple Inc.',                  account:'CTO',  type:'Stock', shares:38,      avgPrice:131.20 },
   { ticker:'SAP.DE',           name:'SAP SE',                     account:'PEE',  type:'Stock', shares:85.611,  avgPrice:144.11 },
@@ -520,7 +520,7 @@ const ACCOUNT_COLORS = {
 
 const REFERENCE_VALUES = {
   'WPEA.PA':           16507*6.56*(1+0.1030),   // = €119,444
-  'DCAM.PA':           171*6.40 + 236*6.338,     // = €2,590 (cost basis, no gain yet)
+  'DCAM.PA':           565*6.35,                 // = €3,588 (cost basis, no gain yet)
   'VUSA.AS':           106*71.57*(1+0.8459),    // = €14,004
   'AAPL':              38*131.20*(1+1.3219),    // = €11,576
   'SAP.DE':            85.611*144.11*(1+0.3603),// = €16,783
@@ -933,9 +933,10 @@ function renderTax(rows, fondsRows, ir) {
       <td class="gain-cell">${fmt(totalGain)}</td>
       <td><span class="tax-rate-badge">${(rate*100).toFixed(1)}%</span> <span style="color:var(--muted);font-size:10px">${rule.label}</span></td>
       <td style="color:#fca5a5;font-weight:600">${fmt(tax)}</td></tr>`;
-    if (acc==='CTO') {
-      rows.filter(r=>r.account==='CTO'&&r.glEur>0).forEach(r=>{
-        html+=`<tr style="background:rgba(255,255,255,0.01)"><td style="padding-left:22px;color:var(--muted);font-size:11px">↳ ${r.ticker.replace('.DE','').replace('.AS','')}</td><td class="gain-cell" style="font-size:11px">${fmt(r.glEur)}</td><td style="font-size:10px;color:var(--muted)">PFU 30%</td><td style="color:#fca5a5;font-size:11px">${fmt(r.glEur*0.30)}</td></tr>`;
+    if (acc==='CTO' || acc==='PEA') {
+      rows.filter(r=>r.account===acc).forEach(r=>{
+        const g=r.glEur, glCls=g>0?'gain-cell':g<0?'loss-cell':'neutral-cell';
+        html+=`<tr style="background:rgba(255,255,255,0.01)"><td style="padding-left:22px;color:var(--muted);font-size:11px">↳ ${r.ticker.replace(/\.(DE|AS|PA)$/,'')}</td><td class="${glCls}" style="font-size:11px">${fmt(g)}</td><td style="font-size:10px;color:var(--muted)">${rule.label.split(' (')[0]}</td><td style="color:#fca5a5;font-size:11px">${fmt(Math.max(0,g)*rate)}</td></tr>`;
       });
     }
   });
