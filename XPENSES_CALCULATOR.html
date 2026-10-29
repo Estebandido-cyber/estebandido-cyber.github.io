@@ -467,7 +467,9 @@ body {
 .box-editing { outline: 2px solid currentColor; }
 .box-shared.box-editing { outline-color: var(--blue-border); }
 .box-personal.box-editing { outline-color: var(--green-border); }
-.ln-toggle { border: none; background: none; color: inherit; font-size: 11px; width: 22px; height: 26px; padding: 0; margin: -4px 2px -4px -4px; cursor: pointer; vertical-align: middle; }
+.erow.has-subs { position: relative; }
+/* ▸/▾ sits in the box's left margin, so every line name stays aligned */
+.ln-toggle { position: absolute; left: -17px; top: 3px; border: none; background: none; color: inherit; font-size: 11px; width: 22px; height: 26px; padding: 0; cursor: pointer; }
 .box-shared .ln-toggle { color: var(--blue); } .box-personal .ln-toggle { color: var(--green); }
 .ln-count { font-size: 10px; color: var(--text-3); margin-left: 5px; }
 .erow.has-subs .ename { font-weight: 600; }
@@ -1261,7 +1263,8 @@ function linesHTML(tab, sec) {
     const note = line.yearly ? `€${fmt(raw).slice(1)}/yr → €${(raw / 12).toFixed(2).replace('.', ',')}/mo` : line.weekly ? fmtWeek(monthly) : '';
     const amt  = sec === 'shared' ? fmtSmart(monthly / 2) : fmtSmart(monthly);
     let h = `<div class="erow${subs ? ' has-subs' : ''}" data-line="${line.id}">
-      <span class="ename">${subs ? `<button class="ln-toggle" data-act="toggle" data-id="${line.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(line.label)}">${open ? '▾' : '▸'}</button>` : ''}${esc(line.label)}${subs ? `<span class="ln-count">· ${line.subs.length}</span>` : ''}</span>
+      ${subs ? `<button class="ln-toggle" data-act="toggle" data-id="${line.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(line.label)}">${open ? '▾' : '▸'}</button>` : ''}
+      <span class="ename">${esc(line.label)}${subs ? `<span class="ln-count">· ${line.subs.length}</span>` : ''}</span>
       <span class="enote" id="${tab}-note-${line.id}">${note}</span>
       ${subs ? `<div class="spin-wrap"><div class="spin-val sum-val" id="${tab}-sv-${line.id}">${fmt(raw)}</div></div>` : stepperHTML(tab, line.id, raw)}
       <span class="eamt" id="${tab}-amt-${line.id}">${amt}</span>
