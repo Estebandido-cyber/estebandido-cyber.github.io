@@ -458,6 +458,62 @@ body {
 .spin-wrap .spin-val.linked-val { border: 1px dashed var(--border-2); border-radius: 4px; min-width: 96px; background: transparent; color: var(--text-2); }
 @media (max-width: 580px) { .link-tag { display: block; margin-left: 0; white-space: normal; } }
 .linked-val::after { content: ' 🔗'; font-size: 10px; }
+/* ── Editable lines ── */
+.box-actions { display: inline-flex; align-items: center; gap: 10px; }
+.box-edit { font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; padding: 5px 12px; min-height: 30px; border-radius: 99px; border: 1px solid currentColor; background: var(--bg-card); color: inherit; cursor: pointer; }
+.box-edit.on { background: currentColor; }
+.box-shared .box-edit.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+.box-personal .box-edit.on { background: var(--green); color: #fff; border-color: var(--green); }
+.box-editing { outline: 2px solid currentColor; }
+.box-shared.box-editing { outline-color: var(--blue-border); }
+.box-personal.box-editing { outline-color: var(--green-border); }
+.ln-toggle { border: none; background: none; color: inherit; font-size: 11px; width: 22px; height: 26px; padding: 0; margin: -4px 2px -4px -4px; cursor: pointer; vertical-align: middle; }
+.box-shared .ln-toggle { color: var(--blue); } .box-personal .ln-toggle { color: var(--green); }
+.ln-count { font-size: 10px; color: var(--text-3); margin-left: 5px; }
+.erow.has-subs .ename { font-weight: 600; }
+.spin-wrap .spin-val.sum-val { border: none; background: transparent; font-weight: 600; min-width: 96px; }
+.box-shared .sum-val { color: var(--blue); } .box-personal .sum-val { color: var(--green); }
+.erow.sub .ename { padding-left: 14px; margin-left: 9px; color: var(--text-2); font-size: 12.5px; }
+.box-shared .erow.sub .ename { border-left: 2px solid var(--blue-box); }
+.box-personal .erow.sub .ename { border-left: 2px solid var(--green-box); }
+.edit-list { display: flex; flex-direction: column; gap: 8px; }
+.ed-line { background: var(--bg-card); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.box-shared .ed-line { border: 1px solid var(--blue-box); } .box-personal .ed-line { border: 1px solid var(--green-box); }
+.ed-row { display: flex; align-items: center; gap: 6px; }
+.ed-move { display: flex; flex-direction: column; }
+.ed-move button { border: none; background: none; font-size: 11px; width: 28px; height: 22px; color: var(--text-2); cursor: pointer; }
+.ed-move button:disabled { opacity: .25; cursor: default; }
+.ed-name { flex: 1; min-width: 0; font: inherit; font-size: 14px; border: 1px solid var(--border-2); border-radius: 6px; padding: 9px 10px; background: var(--bg-card); color: var(--text-1); }
+.ed-name.ed-sub { font-size: 13px; padding: 8px 10px; }
+.ed-btn { flex-shrink: 0; width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--border-2); background: var(--bg-card); color: var(--text-2); font-size: 15px; cursor: pointer; }
+.ed-btn.on { border-color: currentColor; }
+.ed-btn.ed-add { font-size: 13px; font-weight: 600; }
+.box-shared .ed-btn.ed-add { color: var(--blue); background: var(--blue-bg); border-color: var(--blue-box); }
+.box-personal .ed-btn.ed-add { color: var(--green); background: var(--green-bg); border-color: var(--green-box); }
+.ed-btn.ed-del { color: var(--red); }
+.ed-opts { margin-left: 34px; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; background: var(--bg-sub); }
+.ed-opts label { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-1); }
+.ed-opts select { font: inherit; font-size: 13px; border: 1px solid var(--border-2); border-radius: 6px; padding: 7px 8px; background: var(--bg-card); color: var(--text-1); min-height: 36px; }
+.ed-opts input[type="checkbox"] { width: 22px; height: 22px; }
+.ed-subs { margin-left: 34px; padding-left: 10px; display: flex; flex-direction: column; gap: 6px; }
+.box-shared .ed-subs { border-left: 2px solid var(--blue-box); } .box-personal .ed-subs { border-left: 2px solid var(--green-box); }
+.ed-addsub, .ed-addline { font: inherit; font-weight: 600; background: none; border-radius: 8px; cursor: pointer; }
+.ed-addsub { align-self: flex-start; font-size: 12px; padding: 8px 12px; min-height: 40px; }
+.ed-addline { font-size: 13px; padding: 12px; min-height: 48px; background: var(--bg-card); }
+.box-shared .ed-addsub, .box-shared .ed-addline { color: var(--blue); border: 1px dashed var(--blue-border); }
+.box-personal .ed-addsub, .box-personal .ed-addline { color: var(--green); border: 1px dashed var(--green-border); }
+.ed-hint { font-size: 11px; color: var(--text-2); margin: 0; }
+@media (max-width: 580px) {
+  .ed-row { gap: 4px; }
+  .ed-move button { width: 22px; }
+  .ed-btn { width: 38px; height: 40px; font-size: 14px; }
+  .ed-opts, .ed-subs { margin-left: 18px; }
+  .erow.has-subs .ename { white-space: normal; }
+}
+.undo-bar { position: fixed; left: 50%; bottom: 1.25rem; transform: translate(-50%, 12px); z-index: 1000; display: flex; align-items: center; gap: 16px;
+  background: #1a1917; color: #fff; border-radius: 99px; padding: 8px 10px 8px 18px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+.undo-bar.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.undo-bar button { font: inherit; font-weight: 600; color: #7ec8ff; background: none; border: none; min-height: 36px; padding: 0 8px; cursor: pointer; }
 .box-title-note { font-weight: 400; text-transform: none; letter-spacing: 0; opacity: .75; margin-left: 6px; }
 
 .box-chevron {
@@ -676,6 +732,7 @@ body {
 
 <!-- ══ AUTOSAVE TOAST ══ -->
 <div class="toast" id="toast"></div>
+<div class="undo-bar" id="undo-bar" role="status"><span id="undo-msg"></span><button id="undo-btn">Undo</button></div>
 
 <!-- ══ MAIN ══ -->
 <div class="dash">
@@ -707,134 +764,96 @@ const DRIVE_FILENAME  = 'xpenses_calculator_data.json';
 const LS_KEY          = 'xpenses_calculator_v1';
 
 // ════════════════════════════════════════════════════════════════════
-//  ROW DEFINITIONS
-//  To add a new expense line: add an entry here AND add its key+value
-//  to DEFAULTS. Everything else renders automatically.
+//  EXPENSE LINES — editable by the owner (✎ Edit on each box)
+//  The LAYOUT (names, order, sub-lines, options) is shared by Now and FIRE
+//  and saved with the data; AMOUNTS live per tab in states[tab][id].
 //
-//  Fields:
-//    key    — property name in state
-//    label  — display label
-//    step   — spinner increment (€)
-//    yearly — true if the state value is annual (displayed as /12)
-//    weekly — true for variable spending: shows "≈ €X/wk" (monthly × 12 / 52); Breakdown rows do unless weekly: false
+//  line = { id, label, cat, weekly?, yearly?, subs?: [{ id, label }] }
+//    cat    — donut category (CATS)
+//    weekly — shows "≈ €X/wk" (monthly × 12 / 52), also on its sub-lines
+//    yearly — amount is per year (counted / 12)
+//    subs   — detail lines: the line's amount is their sum (no stepper on the line)
+//  Shared lines (and their sub-lines) are FULL bills paid by both; your half = / 2.
 // ════════════════════════════════════════════════════════════════════
-const SHARED_DEF = [
-  { key: 'rent',        label: 'Rent',           step: 5  },
-  { key: 'internet',    label: 'Free',           step: 5  },
-  { key: 'netflix',     label: 'Netflix',        step: 1  },
-  { key: 'electricity', label: 'Electricity',    step: 10 },
-  { key: 'courses',     label: 'Courses',        step: 10, weekly: true },
-  { key: 'bobsFood',    label: 'Bobs Food',      step: 2, weekly: true },
-  { key: 'bobsLitiere', label: 'Bobs Litière',   step: 5, weekly: true },
-  { key: 'sharedResto', label: 'Restos',         step: 10, weekly: true },
-  { key: 'deliveroo',   label: 'Deliveroo',      step: 5, weekly: true },
-  { key: 'sharedBar',   label: 'Bar / Apéro',    step: 10, weekly: true },
-  { key: 'sharedExtras',label: 'Extras',         step: 5  },
+const CATS = [
+  { id: 'housing',   label: 'Housing',          color: '#3d8fe0' },
+  { id: 'utilities', label: 'Utilities',        color: '#4a9fd0' },
+  { id: 'pets',      label: 'Pets',             color: '#d08a3a' },
+  { id: 'food',      label: 'Food & going out', color: '#c47a00' },
+  { id: 'health',    label: 'Health & sport',   color: '#d05830' },
+  { id: 'subs',      label: 'Subscriptions',    color: '#c04880' },
+  { id: 'savings',   label: 'Savings',          color: '#6a9a20' },
+  { id: 'extras',    label: 'Extras',           color: '#909088' },
 ];
+const SECTIONS = ['shared', 'personal'];
 
-const PERSONAL_DEF = [
-  { key: 'insurance',   label: 'Home insurance',        step: 1  },
-  { key: 'lunch',       label: 'Mercado Lunch',         step: 10, weekly: true },
-  { key: 'delivSolo',   label: 'Deliv Solo',            step: 5,  weekly: true },
-  { key: 'extras',      label: 'Extras',                step: 10 },
-  { key: 'health',      label: 'Health',                step: 10 },
-  { key: 'beer',        label: 'Beer',                  step: 5, weekly: true },
-  { key: 'smoothie',    label: 'Post-workout smoothie', step: 5, weekly: true },
-  { key: 'savings',     label: 'Savings',               step: 10 },
-  { key: 'drums',       label: 'Drums',                 step: 5, weekly: true },
-  { key: 'billar',      label: 'Billar membership',     step: 10, yearly: true },
-  { key: 'billarMonth', label: 'Billar monthly',        step: 5, weekly: true },
-  { key: 'chess',       label: 'Chess membership',      step: 5,  yearly: true },
-  { key: 'amazonPrime', label: 'Amazon Prime',          step: 5,  yearly: true },
-  { key: 'phone',       label: 'Phone',                 step: 1  },
-  { key: 'claude',      label: 'Claude',                step: 1  },
-];
+// Starting layout = the lines used until Oct 2026 (ids are the old state keys, so amounts carry over)
+const DEFAULT_LAYOUT = {
+  shared: [
+    { id: 'rent',        label: 'Rent',         cat: 'housing' },
+    { id: 'internet',    label: 'Free',         cat: 'utilities' },
+    { id: 'netflix',     label: 'Netflix',      cat: 'utilities' },
+    { id: 'electricity', label: 'Electricity',  cat: 'utilities' },
+    { id: 'courses',     label: 'Courses',      cat: 'food', weekly: true },
+    { id: 'bobsFood',    label: 'Bobs Food',    cat: 'pets', weekly: true },
+    { id: 'bobsLitiere', label: 'Bobs Litière', cat: 'pets', weekly: true },
+    { id: 'sharedResto', label: 'Restos',       cat: 'food', weekly: true },
+    { id: 'deliveroo',   label: 'Deliveroo',    cat: 'food', weekly: true },
+    { id: 'sharedBar',   label: 'Bar / Apéro',  cat: 'food', weekly: true, subs: [
+      { id: 'trkBar', label: 'Pola Bar' }, { id: 'trkBarBouffe', label: 'Bar Bouffe' }, { id: 'trkApero', label: 'Apéro' } ] },
+    { id: 'sharedExtras', label: 'Extras',      cat: 'extras', subs: [
+      { id: 'trkConcert', label: 'Concert' }, { id: 'trkConcertBar', label: 'Concert bar' }, { id: 'trkVacs', label: 'Vacs' }, { id: 'trkHome', label: 'Home' } ] },
+  ],
+  personal: [
+    { id: 'insurance',   label: 'Home insurance', cat: 'utilities' },
+    { id: 'lunch',       label: 'Mercado Lunch',  cat: 'food', weekly: true, subs: [
+      { id: 'trkSaumon', label: 'Saumon / Poulet' }, { id: 'trkLegumes', label: 'Légumes' } ] },
+    { id: 'delivSolo',   label: 'Deliv Solo',     cat: 'food', weekly: true },
+    { id: 'extras',      label: 'Extras',         cat: 'extras' },
+    { id: 'health',      label: 'Health',         cat: 'health' },
+    { id: 'beer',        label: 'Beer',           cat: 'food', weekly: true },
+    { id: 'smoothie',    label: 'Post-workout smoothie', cat: 'health', weekly: true, subs: [
+      { id: 'trkLait', label: 'Lait' }, { id: 'trkSmoothieNoix', label: 'Smoothie noix' }, { id: 'trkSmoothiePoudre', label: 'Smoothie poudre' } ] },
+    { id: 'savings',     label: 'Savings',        cat: 'savings' },
+    { id: 'drums',       label: 'Drums',          cat: 'health', weekly: true },
+    { id: 'billar',      label: 'Billar membership', cat: 'health', yearly: true },
+    { id: 'billarMonth', label: 'Billar monthly', cat: 'health', weekly: true },
+    { id: 'chess',       label: 'Chess membership', cat: 'health', yearly: true },
+    { id: 'amazonPrime', label: 'Amazon Prime',   cat: 'subs', yearly: true },
+    { id: 'phone',       label: 'Phone',          cat: 'subs' },
+    { id: 'claude',      label: 'Claude',         cat: 'subs' },
+  ],
+};
+// Old Breakdown rows (your part) that became sub-lines of a SHARED line: their amounts double (full bill)
+const OLD_SHARED_SUB_IDS = ['trkBar', 'trkBarBouffe', 'trkApero', 'trkConcert', 'trkConcertBar', 'trkVacs', 'trkHome'];
 
-// Breakdown (your part): rows with `to` feed a Shared / Personal line (see LINKED below); the others are info only
-// Each group shows its rows + a subtotal; the box total sums all groups.
-const TRACKER_GROUPS = [
-  { id: 'mercado', title: 'Mercado Lunch', rows: [
-    { key: 'trkSaumon',   label: 'Saumon / Poulet', step: 1, to: 'lunch' },
-    { key: 'trkLegumes',  label: 'Légumes',   step: 1, to: 'lunch' },
-    { key: 'trkMercadoExtras',  label: 'Extras (prot bar, choco, bonbon)', step: 2 },
-  ]},
-  { id: 'smoothie', title: 'Smoothie', rows: [
-    { key: 'trkLait',     label: 'Lait',      step: 1, to: 'smoothie' },
-    { key: 'trkSmoothieNoix',   label: 'Smoothie noix',   step: 5, to: 'smoothie' },
-    { key: 'trkSmoothiePoudre', label: 'Smoothie poudre', step: 2, to: 'smoothie' },
-  ]},
-  { id: 'restos', title: 'Restos', rows: [
-    { key: 'trkSat',      label: 'SAT',       step: 5, to: 'sharedResto' },
-    { key: 'trkDelivMel', label: 'Deliv Mel', step: 2, to: 'deliveroo' },
-    { key: 'trkDelivSolo',label: 'Deliv solo',step: 2, to: 'delivSolo' },
-  ]},
-  { id: 'beer', title: 'Beer / Bar', rows: [
-    { key: 'trkBar',      label: 'Pola Bar',     step: 2, to: 'sharedBar' },
-    { key: 'trkSuperM',   label: 'Pola Super M', step: 2, to: 'beer' },
-    { key: 'trkBarBouffe',label: 'Bar Bouffe',   step: 2, to: 'sharedBar' },
-  ]},
-  { id: 'extras', title: 'Extras', rows: [
-    { key: 'trkApero',      label: 'Apéro',       step: 2,  to: 'sharedBar' },
-    { key: 'trkConcert',    label: 'Concert',     step: 5,  weekly: false, to: 'sharedExtras' },
-    { key: 'trkConcertBar', label: 'Concert bar', step: 5,  to: 'sharedExtras' },
-    { key: 'trkVacs',       label: 'Vacs',        step: 10, weekly: false, to: 'sharedExtras' },
-    { key: 'trkHome',       label: 'Home',        step: 5,  weekly: false, to: 'sharedExtras' },
-  ]},
-];
-const TRACKER_DEF = TRACKER_GROUPS.flatMap(g => g.rows);
-
-// Breakdown → Shared / Personal links. A Breakdown row with `to` feeds that line; Breakdown amounts
-// are YOUR part, so a Shared line (full bill, split 50/50) = 2 × the sum, a Personal line = the sum.
-// Linked lines have no stepper: they are set from Breakdown only (syncLinked, before every render).
-const LINKED = {};
-TRACKER_DEF.forEach(d => { if (d.to) (LINKED[d.to] = LINKED[d.to] || []).push(d.key); });
-const linkFactor = key => SHARED_DEF.some(d => d.key === key) ? 2 : 1;
-const linkLabel  = key => [...SHARED_DEF, ...PERSONAL_DEF].find(d => d.key === key)?.label || key;
-function syncLinked(s) {
-  Object.entries(LINKED).forEach(([target, srcs]) => { s[target] = linkFactor(target) * srcs.reduce((t, k) => t + (s[k] || 0), 0); });
-}
-
-// Chart slices — fn() returns the slice value from state
-const CHART_CATS = [
-  // Shared bills are paid from the joint account (both put in sharedAcc) → your half of each
-  { label: 'Rent',             color: '#3d8fe0', fn: s => s.rent / 2 },
-  { label: 'Electricity',      color: '#1aaa84', fn: s => s.electricity / 2 },
-  { label: 'Utilities & svcs', color: '#4a9fd0', fn: s => (s.internet + s.netflix) / 2 + s.insurance },
-  { label: 'Bobs',            color: '#d08a3a', fn: s => (s.bobsFood + s.bobsLitiere) / 2 },
-  { label: 'Food & going out', color: '#c47a00', fn: s => s.lunch + s.delivSolo + s.beer + (s.courses + s.sharedResto + s.deliveroo + s.sharedBar) / 2 },
-  { label: 'Health & sport',   color: '#d05830', fn: s => s.health + s.smoothie + s.billarMonth + s.billar/12 + s.chess/12 + s.drums },
-  { label: 'Subscriptions',    color: '#c04880', fn: s => s.amazonPrime/12 + s.phone + s.claude },
-  { label: 'Savings',          color: '#6a9a20', fn: s => s.savings },
-  { label: 'Extras',           color: '#909088', fn: s => s.extras + s.sharedExtras / 2 },
-];
+let layout = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
 
 // ════════════════════════════════════════════════════════════════════
-//  DEFAULT STATE
-//  Two independent scenarios. Add new keys here alongside the matching
-//  entry in SHARED_DEF or PERSONAL_DEF above.
+//  DEFAULT STATE — amounts per tab (income, Revolut, every line / sub-line id)
 // ════════════════════════════════════════════════════════════════════
 const DEFAULTS = {
   now: {
     salary: 2000, tickets: 200, mel: 40,
     rent: 1450, insurance: 25, internet: 40, netflix: 15, electricity: 120,
-    bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, deliveroo: 100, sharedBar: 200, sharedExtras: 60,
+    bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, deliveroo: 100,
     sharedAcc: 600,
-    phone: 10, claude: 20, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
-    billar: 150, billarMonth: 10, lunch: 100, delivSolo: 50, extras: 100,
+    phone: 10, claude: 20, amazonPrime: 69, beer: 30, chess: 90,
+    billar: 150, billarMonth: 10, delivSolo: 50, extras: 100,
     health: 120, drums: 10, savings: 50,
-    trkSaumon: 20, trkLait: 10, trkLegumes: 10, trkSmoothieNoix: 20, trkSmoothiePoudre: 30, trkMercadoExtras: 20, trkSat: 100, trkDelivMel: 50, trkDelivSolo: 50, trkApero: 50, trkBar: 30, trkSuperM: 30, trkBarBouffe: 30,
-    trkConcert: 50, trkConcertBar: 30, trkVacs: 200, trkHome: 50,
+    trkSaumon: 20, trkLegumes: 10, trkLait: 10, trkSmoothieNoix: 20, trkSmoothiePoudre: 30,
+    trkBar: 60, trkBarBouffe: 60, trkApero: 100, trkConcert: 100, trkConcertBar: 60, trkVacs: 400, trkHome: 100,
   },
   fire: {
     salary: 0, tickets: 500, mel: 40,
     rent: 900, insurance: 20, internet: 40, netflix: 15, electricity: 80,
-    bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, deliveroo: 100, sharedBar: 200, sharedExtras: 60,
+    bobsFood: 20, bobsLitiere: 50, courses: 200, sharedResto: 200, deliveroo: 100,
     sharedAcc: 400,
-    phone: 10, claude: 20, amazonPrime: 69, smoothie: 30, beer: 50, chess: 90,
-    billar: 150, billarMonth: 10, lunch: 60, delivSolo: 50, extras: 150,
+    phone: 10, claude: 20, amazonPrime: 69, beer: 30, chess: 90,
+    billar: 150, billarMonth: 10, delivSolo: 50, extras: 150,
     health: 120, drums: 10, savings: 0,
-    trkSaumon: 20, trkLait: 10, trkLegumes: 10, trkSmoothieNoix: 20, trkSmoothiePoudre: 30, trkMercadoExtras: 20, trkSat: 100, trkDelivMel: 50, trkDelivSolo: 50, trkApero: 50, trkBar: 30, trkSuperM: 30, trkBarBouffe: 30,
-    trkConcert: 50, trkConcertBar: 30, trkVacs: 200, trkHome: 50,
+    trkSaumon: 20, trkLegumes: 10, trkLait: 10, trkSmoothieNoix: 20, trkSmoothiePoudre: 30,
+    trkBar: 60, trkBarBouffe: 60, trkApero: 100, trkConcert: 100, trkConcertBar: 60, trkVacs: 400, trkHome: 100,
   },
 };
 
@@ -843,6 +862,10 @@ const DEFAULTS = {
 // ════════════════════════════════════════════════════════════════════
 let states = JSON.parse(JSON.stringify(DEFAULTS));
 const charts = { now: null, fire: null };
+const editing = { shared: false, personal: false };   // edit mode per box (both tabs)
+let optsOpen = null;                                   // line id whose options panel is open
+let openLines = new Set();                             // expanded lines (this device only)
+try { openLines = new Set(JSON.parse(localStorage.getItem('xpenses_open_lines') || '[]')); } catch (_) {}
 
 // ════════════════════════════════════════════════════════════════════
 //  FORMATTERS
@@ -853,15 +876,20 @@ const fmtSmart = n => (n % 1 === 0) ? fmt(n) : fmtd(n);
 // Weekly equivalent of a monthly amount (a month is 52/12 ≈ 4,33 weeks)
 const weekly   = m => m * 12 / 52;
 const fmtWeek  = m => { const w = weekly(m); return '≈ €' + w.toLocaleString('de-DE', { maximumFractionDigits: w < 10 ? 1 : 0 }) + '/wk'; };
+const esc      = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ════════════════════════════════════════════════════════════════════
 //  DERIVED VALUES
 // ════════════════════════════════════════════════════════════════════
+const hasSubs     = line => Array.isArray(line.subs) && line.subs.length > 0;
+const lineAmount  = (s, line) => hasSubs(line) ? line.subs.reduce((t, x) => t + (s[x.id] || 0), 0) : (s[line.id] || 0);
+const lineMonthly = (s, line) => lineAmount(s, line) / (line.yearly ? 12 : 1);
+// Stepper increment from the amount (no per-line setting): 1 under €30, 5 under €150, 10 above
+const stepFor = (v, dir) => { const x = dir > 0 ? v : v - 1; return x < 30 ? 1 : x < 150 ? 5 : 10; };
+
 function derived(s) {
-  const sharedTotal = SHARED_DEF.reduce((sum, def) => sum + s[def.key], 0);
-  const personalMonthly = PERSONAL_DEF.reduce((sum, def) => {
-    return sum + (def.yearly ? s[def.key] / 12 : s[def.key]);
-  }, 0);
+  const sharedTotal     = layout.shared.reduce((t, l) => t + lineMonthly(s, l), 0);
+  const personalMonthly = layout.personal.reduce((t, l) => t + lineMonthly(s, l), 0);
   // Joint Revolut pot: both put in sharedAcc; shared bills are paid from it.
   const sharedPool = s.sharedAcc * 2;
   const sharedLeft = sharedPool - sharedTotal;
@@ -873,13 +901,42 @@ function derived(s) {
   const leftover = income - net;
   return { sharedTotal, sharedPool, sharedLeft, personalMonthly, gross, net, income, leftover };
 }
+// Donut: your monthly cost per category (your half of shared lines) — sums to derived().gross
+function donutCats(s) {
+  const catOf = l => CATS.some(k => k.id === l.cat) ? l.cat : 'extras';
+  return CATS.map(c => ({ ...c, value:
+    layout.shared.filter(l => catOf(l) === c.id).reduce((t, l) => t + lineMonthly(s, l) / 2, 0) +
+    layout.personal.filter(l => catOf(l) === c.id).reduce((t, l) => t + lineMonthly(s, l), 0) }));
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  LAYOUT VALIDATION & MIGRATION
+// ════════════════════════════════════════════════════════════════════
+function validLayout(l) {
+  const ok = arr => Array.isArray(arr) && arr.every(x => x && typeof x.id === 'string' && typeof x.label === 'string' &&
+    (x.subs === undefined || (Array.isArray(x.subs) && x.subs.every(y => y && typeof y.id === 'string' && typeof y.label === 'string'))));
+  return !!l && ok(l.shared) && ok(l.personal);
+}
+// Apply a saved payload { now, fire, layout? }. Saves from before editable lines (no layout) used a
+// Breakdown in "your part": its rows that are now sub-lines of a Shared line are doubled (full bill).
+function applySaved(saved) {
+  if (!saved || !saved.now || !saved.fire) return false;
+  const old = !validLayout(saved.layout);
+  ['now', 'fire'].forEach(tab => {
+    const src = { ...saved[tab] };
+    if (old) OLD_SHARED_SUB_IDS.forEach(k => { if (typeof src[k] === 'number') src[k] *= 2; });
+    states[tab] = { ...DEFAULTS[tab], ...src };
+  });
+  layout = old ? JSON.parse(JSON.stringify(DEFAULT_LAYOUT)) : saved.layout;
+  return true;
+}
 
 // ════════════════════════════════════════════════════════════════════
 //  LOCAL STORAGE
 // ════════════════════════════════════════════════════════════════════
 function saveLocal(tab) {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(states));
+    localStorage.setItem(LS_KEY, JSON.stringify({ ...states, layout }));
     showToast(tab === 'now' ? 'Now · saved' : tab === 'fire' ? 'FIRE · saved' : 'Saved');
     cloudSave();
   } catch (_) {}
@@ -888,12 +945,7 @@ function saveLocal(tab) {
 function loadLocal() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    if (saved.now && saved.fire) {
-      states.now  = { ...DEFAULTS.now,  ...saved.now  };
-      states.fire = { ...DEFAULTS.fire, ...saved.fire };
-    }
+    if (raw) applySaved(JSON.parse(raw));
   } catch (_) {}
 }
 
@@ -926,7 +978,6 @@ function cfSetStatus(ok) {
 function hubSummary() {
   const hub = {};
   ['now', 'fire'].forEach(tab => {
-    syncLinked(states[tab]);
     const d = derived(states[tab]);
     hub[tab] = { leftover: Math.round(d.leftover), net: Math.round(d.net), income: Math.round(d.income) };
   });
@@ -934,7 +985,7 @@ function hubSummary() {
 }
 
 let cfSaveTimer = null;
-function cloudPayload() { return { savedAt: new Date().toISOString(), ...states, hub: hubSummary() }; }
+function cloudPayload() { return { savedAt: new Date().toISOString(), ...states, layout, hub: hubSummary() }; }
 async function cloudSave() {
   clearTimeout(cfSaveTimer);
   CLOUD.stage(cloudPayload());   // kept as pending now, so leaving before the upload loses nothing
@@ -956,9 +1007,7 @@ LifeSync.onLeave(() => { if (cfSaveTimer) { clearTimeout(cfSaveTimer); cloudPush
 async function cloudLoad() {
   try {
     const data = await CLOUD.get();
-    if (data && data.now && data.fire) {
-      states.now  = { ...DEFAULTS.now,  ...data.now  };
-      states.fire = { ...DEFAULTS.fire, ...data.fire };
+    if (applySaved(data)) {
       saveLocal(null);
       render('now');
       render('fire');
@@ -1000,11 +1049,9 @@ const DRIVE = LifeDrive.create({
   filename: DRIVE_FILENAME,
   status: driveSetStatus,
   busy: driveSetBusy,
-  payload: () => states,
+  payload: () => ({ ...states, layout }),
   apply: saved => {
-      if (!saved.now || !saved.fire) throw new Error('invalid');
-      states.now  = { ...DEFAULTS.now,  ...saved.now  };
-      states.fire = { ...DEFAULTS.fire, ...saved.fire };
+      if (!applySaved(saved)) throw new Error('invalid');
       saveLocal(null);
       render('now');
       render('fire');
@@ -1029,16 +1076,6 @@ function makeSpin(containerId, tab, key, step, min = 0) {
 //  BUILD CARD — generates HTML for one tab, then wires all spinners
 // ════════════════════════════════════════════════════════════════════
 function buildCard(tab) {
-  const rowsHTML = defs => defs.map(def => `
-    <div class="erow">
-      <span class="ename">${def.label}${def.to ? `<span class="link-tag">→ ${linkLabel(def.to)}${linkFactor(def.to) === 2 ? ' ×2' : ''}</span>` : ''}</span>
-      <span class="enote" id="${tab}-note-${def.key}"></span>
-      ${LINKED[def.key]
-        ? `<div class="spin-wrap" title="Set from Breakdown"><div class="spin-val linked-val" id="${tab}-sv-${def.key}"></div></div>`
-        : `<div class="spin-wrap" id="${tab}-spin-${def.key}"></div>`}
-      <span class="eamt" id="${tab}-amt-${def.key}">—</span>
-    </div>`).join('');
-
   document.getElementById(`card-${tab}`).innerHTML = `
     <p class="section-label">Monthly income</p>
     <div class="income-grid">
@@ -1092,38 +1129,21 @@ function buildCard(tab) {
     </div>
 
     <div class="box-shared" id="${tab}-box-shared">
-      <div class="box-title" onclick="toggleBox('${tab}-box-shared')">
+      <div class="box-title" onclick="toggleBox('${tab}-box-shared', event)">
         <span>Shared expenses — paid from Revolut</span>
-        <span class="box-chevron">▼</span>
+        <span class="box-actions"><button class="box-edit" id="${tab}-shared-edit" data-act="edit" data-sec="shared">✎ Edit</button><span class="box-chevron">▼</span></span>
       </div>
-      <div class="expense-rows split-grid">
-        <div class="erow erow-head"><span></span><span></span><span class="ch">Paid by both</span><span class="ch">Your half</span></div>
-        ${rowsHTML(SHARED_DEF)}
-        <div class="erow erow-total"><span>Total</span><span></span><span class="tt" id="${tab}-total-shared">—</span><span class="eamt" id="${tab}-half-shared">—</span></div>
-      </div>
+      <div id="${tab}-shared-body"></div>
       <div class="section-total sa-left" id="${tab}-sa-left-row"><span>Left in Revolut</span><span><span id="${tab}-sa-left">—</span><span class="sa-pct" id="${tab}-sa-left-pct"></span></span></div>
     </div>
 
     <div class="box-personal" id="${tab}-box-personal">
-      <div class="box-title" onclick="toggleBox('${tab}-box-personal')">
+      <div class="box-title" onclick="toggleBox('${tab}-box-personal', event)">
         <span>Personal expenses</span>
-        <span class="box-chevron">▼</span>
+        <span class="box-actions"><button class="box-edit" id="${tab}-personal-edit" data-act="edit" data-sec="personal">✎ Edit</button><span class="box-chevron">▼</span></span>
       </div>
-      <div class="expense-rows">${rowsHTML(PERSONAL_DEF)}</div>
+      <div id="${tab}-personal-body"></div>
       <div class="section-total"><span>Total personal expenses</span><span id="${tab}-total-personal">—</span></div>
-    </div>
-
-    <div class="box-tracker" id="${tab}-box-tracker">
-      <div class="box-title" onclick="toggleBox('${tab}-box-tracker')">
-        <span>Breakdown<span class="box-title-note">· your part · rows with → fill Shared / Personal</span></span>
-        <span class="box-chevron">▼</span>
-      </div>
-      <div class="expense-rows">${TRACKER_GROUPS.map(g => `
-        <div class="trk-group-title">${g.title}</div>
-        ${rowsHTML(g.rows)}
-        <div class="trk-subtotal"><span>Subtotal ${g.title}</span><span id="${tab}-sub-tracker-${g.id}">—</span></div>`).join('')}
-      </div>
-      <div class="section-total"><span>Total (your part)</span><span id="${tab}-total-tracker">—</span></div>
     </div>
 
     <hr class="divider">
@@ -1136,9 +1156,9 @@ function buildCard(tab) {
   makeSpin(`${tab}-spin-tickets`,      tab, 'tickets',      10);
   makeSpin(`${tab}-spin-mel`,          tab, 'mel',          1);
   makeSpin(`${tab}-spin-sharedAcc`,    tab, 'sharedAcc',    50);
-  SHARED_DEF.forEach(def   => { if (!LINKED[def.key]) makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step); });
-  PERSONAL_DEF.forEach(def => { if (!LINKED[def.key]) makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step); });
-  TRACKER_DEF.forEach(def  => makeSpin(`${tab}-spin-${def.key}`, tab, def.key, def.step));
+  const card = document.getElementById(`card-${tab}`);
+  card.addEventListener('click', ev => onSectionClick(tab, ev));
+  card.addEventListener('change', onSectionChange);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1146,8 +1166,9 @@ function buildCard(tab) {
 // ════════════════════════════════════════════════════════════════════
 function render(tab) {
   const s = states[tab];
-  syncLinked(s);
   const d = derived(s);
+  renderSection(tab, 'shared');
+  renderSection(tab, 'personal');
   const p = tab + '-';
 
   document.getElementById(`${p}sv-salary`).textContent   = fmt(s.salary);
@@ -1172,13 +1193,10 @@ function render(tab) {
     outputs.savedAt = new Date().toISOString();
     localStorage.setItem('xpenses_calculator_outputs', JSON.stringify(outputs));
   } catch (_) {}
-  SHARED_DEF.forEach(def => {
-    document.getElementById(`${p}note-${def.key}`).textContent = def.weekly ? fmtWeek(s[def.key]) : '';   // weekly of the full shared bill
-    document.getElementById(`${p}sv-${def.key}`).textContent  = fmt(s[def.key]);
-    document.getElementById(`${p}amt-${def.key}`).textContent = fmtSmart(s[def.key] / 2); // your half
-  });
-  document.getElementById(`${p}total-shared`).textContent = fmt(d.sharedTotal);
-  document.getElementById(`${p}half-shared`).textContent  = fmtSmart(d.sharedTotal / 2);
+  if (!editing.shared) {
+    document.getElementById(`${p}total-shared`).textContent = fmt(d.sharedTotal);
+    document.getElementById(`${p}half-shared`).textContent  = fmtSmart(d.sharedTotal / 2);
+  }
   document.getElementById(`${p}sa-left`).textContent       = (d.sharedLeft < 0 ? '−' : '') + fmt(Math.abs(d.sharedLeft));
   document.getElementById(`${p}sa-left-pct`).textContent   = d.sharedPool > 0 ? (d.sharedLeft >= 0 ? `${Math.round(d.sharedLeft / d.sharedPool * 100)}% of ${fmt(d.sharedPool)}` : `over ${fmt(d.sharedPool)} · you top up ${fmt(-d.sharedLeft / 2)}`) : '';
   document.getElementById(`${p}sa-left-row`).classList.toggle('pos', d.sharedLeft >= 0);
@@ -1188,28 +1206,9 @@ function render(tab) {
   document.getElementById(`${p}sa-note`).textContent       = `each puts in €${s.sharedAcc}`;
   document.getElementById(`${p}sa-total`).textContent      = fmt(d.sharedPool);
 
-  PERSONAL_DEF.forEach(def => {
-    const raw     = s[def.key];
-    const monthly = def.yearly ? raw / 12 : raw;
-    document.getElementById(`${p}sv-${def.key}`).textContent   = fmt(raw);
-    document.getElementById(`${p}amt-${def.key}`).textContent  = fmtSmart(monthly);
-    document.getElementById(`${p}note-${def.key}`).textContent = def.yearly ? `€${raw}/yr → €${(raw / 12).toFixed(2)}/mo` : def.weekly ? fmtWeek(raw) : '';
-  });
   document.getElementById(`${p}total-personal`).textContent = fmt(d.personalMonthly);
 
-  // Info-only tracker — deliberately outside derived()
-  TRACKER_DEF.forEach(def => {
-    document.getElementById(`${p}note-${def.key}`).textContent = def.weekly === false ? '' : fmtWeek(s[def.key]);
-    document.getElementById(`${p}sv-${def.key}`).textContent  = fmt(s[def.key]);
-    document.getElementById(`${p}amt-${def.key}`).textContent = fmt(s[def.key]);
-  });
-  TRACKER_GROUPS.forEach(g => {
-    document.getElementById(`${p}sub-tracker-${g.id}`).textContent = fmt(g.rows.reduce((sum, def) => sum + s[def.key], 0));
-  });
-  document.getElementById(`${p}total-tracker`).textContent = fmt(TRACKER_DEF.reduce((sum, def) => sum + s[def.key], 0));
-
-
-  const cats      = CHART_CATS.map(c => ({ ...c, value: c.fn(s) }));
+  const cats      = donutCats(s);
   const isDark    = window.matchMedia('(prefers-color-scheme:dark)').matches;
   const borderCol = isDark ? '#1e1d1b' : '#ffffff';
 
@@ -1246,9 +1245,177 @@ function render(tab) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+//  EXPENSE SECTIONS — normal view (steppers, ▸/▾ sub-lines) and edit mode
+// ════════════════════════════════════════════════════════════════════
+const SEC_NAME = { shared: 'Shared', personal: 'Personal' };
+
+function stepperHTML(tab, id, value) {
+  return `<div class="spin-wrap" id="${tab}-spin-${id}"><button data-act="dec" data-id="${id}" aria-label="Minus">−</button>` +
+         `<div class="spin-val" id="${tab}-sv-${id}">${fmt(value)}</div><button data-act="inc" data-id="${id}" aria-label="Plus">+</button></div>`;
+}
+
+function linesHTML(tab, sec) {
+  const s = states[tab];
+  return layout[sec].map(line => {
+    const raw = lineAmount(s, line), monthly = raw / (line.yearly ? 12 : 1), subs = hasSubs(line), open = subs && openLines.has(line.id);
+    const note = line.yearly ? `€${fmt(raw).slice(1)}/yr → €${(raw / 12).toFixed(2).replace('.', ',')}/mo` : line.weekly ? fmtWeek(monthly) : '';
+    const amt  = sec === 'shared' ? fmtSmart(monthly / 2) : fmtSmart(monthly);
+    let h = `<div class="erow${subs ? ' has-subs' : ''}" data-line="${line.id}">
+      <span class="ename">${subs ? `<button class="ln-toggle" data-act="toggle" data-id="${line.id}" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(line.label)}">${open ? '▾' : '▸'}</button>` : ''}${esc(line.label)}${subs ? `<span class="ln-count">· ${line.subs.length}</span>` : ''}</span>
+      <span class="enote" id="${tab}-note-${line.id}">${note}</span>
+      ${subs ? `<div class="spin-wrap"><div class="spin-val sum-val" id="${tab}-sv-${line.id}">${fmt(raw)}</div></div>` : stepperHTML(tab, line.id, raw)}
+      <span class="eamt" id="${tab}-amt-${line.id}">${amt}</span>
+    </div>`;
+    if (open) line.subs.forEach(x => {
+      const v = s[x.id] || 0;
+      h += `<div class="erow sub">
+        <span class="ename">${esc(x.label)}</span>
+        <span class="enote" id="${tab}-note-${x.id}">${line.weekly && !line.yearly ? fmtWeek(v) : ''}</span>
+        ${stepperHTML(tab, x.id, v)}
+        <span class="eamt"></span>
+      </div>`;
+    });
+    return h;
+  }).join('');
+}
+
+function editHTML(sec) {
+  const n = layout[sec].length;
+  const btn = (act, attrs, label, txt, cls = '') => `<button class="ed-btn ${cls}" data-act="${act}" ${attrs} aria-label="${label}">${txt}</button>`;
+  return `<div class="edit-list">` + layout[sec].map((line, i) => {
+    const a = `data-sec="${sec}" data-id="${line.id}"`;
+    let h = `<div class="ed-line">
+      <div class="ed-row">
+        <div class="ed-move">
+          <button data-act="up" ${a} aria-label="Move ${esc(line.label)} up"${i === 0 ? ' disabled' : ''}>▲</button>
+          <button data-act="down" ${a} aria-label="Move ${esc(line.label)} down"${i === n - 1 ? ' disabled' : ''}>▼</button>
+        </div>
+        <input class="ed-name" data-act="rename" ${a} value="${esc(line.label)}" aria-label="Line name">
+        ${btn('addsub', a, 'Add sub-line to ' + esc(line.label), '＋↳', 'ed-add')}
+        ${btn('opts', a, 'Options for ' + esc(line.label), '⋯', optsOpen === line.id ? 'on' : '')}
+        ${btn('del', a, 'Delete ' + esc(line.label), '🗑', 'ed-del')}
+      </div>`;
+    if (optsOpen === line.id) h += `<div class="ed-opts">
+        <label><span>Donut category</span><select data-act="cat" ${a}>${CATS.map(c => `<option value="${c.id}"${c.id === line.cat ? ' selected' : ''}>${esc(c.label)}</option>`).join('')}</select></label>
+        <label><span>Show ≈ per week</span><input type="checkbox" data-act="weekly" ${a}${line.weekly ? ' checked' : ''}></label>
+        <label><span>Amount is yearly (/12)</span><input type="checkbox" data-act="yearly" ${a}${line.yearly ? ' checked' : ''}></label>
+      </div>`;
+    if (hasSubs(line)) h += `<div class="ed-subs">` + line.subs.map(x => `<div class="ed-row">
+        <input class="ed-name ed-sub" data-act="renamesub" ${a} data-sub="${x.id}" value="${esc(x.label)}" aria-label="Sub-line name">
+        ${btn('delsub', `${a} data-sub="${x.id}"`, 'Delete ' + esc(x.label), '🗑', 'ed-del')}
+      </div>`).join('') + `<button class="ed-addsub" data-act="addsub" ${a}>＋ Add sub-line</button></div>`;
+    return h + `</div>`;
+  }).join('') + `<button class="ed-addline" data-act="addline" data-sec="${sec}">＋ Add line to ${SEC_NAME[sec]}</button>
+    <p class="ed-hint">Amounts are set with the steppers outside edit mode. Changes apply to Now and FIRE.</p></div>`;
+}
+
+function renderSection(tab, sec) {
+  const body = document.getElementById(`${tab}-${sec}-body`);
+  const btn  = document.getElementById(`${tab}-${sec}-edit`);
+  btn.textContent = editing[sec] ? 'Done' : '✎ Edit';
+  btn.classList.toggle('on', editing[sec]);
+  document.getElementById(`${tab}-box-${sec}`).classList.toggle('box-editing', editing[sec]);
+  if (editing[sec]) { body.innerHTML = editHTML(sec); return; }
+  body.innerHTML = sec === 'shared'
+    ? `<div class="expense-rows split-grid">
+        <div class="erow erow-head"><span></span><span></span><span class="ch">Paid by both</span><span class="ch">Your half</span></div>
+        ${linesHTML(tab, sec)}
+        <div class="erow erow-total"><span>Total</span><span></span><span class="tt" id="${tab}-total-shared">—</span><span class="eamt" id="${tab}-half-shared">—</span></div>
+      </div>`
+    : `<div class="expense-rows">${linesHTML(tab, sec)}</div>`;
+}
+
+// ── Layout edits (both tabs share the layout) ──
+const findLine = (sec, id) => layout[sec].find(l => l.id === id);
+const newId = () => 'l' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+let undoItem = null, undoTimer = null;
+function offerUndo(msg, restore) {
+  undoItem = restore;
+  document.getElementById('undo-msg').textContent = msg;
+  document.getElementById('undo-bar').classList.add('show');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => { document.getElementById('undo-bar').classList.remove('show'); undoItem = null; }, 6000);
+}
+function layoutChanged(focusSel) {
+  saveLocal(null);
+  ['now', 'fire'].forEach(render);
+  if (focusSel) setTimeout(() => { const el = document.querySelector(`.tab-pane.active ${focusSel}`); if (el) { el.focus(); el.select(); } }, 0);
+}
+function saveOpen() { try { localStorage.setItem('xpenses_open_lines', JSON.stringify([...openLines])); } catch (_) {} }
+
+function onSectionClick(tab, ev) {
+  const b = ev.target.closest('[data-act]');
+  if (!b || b.tagName === 'INPUT' || b.tagName === 'SELECT') return;
+  const act = b.dataset.act, id = b.dataset.id, sec = b.dataset.sec;
+  if (act === 'inc' || act === 'dec') {
+    const s = states[tab], v = s[id] || 0, dir = act === 'inc' ? 1 : -1;
+    s[id] = Math.max(0, v + dir * stepFor(v, dir));
+    render(tab); saveLocal(tab); return;
+  }
+  if (act === 'toggle') { openLines.has(id) ? openLines.delete(id) : openLines.add(id); saveOpen(); render(tab); return; }
+  if (act === 'edit') { editing[sec] = !editing[sec]; optsOpen = null; document.getElementById(`${tab}-box-${sec}`).classList.remove('box-collapsed'); ['now', 'fire'].forEach(render); return; }
+  if (act === 'opts') { optsOpen = optsOpen === id ? null : id; ['now', 'fire'].forEach(render); return; }
+  const list = layout[sec];
+  const i = list.findIndex(l => l.id === id), line = list[i];
+  if (act === 'up' || act === 'down') {
+    const j = act === 'up' ? i - 1 : i + 1; if (j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]]; layoutChanged(); return;
+  }
+  if (act === 'del') {
+    list.splice(i, 1);
+    layoutChanged();
+    offerUndo(`“${line.label}” deleted`, () => { list.splice(Math.min(i, list.length), 0, line); layoutChanged(); });
+    return;
+  }
+  if (act === 'addsub') {
+    const sid = newId();
+    if (!hasSubs(line)) {   // first detail line keeps the line's current amount, so the total does not change
+      line.subs = [{ id: sid, label: line.label }];
+      ['now', 'fire'].forEach(t => { states[t][sid] = states[t][line.id] || 0; });
+    } else {
+      line.subs.push({ id: sid, label: 'New item' });
+      ['now', 'fire'].forEach(t => { states[t][sid] = 0; });
+    }
+    openLines.add(line.id); saveOpen();
+    layoutChanged(`[data-sub="${sid}"]`); return;
+  }
+  if (act === 'delsub') {
+    const k = line.subs.findIndex(x => x.id === b.dataset.sub), sub = line.subs[k];
+    line.subs.splice(k, 1);
+    if (!line.subs.length) delete line.subs;
+    layoutChanged();
+    offerUndo(`“${sub.label}” deleted`, () => { line.subs = line.subs || []; line.subs.splice(Math.min(k, line.subs.length), 0, sub); layoutChanged(); });
+    return;
+  }
+  if (act === 'addline') {
+    const nid = newId();
+    layout[sec].push({ id: nid, label: 'New line', cat: 'extras' });
+    ['now', 'fire'].forEach(t => { states[t][nid] = 0; });
+    layoutChanged(`[data-act="rename"][data-id="${nid}"]`); return;
+  }
+}
+function onSectionChange(ev) {
+  const el = ev.target, act = el.dataset.act; if (!act) return;
+  const line = findLine(el.dataset.sec, el.dataset.id); if (!line) return;
+  if (act === 'rename' || act === 'renamesub') {   // no re-render, so focus can move to the next field
+    const v = el.value.trim(), x = act === 'rename' ? line : line.subs.find(y => y.id === el.dataset.sub);
+    if (x && v) x.label = v; else el.value = x ? x.label : el.value;
+    saveLocal(null); return;
+  }
+  if (act === 'cat')       line.cat = el.value;
+  if (act === 'weekly')    { if (el.checked) line.weekly = true; else delete line.weekly; }
+  if (act === 'yearly')    { if (el.checked) line.yearly = true; else delete line.yearly; }
+  layoutChanged();
+}
+document.getElementById('undo-btn').addEventListener('click', () => {
+  const f = undoItem; undoItem = null; document.getElementById('undo-bar').classList.remove('show'); if (f) f();
+});
+
+// ════════════════════════════════════════════════════════════════════
 //  COLLAPSIBLE BOXES
 // ════════════════════════════════════════════════════════════════════
-function toggleBox(id) {
+function toggleBox(id, ev) {
+  if (ev && ev.target.closest('button')) return;   // ✎ Edit sits in the title bar
   document.getElementById(id).classList.toggle('box-collapsed');
 }
 

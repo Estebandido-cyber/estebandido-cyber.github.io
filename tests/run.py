@@ -388,86 +388,131 @@ def offline_mode_service_worker(b):
 def xpenses_calculator_rules(b):
     ctx = new_context(b, FakeWorker())
     pg, errs = open_page(ctx, 'XPENSES_CALCULATOR.html'); pg.wait_for_timeout(500)
+    ev = pg.evaluate
+    approx = lambda a, e, what: abs(a - e) < 1e-6 or (_ for _ in ()).throw(AssertionError(f'{what}: {a} ≠ {e}'))
     for tab in ('now', 'fire'):
-        # Own inputs: every row gets a distinct value (rows are discovered, so new rows are covered automatically)
-        pg.evaluate("""tab => {
-            const s = states[tab];
-            SHARED_DEF.forEach((d, i) => s[d.key] = 100 + 10 * i);
-            PERSONAL_DEF.forEach((d, i) => s[d.key] = 12 + 12 * i);
+        ev("tab => switchTab(tab)", tab)
+        # Own inputs: every line and sub-line gets a distinct value (lines are discovered from the layout)
+        ev("""tab => { const s = states[tab]; let i = 0;
+            SECTIONS.forEach(sec => layout[sec].forEach(l => { s[l.id] = 100 + 10 * i++; (l.subs || []).forEach(x => { s[x.id] = 7 + 3 * i++; }); }));
             Object.assign(s, { sharedAcc: 1000, salary: 2000, tickets: 200, mel: 41 });
+            layout.shared.concat(layout.personal).forEach(l => { if (l.subs) openLines.add(l.id); });
             render(tab); }""", tab)
-        r = pg.evaluate("""tab => {
+        r = ev("""tab => {
             const s = states[tab], d = derived(s), g = id => document.getElementById(tab + '-' + id).textContent;
-            return { s, d,
-              shared:   SHARED_DEF.map(x => ({ v: s[x.key], shown: g('amt-' + x.key) })),
-              personal: PERSONAL_DEF.map(x => ({ v: s[x.key], yearly: !!x.yearly })),
-              donut:    charts[tab].data.datasets[0].data.reduce((a, b) => a + b, 0),
-              show: { gross: g('m-gross'), left: g('m-leftover'), year: g('m-year'), pool: g('sa-total'), saLeft: g('sa-left'), half: g('half-shared') },
-              fmt: { gross: fmt(d.gross), left: fmt(d.leftover), year: fmt(d.leftover * 12), pool: fmt(d.sharedPool),
-                     saLeft: (d.sharedLeft < 0 ? '−' : '') + fmt(Math.abs(d.sharedLeft)), half: fmtSmart(d.sharedTotal / 2) },
-              halves: SHARED_DEF.map(x => fmtSmart(s[x.key] / 2)) }; }""", tab)
-        s, d = r['s'], r['d']
-        shared_total = sum(x['v'] for x in r['shared'])
-        personal = sum(x['v'] / 12 if x['yearly'] else x['v'] for x in r['personal'])
-        approx = lambda a, e, what: abs(a - e) < 1e-6 or (_ for _ in ()).throw(AssertionError(f'[{tab}] {what}: {a} ≠ {e}'))
-        approx(d['sharedTotal'], shared_total, 'shared total = sum of shared rows')
-        approx(d['gross'], shared_total / 2 + personal, 'Your expenses = half of shared + personal')
-        approx(d['income'], s['salary'] + s['tickets'] + s['mel'], 'income counts the partner (Mel) once')
-        approx(d['leftover'], d['income'] - d['gross'], 'left at end of month = income − expenses')
-        approx(d['sharedPool'], 2 * s['sharedAcc'], 'Revolut pot = 2 × each contribution')
-        approx(d['sharedLeft'], d['sharedPool'] - shared_total, 'left in Revolut = pot − shared bills')
-        approx(r['donut'], d['gross'], 'donut adds up to Your expenses')
-        for k in ('gross', 'left', 'year', 'pool', 'saLeft', 'half'):
-            assert r['show'][k] == r['fmt'][k], f'[{tab}] displayed {k} {r["show"][k]!r} ≠ {r["fmt"][k]!r}'
-        assert [x['shown'] for x in r['shared']] == r['halves'], f'[{tab}] "Your half" column wrong'
-        # Mel must not change expenses; a shared stepper must move "Left at end of month" by half its step
-        before = pg.evaluate("tab => derived(states[tab])", tab)
-        pg.evaluate("tab => { states[tab].mel += 100; render(tab); }", tab)
-        after = pg.evaluate("tab => derived(states[tab])", tab)
-        approx(after['gross'], before['gross'], 'partner contribution must not change expenses')
-        first = pg.evaluate("() => SHARED_DEF[0]")
-        lb = pg.evaluate("tab => derived(states[tab]).leftover", tab)
-        pg.evaluate("tab => switchTab(tab)", tab)
-        pg.locator(f"#{tab}-spin-{first['key']} button").last.click()
-        la = pg.evaluate("tab => derived(states[tab]).leftover", tab)
-        approx(lb - la, first['step'] / 2, 'a shared stepper moves Left at end of month by half its step')
-        # Breakdown: rows without a link change nothing else; its total is the sum of its rows
-        tb = pg.evaluate("tab => ({ d: derived(states[tab]), donut: charts[tab].data.datasets[0].data.reduce((a, b) => a + b, 0) })", tab)
-        tk = pg.evaluate("() => TRACKER_DEF.find(d => !d.to)")
-        pg.locator(f"#{tab}-spin-{tk['key']} button").last.click()
-        ta = pg.evaluate("""tab => ({ d: derived(states[tab]), donut: charts[tab].data.datasets[0].data.reduce((a, b) => a + b, 0),
-            total: document.getElementById(tab + '-total-tracker').textContent,
-            want: fmt(TRACKER_DEF.reduce((s, x) => s + states[tab][x.key], 0)) })""", tab)
-        assert ta['d'] == tb['d'], f'[{tab}] unlinked Breakdown row changed totals'
-        approx(ta['donut'], tb['donut'], 'unlinked Breakdown row must not change the donut')
-        # Linked rows: Shared line = 2 × sum of its Breakdown rows (your part), Personal line = sum; no stepper on them;
-        # +step on any linked Breakdown row costs you exactly step (your half of 2 × step, or step)
-        lk = pg.evaluate("""tab => Object.entries(LINKED).map(([t, srcs]) => ({ t, got: states[tab][t], want: linkFactor(t) * srcs.reduce((a, k) => a + states[tab][k], 0),
-            buttons: document.querySelectorAll('#' + tab + '-spin-' + t + ' button').length }))""", tab)
-        assert lk and all(abs(x['got'] - x['want']) < 1e-9 and x['buttons'] == 0 for x in lk), f'[{tab}] links wrong: {lk}'
-        for src in pg.evaluate("() => TRACKER_DEF.filter(d => d.to).map(d => ({ key: d.key, step: d.step }))"):
-            lb = pg.evaluate("tab => derived(states[tab]).leftover", tab)
-            pg.locator(f"#{tab}-spin-{src['key']} button").last.click()
-            approx(lb - pg.evaluate("tab => derived(states[tab]).leftover", tab), src['step'], f"linked {src['key']} costs its step")
-        assert ta['total'] == ta['want'], f'[{tab}] tracker total {ta["total"]!r} ≠ {ta["want"]!r}'
-        # Weekly hint = monthly × 12 / 52, on flagged variable rows and every Breakdown row; none on fixed bills
-        wk = pg.evaluate("""tab => [...SHARED_DEF, ...PERSONAL_DEF, ...TRACKER_DEF].map(d => ({ key: d.key,
-            want: (d.weekly || (TRACKER_DEF.includes(d) && d.weekly !== false)) && !d.yearly ? fmtWeek(states[tab][d.key]) : (d.yearly ? null : ''),
-            shown: document.getElementById(tab + '-note-' + d.key).textContent }))""", tab)
-        bad = [x for x in wk if x['want'] is not None and x['shown'] != x['want']]
-        assert not bad, f'[{tab}] weekly hints wrong: {bad[:3]}'
-        approx(pg.evaluate("() => weekly(260)"), 60, 'weekly = monthly × 12 / 52')
-        sub = pg.evaluate("""tab => TRACKER_GROUPS.map(g => [document.getElementById(tab + '-sub-tracker-' + g.id).textContent,
-            fmt(g.rows.reduce((s, x) => s + states[tab][x.key], 0))])""", tab)
-        assert all(a == b for a, b in sub), f'[{tab}] tracker subtotals wrong: {sub}'
-        # Every expense box collapses (rows hidden) and expands again
-        for box in ('shared', 'personal', 'tracker'):
+            const val = l => (l.subs && l.subs.length ? l.subs.reduce((t, x) => t + s[x.id], 0) : s[l.id]) / (l.yearly ? 12 : 1);
+            return { s, d, shared: layout.shared.map(val), personal: layout.personal.map(val),
+              halves: layout.shared.map(l => [g('amt-' + l.id), fmtSmart(val(l) / 2)]),
+              sums: layout.shared.concat(layout.personal).filter(l => l.subs && l.subs.length).map(l => ({ id: l.id,
+                shown: g('sv-' + l.id), want: fmt(l.subs.reduce((t, x) => t + s[x.id], 0)), buttons: document.querySelectorAll('#' + tab + '-spin-' + l.id + ' button').length })),
+              donut: charts[tab].data.datasets[0].data.reduce((a, b) => a + b, 0),
+              show: { gross: g('m-gross'), left: g('m-leftover'), pool: g('sa-total'), half: g('half-shared'), pers: g('total-personal') },
+              fmt: { gross: fmt(d.gross), left: fmt(d.leftover), pool: fmt(d.sharedPool), half: fmtSmart(d.sharedTotal / 2), pers: fmt(d.personalMonthly) } }; }""", tab)
+        d, s = r['d'], r['s']
+        approx(d['sharedTotal'], sum(r['shared']), f'[{tab}] shared total = lines (sub-line sums, yearly / 12)')
+        approx(d['gross'], sum(r['shared']) / 2 + sum(r['personal']), f'[{tab}] Your expenses = half of shared + personal')
+        approx(d['income'], s['salary'] + s['tickets'] + s['mel'], f'[{tab}] income counts the partner (Mel) once')
+        approx(d['leftover'], d['income'] - d['gross'], f'[{tab}] left = income − expenses')
+        approx(d['sharedPool'], 2 * s['sharedAcc'], f'[{tab}] Revolut pot = 2 × each contribution')
+        approx(r['donut'], d['gross'], f'[{tab}] donut adds up to Your expenses')
+        assert r['show'] == r['fmt'], f'[{tab}] displayed totals {r["show"]} ≠ {r["fmt"]}'
+        assert all(a == b for a, b in r['halves']), f'[{tab}] "Your half" column wrong: {r["halves"]}'
+        assert r['sums'] and all(x['shown'] == x['want'] and x['buttons'] == 0 for x in r['sums']), f'[{tab}] sub-line sums wrong: {r["sums"]}'
+        # Steppers: a shared line or sub-line costs you half its step, a personal one its full step
+        for sec, factor in (('shared', 0.5), ('personal', 1)):
+            for pick in ("l => !l.subs && !l.yearly", "l => l.subs && l.subs.length"):
+                target = ev(f"sec => {{ const l = layout[sec].find({pick}); return l ? (l.subs ? l.subs[0].id : l.id) : null; }}", sec)
+                if not target: continue
+                v0 = ev("([tab, id]) => states[tab][id]", [tab, target]); lb = ev("tab => derived(states[tab]).leftover", tab)
+                pg.locator(f"#{tab}-spin-{target} button").last.click()
+                stp = ev("([tab, id]) => states[tab][id]", [tab, target]) - v0
+                assert stp == ev("v => stepFor(v, 1)", v0) and stp > 0, (sec, target, stp)
+                approx(lb - ev("tab => derived(states[tab]).leftover", tab), stp * factor, f'[{tab}] {sec} {target} stepper effect')
+        # Mel must not change expenses
+        before = ev("tab => derived(states[tab]).gross", tab)
+        ev("tab => { states[tab].mel += 100; render(tab); }", tab)
+        approx(ev("tab => derived(states[tab]).gross", tab), before, f'[{tab}] partner contribution must not change expenses')
+        # Weekly hint = monthly × 12 / 52 on weekly lines (and their open sub-lines); none on the others
+        wk = ev("""tab => { const s = states[tab], out = [];
+            layout.shared.concat(layout.personal).forEach(l => {
+              const raw = l.subs && l.subs.length ? l.subs.reduce((t, x) => t + s[x.id], 0) : s[l.id];
+              if (!l.yearly) out.push([document.getElementById(tab + '-note-' + l.id).textContent, l.weekly ? fmtWeek(raw) : '']);
+              (l.subs || []).forEach(x => out.push([document.getElementById(tab + '-note-' + x.id).textContent, l.weekly && !l.yearly ? fmtWeek(s[x.id]) : '']));
+            }); return out; }""", tab)
+        assert all(a == b for a, b in wk), f'[{tab}] weekly hints wrong: {[x for x in wk if x[0] != x[1]][:3]}'
+        approx(ev("() => weekly(260)"), 60, 'weekly = monthly × 12 / 52')
+        # Both boxes collapse and expand
+        for box in ('shared', 'personal'):
             first_row = f"#{tab}-box-{box} .erow:not(.erow-head):not(.erow-total) >> nth=0"
-            assert pg.locator(first_row).is_visible(), f'[{tab}] {box} rows hidden before collapse'
-            pg.locator(f"#{tab}-box-{box} .box-title").click()
+            assert pg.locator(first_row).is_visible()
+            pg.locator(f"#{tab}-box-{box} .box-title").click(position={'x': 5, 'y': 5})
             assert not pg.locator(first_row).is_visible(), f'[{tab}] {box} box did not collapse'
-            pg.locator(f"#{tab}-box-{box} .box-title").click()
+            pg.locator(f"#{tab}-box-{box} .box-title").click(position={'x': 5, 'y': 5})
             assert pg.locator(first_row).is_visible(), f'[{tab}] {box} box did not expand'
+    assert not errs, errs
+    ctx.close()
+
+@test
+def xpenses_edit_lines(b):
+    worker = FakeWorker(); ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'XPENSES_CALCULATOR.html'); wait_until(pg, lambda: 'xpenses-calculator' in worker.keys('GET')); pg.wait_for_timeout(300)
+    ev = pg.evaluate
+    P = '#pane-now '
+    gross = lambda: ev("() => [derived(states.now).gross, derived(states.fire).gross]")
+    pg.click(P + '#now-personal-edit')
+    first = ev("() => layout.personal[0]")
+    # Rename (applies to both tabs), without moving any number
+    g0 = gross()
+    pg.fill(P + f'input[data-act="rename"][data-id="{first["id"]}"]', 'Assurance habitation'); pg.press(P + f'input[data-act="rename"][data-id="{first["id"]}"]', 'Tab')
+    assert ev("() => layout.personal[0].label") == 'Assurance habitation' and gross() == g0
+    # Reorder
+    pg.click(P + f'button[data-act="down"][data-id="{first["id"]}"]')
+    assert ev("() => layout.personal[1].id") == first['id']
+    # A first sub-line keeps the line's amount (totals unchanged); a second starts at 0
+    plain = ev("() => layout.personal.find(l => !l.subs && !l.yearly && states.now[l.id] > 0).id")
+    pg.click(P + f'button[data-act="addsub"][data-id="{plain}"]')
+    assert gross() == g0 and len(ev(f"() => layout.personal.find(l => l.id === '{plain}').subs")) == 1
+    pg.click(P + f'.ed-addsub[data-id="{plain}"]')
+    subs = ev(f"() => layout.personal.find(l => l.id === '{plain}').subs")
+    assert len(subs) == 2 and gross() == g0 and ev(f"() => [states.now['{subs[1]['id']}'], states.fire['{subs[1]['id']}']]") == [0, 0]
+    # Options: yearly divides by 12
+    pg.click(P + f'button[data-act="opts"][data-id="{plain}"]')
+    pg.check(P + f'input[data-act="yearly"][data-id="{plain}"]')
+    assert ev(f"() => layout.personal.find(l => l.id === '{plain}').yearly") is True and gross()[0] < g0[0]
+    pg.uncheck(P + f'input[data-act="yearly"][data-id="{plain}"]'); assert gross() == g0
+    # Delete a line, then Undo
+    n = ev("() => layout.personal.length"); victim = ev("() => layout.personal[2].id")
+    pg.click(P + f'button[data-act="del"][data-id="{victim}"]')
+    assert ev("() => layout.personal.length") == n - 1 and gross() != g0
+    pg.click('#undo-btn')
+    assert ev("() => layout.personal.length") == n and ev("() => layout.personal[2].id") == victim and gross() == g0
+    # Add a line: present in both tabs at 0
+    pg.click(P + '.ed-addline[data-sec="personal"]')
+    nid = ev("() => layout.personal[layout.personal.length - 1].id")
+    assert ev(f"() => [states.now['{nid}'], states.fire['{nid}']]") == [0, 0] and gross() == g0
+    pg.click(P + '#now-personal-edit')   # Done
+    assert pg.is_visible(f'#now-spin-{nid}') and ev("() => switchTab('fire')") is None and pg.is_visible(f'#fire-spin-{nid}')
+    # The layout travels with the data (cloud)
+    ev("cloudPush()"); assert wait_until(pg, lambda: (worker.posted('xpenses-calculator') or {}).get('layout', {}).get('personal', [{}])[1].get('label') == 'Assurance habitation', 6)
+    # Labels are text, never HTML
+    ev("() => { layout.shared[0].label = '<b>x</b>'; render('now'); }")
+    assert not pg.query_selector('#now-box-shared .ename b')
+    assert not errs, errs
+    ctx.close()
+
+@test
+def xpenses_old_save_migrates(b):
+    # A save from before editable lines (Breakdown in "your part", linked lines already synced)
+    old_now = {'salary': 2000, 'tickets': 0, 'mel': 0, 'sharedAcc': 500, 'rent': 1000, 'sharedBar': 2 * (10 + 20 + 30),
+               'trkBar': 10, 'trkBarBouffe': 20, 'trkApero': 30, 'lunch': 15, 'trkSaumon': 5, 'trkLegumes': 10, 'trkMercadoExtras': 99}
+    payload = json.dumps({'now': old_now, 'fire': dict(old_now)})
+    ctx = new_context(b, FakeWorker()); ctx.add_init_script("localStorage.setItem('xpenses_calculator_v1', %s)" % json.dumps(payload))
+    pg, errs = open_page(ctx, 'XPENSES_CALCULATOR.html'); pg.wait_for_timeout(500)
+    r = pg.evaluate("""() => ({ bar: states.now.trkBar, apero: states.now.trkApero, saumon: states.now.trkSaumon, rent: states.now.rent,
+                             barLine: lineAmount(states.now, layout.shared.find(l => l.id === 'sharedBar')),
+                             lunch: lineAmount(states.now, layout.personal.find(l => l.id === 'lunch')) })""")
+    assert (r['bar'], r['apero'], r['saumon'], r['rent']) == (20, 60, 5, 1000), r
+    assert r['barLine'] == old_now['sharedBar'] and r['lunch'] == old_now['lunch'], f'totals changed by the migration: {r}'
     assert not errs, errs
     ctx.close()
 
