@@ -363,7 +363,7 @@ const OTHER_DRINKS = [
   { k: 'ck', label: 'Cocktail',  hint: '~6 cl spirits · 40%',    ml: 60,  abv: 40 },
 ];
 const DRINK_KEYS = [...BEER_KEYS, ...OTHER_DRINKS.map(d => d.k)];
-const DEFAULT_SETTINGS = { defLo: 200, defHi: 300, protKg: 1.6, sleepH: 7, abvB: 5, abvF: 7 };
+const DEFAULT_SETTINGS = { defLo: 200, defHi: 300, protKg: 1.6, sleepH: 7, abvB: 4.5, abvF: 6.5 };
 
 let state = { v: 2, settings: { ...DEFAULT_SETTINGS }, weeks: {} };
 let workoutSessions = [];
@@ -580,7 +580,10 @@ function insights(weeks, set) {
 // ════════════════════════════════════════════════════════════════════
 function normalize(data) {
   if (!data || data.v !== 2 || typeof data.weeks !== 'object' || !data.weeks) return null;   // old KALS format → ignored (fresh start)
-  return { v: 2, settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) }, weeks: data.weeks };
+  const settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
+  // Oct 2026: beer strengths 5 % / 7 % → 4,5 % / 6,5 % (owner's usual beers); only untouched old values change, once
+  if (!(settings.abvV >= 2)) { if (settings.abvB === 5) settings.abvB = 4.5; if (settings.abvF === 7) settings.abvF = 6.5; settings.abvV = 2; }
+  return { v: 2, settings, weeks: data.weeks };
 }
 function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (_) {} }
 function loadLocal() {

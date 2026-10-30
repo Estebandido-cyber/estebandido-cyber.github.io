@@ -539,6 +539,9 @@ def kals_balance_rules(b):
     assert ev("Object.keys(localStorage).filter(k => k.startsWith('kals_') && !k.startsWith('kals_balance')).length") == 0, 'old kals_ keys not removed'
     assert not [1 for m, p, _ in worker.log if m == 'POST'], 'opening must not overwrite the cloud'
     near = lambda a, e, what: abs(a - e) < 1e-6 or (_ for _ in ()).throw(AssertionError(f'{what}: {a} ≠ {e}'))
+    # Saved 5 % / 7 % strengths (old defaults) become 4,5 % / 6,5 % once; a later choice is kept
+    m = ev("() => [normalize({ v: 2, settings: { abvB: 5, abvF: 7 }, weeks: {} }).settings, normalize({ v: 2, settings: { abvB: 5, abvF: 7, abvV: 2 }, weeks: {} }).settings]")
+    assert (m[0]['abvB'], m[0]['abvF'], m[1]['abvB'], m[1]['abvF']) == (4.5, 6.5, 5, 7), m
     # Beer: verres standard = ml × %alc × 0.789 / 10 g
     std = ev("beerStats({bd: 2, fp: 2, bb: 1}, {abvB: 4, abvF: 8}).std")
     near(std, (2 * 250 * 0.04 + 2 * 500 * 0.08 + 330 * 0.04) * 0.789 / 10, 'standard drinks')
