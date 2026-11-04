@@ -922,6 +922,118 @@
     }
   }
 
+  /* ─── PHONE (≤600px): read-only day list, add/edit via entry modal.
+         Desktop and tablet (incl. 764px portrait) keep inline editing. ─── */
+  .entry-view { display: none; }
+  @media (max-width: 600px) {
+    .week-body { overflow-x: visible; }
+    .days-grid { grid-template-columns: 1fr; min-width: 0; }
+    .day-col {
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-areas: "head total" "entries entries" "add add";
+    }
+    .day-col:last-child { border-bottom: none; }
+    .day-col.blank { display: none; }
+    .day-col.today { box-shadow: inset 3px 0 0 var(--accent); }
+    .day-col.today .day-header::after { display: none; }
+    .day-header {
+      grid-area: head;
+      flex-direction: row;
+      align-items: baseline;
+      gap: 10px;
+      border-bottom: none;
+      padding: 12px 14px 4px;
+      cursor: pointer;
+    }
+    .day-name { font-size: 11px; }
+    .day-date { font-size: 18px; }
+    .day-total {
+      grid-area: total;
+      border-top: none;
+      background: transparent;
+      padding: 12px 14px 4px;
+      cursor: pointer;
+    }
+    .day-total-label { display: none; }
+    .day-total-value { font-size: 15px; }
+    .day-entries { grid-area: entries; min-height: 0; padding: 0 8px; gap: 0; }
+    .entry-row > :not(.entry-view) { display: none; }
+    .entry-row.entry-empty { display: none; }
+    .entry-view {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 44px;
+      padding: 8px 6px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--surface2);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .entry-view:active { background: var(--surface2); }
+    .entry-view .method-dot { width: 10px; height: 10px; }
+    .ev-cat { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ev-cat.none { color: var(--text3); }
+    .ev-amt { color: var(--accent); flex-shrink: 0; }
+    .day-add-btn { grid-area: add; margin: 6px 14px 12px; padding: 11px; font-size: 13px; }
+  }
+
+  /* Entry modal (opened on phone only) */
+  .xm-overlay { align-items: flex-start; padding-top: 6vh; }
+  .xm-sheet { width: 440px; padding: 18px; }
+  .xm-sheet .modal-title { margin-bottom: 4px; }
+  .xm-lbl {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin: 14px 0 6px;
+  }
+  .xm-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    color: var(--text);
+    outline: none;
+  }
+  .xm-input:focus { border-color: var(--accent); background: var(--surface3); }
+  .xm-input.xm-err { border-color: var(--red); }
+  .xm-amt { color: var(--accent); text-align: right; font-size: 20px; }
+  .xm-methods { display: flex; flex-wrap: wrap; gap: 8px; }
+  .xm-chip {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .xm-chip.on { border-color: var(--c); color: var(--text); background: color-mix(in srgb, var(--c) 18%, var(--surface2)); }
+  .xm-chip .method-dot { width: 12px; height: 12px; background: var(--c); }
+  .xm-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .xm-actions .btn { min-height: 46px; padding: 0 16px; font-size: 12px; justify-content: center; }
+  .xm-actions .xm-ok { flex: 1; }
+
   /* ─── YEARLY TRENDS ─── */
   .trends-section { border-radius: 12px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 12px; }
   .trends-hdr { padding: 12px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; transition: background .15s, border-color .2s; background: rgba(96, 200, 140, 0.06); }
@@ -1607,6 +1719,28 @@
   </div>
 </div>
 
+<!-- ENTRY MODAL (phone only) -->
+<div class="modal-overlay xm-overlay" id="entry-modal">
+  <div class="modal xm-sheet">
+    <div class="modal-title">
+      <span id="xm-title"></span>
+      <button class="modal-close" onclick="closeEntryModal()">×</button>
+    </div>
+    <label class="xm-lbl" for="xm-cat">Item</label>
+    <input class="xm-input" id="xm-cat" type="text" list="xm-cats" autocomplete="off" enterkeyhint="next" placeholder="Item…">
+    <datalist id="xm-cats"></datalist>
+    <label class="xm-lbl" for="xm-amt">Amount €</label>
+    <input class="xm-input xm-amt" id="xm-amt" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="0,00">
+    <div class="xm-lbl">Payment</div>
+    <div class="xm-methods" id="xm-methods"></div>
+    <div class="xm-actions">
+      <button class="btn btn-danger" id="xm-del" onclick="deleteFromEntryModal()">Delete</button>
+      <button class="btn btn-ghost" onclick="closeEntryModal()">Cancel</button>
+      <button class="btn btn-accent xm-ok" onclick="saveEntryModal()">OK</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════
 // STATE
@@ -1806,6 +1940,7 @@ function renderMonth() {
       const col = document.createElement('div');
       col.className = 'day-col';
       if (!d) {
+        col.classList.add('blank');
         col.innerHTML = `<div class="day-header"><div class="day-name">${DAY_NAMES[di]}</div><div class="day-date" style="color:var(--border2)">—</div></div><div class="day-entries"></div><div class="day-total"><span class="day-total-label">Total</span><span class="day-total-value">—</span></div>`;
         grid.appendChild(col);
         return;
@@ -1813,6 +1948,7 @@ function renderMonth() {
       const key = getDateKey(currentYear, currentMonth, d.day);
       const isToday = key === todayKey;
       if (isToday) col.classList.add('today');
+      col.dataset.key = key;
 
       col.innerHTML = `
         <div class="day-header">
@@ -1820,7 +1956,7 @@ function renderMonth() {
           <div class="day-date">${d.day}</div>
         </div>
         <div class="day-entries" id="entries-${key}"></div>
-        <button class="day-add-btn" onclick="addEntry('${key}')">+ add</button>
+        <button class="day-add-btn" onclick="dayAdd('${key}')">+ add</button>
         <div class="day-total">
           <span class="day-total-label">Total</span>
           <span class="day-total-value" id="day-total-${key}">0,00 €</span>
@@ -1891,6 +2027,7 @@ function renderEntryRow(key, idx) {
   row.dataset.key = key;
   row.dataset.idx = idx;
   row.id = `entry-${key}-${idx}`;
+  if (isEmptyEntry(e)) row.classList.add('entry-empty');
 
   const method = settings.methods.find(m => m.id === e.method) || settings.methods[0];
   const color = method ? method.color : '#888';
@@ -1903,6 +2040,7 @@ function renderEntryRow(key, idx) {
     <select class="entry-method-pill" style="background:${color}" title="${method ? method.name : ''}"
       data-field="method" data-key="${key}" data-idx="${idx}">${buildMethodOptions(e.method)}</select>
     <button class="entry-del" data-key="${key}" data-idx="${idx}" title="Remove">×</button>
+    <button class="entry-view" type="button" data-key="${key}" data-idx="${idx}"><span class="method-dot" style="background:${color}"></span><span class="ev-cat${e.cat ? '' : ' none'}">${escHtml(e.cat) || 'Item'}</span><span class="ev-amt">${fmt(parseFloat(e.amt) || 0)}</span></button>
   `;
 
   container.appendChild(row);
@@ -2824,6 +2962,150 @@ function undoDelete() {
   cfUpdateRemaining();
   updateHeaderTotals();
 }
+
+// ═══════════════════════════════════════════════
+// PHONE ENTRY MODAL (≤600px only; desktop/tablet keep inline editing)
+// ═══════════════════════════════════════════════
+const PHONE_MQ = window.matchMedia('(max-width: 600px)');
+let xmState = null; // { key, idx (null = new), method }
+
+function isEmptyEntry(e) {
+  return !(e.cat || '').trim() && (e.amt === '' || e.amt == null);
+}
+
+function dayAdd(key) {
+  if (PHONE_MQ.matches) openEntryModal(key, null);
+  else addEntry(key);
+}
+
+// Past items, most used first, keeping their original spelling
+function xmCategories() {
+  const counts = {}, label = {};
+  Object.values(data).forEach(entries => (entries || []).forEach(e => {
+    const cat = (e.cat || '').trim();
+    if (!cat) return;
+    const k = cat.toLowerCase();
+    counts[k] = (counts[k] || 0) + 1;
+    if (!label[k]) label[k] = cat;
+  }));
+  return Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 200).map(k => label[k]);
+}
+
+// '' = empty, null = invalid, else a numeric string ("12.5")
+function xmParseAmt(s) {
+  const t = (s || '').replace(/\s/g, '').replace(',', '.');
+  if (t === '') return '';
+  if (!/^-?\d*\.?\d+$/.test(t)) return null;
+  return String(Math.round(parseFloat(t) * 100) / 100);
+}
+
+function renderXmMethods() {
+  document.getElementById('xm-methods').innerHTML = settings.methods.map(m =>
+    `<button type="button" class="xm-chip${m.id === xmState.method ? ' on' : ''}" style="--c:${m.color}" data-mid="${escHtml(m.id)}"><span class="method-dot"></span>${escHtml(m.name)}</button>`
+  ).join('');
+}
+
+function openEntryModal(key, idx) {
+  const e = idx == null ? null : (data[key] || [])[idx];
+  if (idx != null && !e) return;
+  const d = new Date(key + 'T12:00:00');
+  document.getElementById('xm-title').textContent =
+    `${DAY_NAMES[(d.getDay() + 6) % 7]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()].substring(0, 3)}`;
+  xmState = { key, idx, method: e ? e.method : (settings.defaultMethod || settings.methods[0]?.id || '') };
+  const catEl = document.getElementById('xm-cat');
+  const amtEl = document.getElementById('xm-amt');
+  catEl.value = e ? (e.cat || '') : '';
+  amtEl.value = e && e.amt !== '' && e.amt != null ? String(e.amt).replace('.', ',') : '';
+  amtEl.classList.remove('xm-err');
+  document.getElementById('xm-cats').innerHTML = xmCategories().map(c => `<option value="${escHtml(c)}">`).join('');
+  document.getElementById('xm-del').style.display = e ? '' : 'none';
+  renderXmMethods();
+  document.getElementById('entry-modal').classList.add('open');
+  if (!e) catEl.focus();
+}
+
+function closeEntryModal() {
+  document.getElementById('entry-modal').classList.remove('open');
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+  xmState = null;
+}
+
+function xmRefresh(key) {
+  rerenderDayEntries(key);
+  updateDayTotal(key);
+  saveToStorage();
+  updateMonthTotal();
+  renderBreakdown();
+  cfUpdateRemaining();
+  updateHeaderTotals();
+}
+
+function saveEntryModal() {
+  if (!xmState) return;
+  const amtEl = document.getElementById('xm-amt');
+  const cat = document.getElementById('xm-cat').value.trim();
+  const amt = xmParseAmt(amtEl.value);
+  if (amt === null) { amtEl.classList.add('xm-err'); amtEl.focus(); return; }
+  const { key, idx, method } = xmState;
+  if (!cat && amt === '') {
+    if (idx == null) closeEntryModal(); else deleteFromEntryModal();
+    return;
+  }
+  if (!data[key]) data[key] = [];
+  if (idx == null) {
+    const slot = data[key].findIndex(isEmptyEntry); // reuse the blank placeholder row
+    if (slot >= 0) data[key][slot] = { cat, amt, method };
+    else data[key].push({ cat, amt, method });
+  } else {
+    data[key][idx] = Object.assign({}, data[key][idx], { cat, amt, method });
+  }
+  closeEntryModal();
+  xmRefresh(key);
+}
+
+function deleteFromEntryModal() {
+  if (!xmState || xmState.idx == null) return;
+  const { key, idx } = xmState;
+  if (!data[key] || !data[key][idx]) { closeEntryModal(); return; }
+  const deleted = Object.assign({}, data[key][idx]);
+  data[key].splice(idx, 1);
+  closeEntryModal();
+  xmRefresh(key);
+  showUndoToast(key, idx, deleted);
+}
+
+document.addEventListener('click', function(e) {
+  if (!PHONE_MQ.matches || xmState) return;
+  const v = e.target.closest('.entry-view');
+  if (v) { openEntryModal(v.dataset.key, parseInt(v.dataset.idx, 10)); return; }
+  const h = e.target.closest('.day-col[data-key] .day-header, .day-col[data-key] .day-total');
+  if (h) openEntryModal(h.closest('.day-col').dataset.key, null);
+});
+
+document.getElementById('xm-methods').addEventListener('click', function(e) {
+  const chip = e.target.closest('.xm-chip');
+  if (!chip || !xmState) return;
+  xmState.method = chip.dataset.mid;
+  renderXmMethods();
+});
+
+document.getElementById('entry-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeEntryModal();
+});
+
+document.getElementById('xm-cat').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('xm-amt').focus(); }
+});
+document.getElementById('xm-amt').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); saveEntryModal(); }
+});
+document.getElementById('xm-amt').addEventListener('input', function() { this.classList.remove('xm-err'); });
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && xmState) closeEntryModal();
+});
+
+// Crossing the phone breakpoint (rotation, resize): rebuild so both views are current
+PHONE_MQ.addEventListener('change', () => { closeEntryModal(); renderMonth(); });
 
 // ═══════════════════════════════════════════════
 // MONTHLY NOTES
