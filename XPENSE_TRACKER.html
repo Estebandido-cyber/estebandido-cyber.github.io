@@ -926,6 +926,14 @@
          Desktop and tablet (incl. 764px portrait) keep inline editing. ─── */
   .entry-view { display: none; }
   @media (max-width: 600px) {
+    /* Header: logo + title row, then totals and buttons on full-width rows */
+    .header-totals, .header-actions { flex: 0 0 100%; margin-left: 0; }
+    .header-totals { overflow-x: visible; }
+    .header-stat-group { display: grid; justify-content: stretch; text-align: center; }
+    #hsg-main { grid-template-columns: repeat(4, 1fr); }
+    #hsg-cashflow { grid-template-columns: repeat(2, 1fr); border-top: 1px solid var(--surface2); }
+    .header-stat { align-items: center; min-width: 0; }
+    .header-stat-label { letter-spacing: 1px; white-space: nowrap; }
     .week-body { overflow-x: visible; }
     .days-grid { grid-template-columns: 1fr; min-width: 0; }
     .day-col {
