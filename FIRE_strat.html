@@ -7,6 +7,9 @@
 <title>FIRE Strategy</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+/* Flag emoji: Windows has no flag glyphs (shows "FR"/"CO"). Flags-only font, limited by unicode-range. */
+@font-face { font-family: 'Twemoji Country Flags'; unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067, U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+  src: url('https://cdn.jsdelivr.net/npm/country-flag-emoji-polyfill@0.1.10/dist/TwemojiCountryFlags.woff2') format('woff2'); font-display: swap; }
   :root {
     --bg:#0a0a0f; --surface:#111118; --surface2:#18181f;
     --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
@@ -20,7 +23,7 @@
     --header-h:80px;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;min-height:100vh;overflow-x:hidden;}
+  body{background:var(--bg);color:var(--text);font-family:'Twemoji Country Flags','DM Sans',sans-serif;font-weight:300;min-height:100vh;overflow-x:hidden;}
 
   /* ── STICKY HEADER — desktop ── */
   .header{
@@ -53,7 +56,7 @@
 
   /* flags */
   .lang-switcher{display:flex;gap:.35rem;align-items:center;justify-content:center;flex-shrink:0;}
-  .flag-btn{background:none;border:2px solid transparent;border-radius:6px;padding:2px 3px;cursor:pointer;font-size:1.45rem;line-height:1;opacity:.4;transition:opacity .18s,border-color .18s,transform .15s;}
+  .flag-btn{font-family:'Twemoji Country Flags',sans-serif;background:none;border:2px solid transparent;border-radius:6px;padding:2px 3px;cursor:pointer;font-size:1.45rem;line-height:1;opacity:.4;transition:opacity .18s,border-color .18s,transform .15s;}
   .flag-btn:hover{opacity:.8;transform:scale(1.1);}
   .flag-btn.active{opacity:1;border-color:var(--gold);transform:scale(1.08);}
 

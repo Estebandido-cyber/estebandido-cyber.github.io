@@ -102,7 +102,10 @@
 /* ═══════════════════════════════════════════════
    BASE
 ═══════════════════════════════════════════════ */
-* { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+/* Flag emoji: Windows has no flag glyphs (shows "FR"/"CO"). Flags-only font, limited by unicode-range. */
+@font-face { font-family: 'Twemoji Country Flags'; unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067, U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+  src: url('https://cdn.jsdelivr.net/npm/country-flag-emoji-polyfill@0.1.10/dist/TwemojiCountryFlags.woff2') format('woff2'); font-display: swap; }
+* { box-sizing: border-box; font-family: 'Twemoji Country Flags', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 body { margin: 0; padding: 0; background: var(--color-bg-tertiary); color: var(--color-text-primary); }
 #main-content { padding-top: 100px; }
 
@@ -382,17 +385,17 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
   font-feature-settings: "tnum";
   -webkit-font-feature-settings: "tnum";
   letter-spacing: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', ui-monospace, sans-serif;
+  font-family: 'Twemoji Country Flags', -apple-system, BlinkMacSystemFont, 'Segoe UI', ui-monospace, sans-serif;
 }
 /* Force system emoji font for flag characters so they render on all platforms */
 .sstat-label, .col-badge, .grand-total-flags,
 #col-header-cop, #col-badge-header, #order-note,
 .coll-header span:first-child {
-  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
+  font-family: 'Twemoji Country Flags', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
                'Twemoji Mozilla', 'EmojiOne Color', sans-serif;
 }
 /* Targeted emoji spans in headers */
-[id^="sh-"] { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; }
+[id^="sh-"] { font-family: 'Twemoji Country Flags', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; }
 
 /* ── SUMMARY METRICS PANEL ── */
 .metrics-panel {
@@ -595,7 +598,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
     <span id="scen-label">Scenarios</span>
     <div class="scen-card" id="scen-0">
       <div class="scen-info">
-        <div class="scen-name-wrap"><input class="scen-name" id="scen-name-0" value="Base" onchange="renameScenario(0,this.value)"><span class="scen-badge-active">ACTIVE</span></div>
+        <div class="scen-name-wrap"><input class="scen-name" id="scen-name-0" value="Today" onchange="renameScenario(0,this.value)"><span class="scen-badge-active">ACTIVE</span></div>
         <div class="scen-meta" id="scen-meta-0">Empty</div>
       </div>
       <div class="scen-actions">
@@ -606,7 +609,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
     </div>
     <div class="scen-card" id="scen-1">
       <div class="scen-info">
-        <div class="scen-name-wrap"><input class="scen-name" id="scen-name-1" value="Optimistic" onchange="renameScenario(1,this.value)"><span class="scen-badge-active">ACTIVE</span></div>
+        <div class="scen-name-wrap"><input class="scen-name" id="scen-name-1" value="RCC" onchange="renameScenario(1,this.value)"><span class="scen-badge-active">ACTIVE</span></div>
         <div class="scen-meta" id="scen-meta-1">Empty</div>
       </div>
       <div class="scen-actions">
@@ -617,7 +620,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
     </div>
     <div class="scen-card" id="scen-2">
       <div class="scen-info">
-        <div class="scen-name-wrap"><input class="scen-name" id="scen-name-2" value="Pessimistic" onchange="renameScenario(2,this.value)"><span class="scen-badge-active">ACTIVE</span></div>
+        <div class="scen-name-wrap"><input class="scen-name" id="scen-name-2" value="RC" onchange="renameScenario(2,this.value)"><span class="scen-badge-active">ACTIVE</span></div>
         <div class="scen-meta" id="scen-meta-2">Empty</div>
       </div>
       <div class="scen-actions">
@@ -1198,6 +1201,7 @@ function clearScenario(idx) {
 function renameScenario(idx, name) {
   if (scenarios[idx]) { scenarios[idx].name = name; saveState(); }
 }
+const OLD_SCEN_NAMES = ['Base', 'Optimistic', 'Pessimistic'], SCEN_NAMES = ['Today', 'RCC', 'RC'];
 function renderScenarioCards() {
   for (let i = 0; i < 3; i++) {
     const card     = document.getElementById('scen-' + i);
@@ -1210,6 +1214,7 @@ function renderScenarioCards() {
     card.classList.toggle('filled', filled);
     card.classList.toggle('active', active);
     if (metaEl)  metaEl.textContent = filled ? scenarios[i].meta : 'Empty — click Save to capture current state';
+    if (filled && scenarios[i].name === OLD_SCEN_NAMES[i]) scenarios[i].name = SCEN_NAMES[i];
     if (nameEl && filled) nameEl.value = scenarios[i].name;
     if (loadBtn)  loadBtn.style.display  = filled && !active ? 'inline-block' : 'none';
     if (clearBtn) clearBtn.style.display = filled ? 'inline-block' : 'none';
