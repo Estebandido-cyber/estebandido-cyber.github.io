@@ -715,7 +715,7 @@ def fire_sim_rules(b):
               COL_ENTRIES.forEach(e => { document.getElementById('cb-' + e.id).checked = cols.includes(e.id); }); draw(); }""", [extra, p2s, p2i, list(cols)])
     base = {'pea': 120, 'cto': 40, 'av': 20, 'liv': 30, 'cash': 25, 'salary': 3000, 'lock': 2, 'infl': 3,
             'partner1': 150, 'spend2': 1900, 'side2': 300, 'partner2': 100, 'spend3': 1700, 'side3': 0, 'partner3': 0, 'retraite': 900,
-            'are2': 1500, 'areM': 12, 'areDelay': 0, 'pensionAge': 65, 'per': 0}
+            'are2': 1500, 'areM': 12, 'areDelay': 0, 'pensionAge': 65, 'per': 0, 'pee': 0}
     # One engine: break-even search, summary and table agree
     setup(base, 1800, 400)
     r = ev("() => ({ shadow: shadowRun(400), last: simulate().lastsUntil, shown: document.getElementById('m-age').textContent })")
@@ -772,6 +772,40 @@ def fire_sim_rules(b):
     ctx.close()
 
 @test
+def fire_pee_rules(b):
+    ctx = new_context(b, FakeWorker())
+    pg, errs = open_page(ctx, 'FIRE_SIM.html'); pg.wait_for_timeout(500)
+    ev = pg.evaluate
+    near = lambda a, e, what: abs(a - e) < 1e-6 * max(1, abs(e)) or (_ for _ in ()).throw(AssertionError(f'{what}: {a} ≠ {e}'))
+    def run(x):
+        return ev("""x => { Object.assign(S, { per: 0, av: 0, cash: 0, salary: 0, are2: 0, partner1: 0, infl: 0 }, x); ensureAllP2();
+                 for (let a = S.startAge + 1; a <= 59; a++) { S['p2s_' + a] = 2500; S['p2i_' + a] = 0; }
+                 COL_ENTRIES.forEach(e => { document.getElementById('cb-' + e.id).checked = false; }); draw(true);
+                 const s = simulate(); return s.rows.map((r, i) => ({ src: r.sources.map(q => q.label), tax: r.taxPaid, amt: r.sources,
+                   pee: s.hist.pee[i], pea: s.hist.pea[i], cto: s.hist.cto[i], liv: s.hist.liv[i] })); }""", x)
+    # Order after the lock: Livrets → CTO → PEE → PEA; PEA untouched while the PEE has money
+    rows = run({'lock': 0, 'liv': 20, 'cto': 30, 'pee': 60, 'pea': 100})
+    seq = [l for r in rows for l in r['src']]
+    first = {k: seq.index(k) for k in ('Livrets', 'CTO', 'PEE', 'PEA')}
+    assert first['Livrets'] < first['CTO'] < first['PEE'] < first['PEA'], seq[:12]
+    for r in rows:
+        if 'PEA' in r['src']: assert r['pee'] == 0 and 'CTO' not in r['src'][r['src'].index('PEA'):], r
+    # During the lock the PEE pays (before the locked CTO), never flagged early
+    rows = run({'lock': 5, 'liv': 0, 'cto': 30, 'pee': 60, 'pea': 100})
+    assert rows[0]['src'] == ['PEE'] and not any('(early)' in l and l.startswith('PEE') for r in rows for l in r['src']), rows[:3]
+    # Tax = PEA rule: 18.6 % on the gain share only (paid in 40 of a 100 balance, drawn mid-year)
+    rows = run({'lock': 0, 'liv': 0, 'cto': 0, 'pee': 100, 'pee-basis': 40, 'pea': 0})
+    g = ev("rateFor('pea', 0)"); drawn = rows[0]['amt'][0]['amount']
+    near(rows[0]['tax'], drawn * (1 - 40 / (100 * (1 + g) ** 0.5)) * 0.186, 'PEE tax on the gain share')
+    # Same equity return as the PEA (nothing drawn: balances grow alike)
+    rows = run({'lock': 0, 'liv': 200, 'liv-r': 0, 'cto': 0, 'pee': 100, 'pea': 100})
+    assert rows[0]['pee'] == rows[0]['pea'], rows[0]
+    # Saves without the PEE load the default balance; PEE 0 adds nothing
+    m = ev("() => migrateState({ pea: 90 })"); assert (m['pee'], m['pee-basis']) == (95, 60), m
+    assert not errs, errs
+    ctx.close()
+
+@test
 def fire_live_cop_rate(b):
     ctx = new_context(b, FakeWorker())
     pg = ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
@@ -786,7 +820,7 @@ def fire_live_cop_rate(b):
 def fire_summary_matches_widget(b):
     worker = FakeWorker(); ctx = new_context(b, worker)
     pg, errs = open_page(ctx, 'FIRE_SIM.html'); wait_until(pg, lambda: 'fire-sim' in worker.keys('GET')); pg.wait_for_timeout(300)
-    pg.evaluate("COP_EUR = 5000; Object.assign(S, {pea:100,av:10,cto:20,liv:5,cash:1,cop1:50,cop2:0,cop3:100,cop4:0}); document.getElementById('cb-cop1').checked = true; document.getElementById('cb-cop3').checked = false; cloudSave();")
+    pg.evaluate("COP_EUR = 5000; Object.assign(S, {pea:100,pee:0,av:10,cto:20,liv:5,cash:1,cop1:50,cop2:0,cop3:100,cop4:0}); document.getElementById('cb-cop1').checked = true; document.getElementById('cb-cop3').checked = false; cloudSave();")
     assert wait_until(pg, lambda: 'fire-sim' in worker.store, 6)
     h = worker.posted('fire-sim')['hub']
     assert (h['fr'], h['co'], h['total']) == (136000, 10000, 146000), f'FIRE summary must use live rate and only ticked assets: {h}'

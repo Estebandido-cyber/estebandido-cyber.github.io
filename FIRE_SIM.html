@@ -360,6 +360,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
 .bk-liv  { background: var(--color-bg-success);    color: var(--color-text-success); }
 .bk-cto  { background: var(--color-bg-warning);   color: var(--color-text-warning); }
 .bk-pea  { background: var(--color-bg-info);      color: var(--color-text-info); }
+.bk-pee  { background: rgba(63,167,181,0.18); color: #2b8a96; }
 .bk-av   { background: var(--color-bg-success);    color: var(--color-text-success); }
 .bk-col1 { background: rgba(245,208,32,0.25); color: var(--color-text-warning); }
 .bk-col2 { background: rgba(245,160,32,0.22); color: var(--color-text-warning); }
@@ -677,6 +678,15 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
       </div>
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">PEE</span>
+          <span class="tax-tag tax-pea">18.6% prélèvements sociaux on gains</span>
+        </div>
+        <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('pee',-5)">−</button><span class="sval" id="pee-v">95</span><button onclick="step('pee',5)">+</button></div></div>
+        <div class="row"><label>of which paid in (€K)</label><div class="stepper"><button onclick="step('pee-basis',-5)">−</button><span class="sval" id="pee-basis-v">60</span><button onclick="step('pee-basis',5)">+</button></div></div>
+        <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">Balance at departure, no new contributions. Grows at the PEA return periods. Not locked — available from departure, drawn after the CTO and before the PEA.</p>
+      </div>
+      <div class="sub-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">CTO (AAPL + S&amp;P500)</span>
           <span class="tax-tag tax-cto">31.4% PFU on gains</span>
         </div>
@@ -825,7 +835,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
     <p class="panel-title">🔒 Investment lock period — PEA, AV, CTO only</p>
     <div class="row" style="margin:0 0 8px"><label>Lock for (years)</label><div class="stepper"><button onclick="step('lock',-1)">−</button><span class="sval" id="lock-v">3 yrs</span><button onclick="step('lock',1)">+</button></div></div>
     <p class="info-box" id="lock-info" style="margin:0"></p>
-    <p style="font-size:11px;color:var(--color-text-warning);margin:8px 0 0" id="order-note">Withdrawal order: <strong>Cash → Livrets → CTO → PEA → AV</strong></p>
+    <p style="font-size:11px;color:var(--color-text-warning);margin:8px 0 0" id="order-note">Withdrawal order: <strong>Cash → Livrets → CTO → PEE → PEA → AV</strong></p>
   </div>
   <div class="panel panel-infl">
     <p class="panel-title">Inflation rate</p>
@@ -953,6 +963,7 @@ const S = {
   cop1:130, 'cop1-r':5, cop2:300, 'cop2-r':3, cop3:150, 'cop3-r':2, cop4:30, 'cop4-r':2,
   salary:2700, are2:2450, areM:18, areDelay:0, lock:3, infl:2, startAge:46, pensionAge:64,
   'pea-basis':100, 'cto-basis':45, per:0, 'per-r':5, 'cop-depr':0,
+  pee:95, 'pee-basis':60,
   partner1:0, spend2:1800, side2:200, partner2:0,
   spend3:1800, side3:200, partner3:0, retraite:400,
 };
@@ -963,6 +974,7 @@ const LIM = {
   cop3:[10,500], 'cop3-r':[1,5],  cop4:[10,200],  'cop4-r':[1,5],
   salary:[0,8000], are2:[0,8000], areM:[0,24], areDelay:[0,6], lock:[0,10], infl:[0,6], startAge:[46,52], pensionAge:[62,67],
   'pea-basis':[0,200], 'cto-basis':[0,200], per:[0,200], 'per-r':[0,10], 'cop-depr':[0,10],
+  pee:[0,200], 'pee-basis':[0,200],
   partner1:[0,2000], spend2:[500,3000], side2:[0,3000], partner2:[0,2000],
   spend3:[500,3000], side3:[0,1000], partner3:[0,2000], retraite:[0,1500],
 };
@@ -1016,6 +1028,9 @@ function migrateState(src) {
   if (src.per === undefined) { src.per = 0; src['per-r'] = 5; }
   if (src.pensionAge === undefined) src.pensionAge = 65;
   if (src['cop-depr'] === undefined) src['cop-depr'] = 0;
+  // PEE added Nov 2026: saves without it load the default balance (intended — not results-neutral)
+  if (src.pee === undefined) src.pee = 95;
+  if (src['pee-basis'] === undefined) src['pee-basis'] = 60;
   return src;
 }
 function migrateReturns(src) {
@@ -1093,7 +1108,7 @@ function cfStatus(type) {
 // Small summary for the Life Hub tile — same totals as the widget: live COP/EUR rate,
 // Colombian assets only when ticked (colOn).
 function hubSummary() {
-  const fr = (S.pea + S.av + S.cto + S.liv + S.cash + (S.per || 0)) * 1000;
+  const fr = (S.pea + (S.pee || 0) + S.av + S.cto + S.liv + S.cash + (S.per || 0)) * 1000;
   const co = COL_ENTRIES.reduce((s, e) => s + (colOn(e.id) ? (S[e.id] * 1e6) / COP_EUR : 0), 0);
   const hub = { total: Math.round(fr + co), fr: Math.round(fr), co: Math.round(co) };
   const sc = typeof activeScenario === 'number' ? scenarios[activeScenario] : null;
@@ -1154,7 +1169,7 @@ function applySnapshot(snap) {
   applyColChecks(snap.colChecks);
 }
 function buildScenMeta(snap) {
-  const fr = (snap.S.pea + snap.S.av + snap.S.cto + snap.S.liv + snap.S.cash + (snap.S.per || 0)) * 1000;
+  const fr = (snap.S.pea + (snap.S.pee ?? 95) + snap.S.av + snap.S.cto + snap.S.liv + snap.S.cash + (snap.S.per || 0)) * 1000;
   return '🇫🇷 €' + Math.round(fr / 1000) + 'K  ·  depart ' + snap.S.startAge;
 }
 function saveScenario(idx) {
@@ -1231,17 +1246,19 @@ function simulate(p2Side = null) {
   const sa = S.startAge, infl = S.infl/100, lockYrs = S.lock;
   const avR = S['av-r']/100, livR = S['liv-r']/100, perR = S['per-r']/100, copDepr = S['cop-depr']/100;
   let bPea=S.pea*1000, bAv=S.av*1000, bCto=S.cto*1000, bLiv=S.liv*1000, bCash=S.cash*1000, bPer=S.per*1000;
+  let bPee=S.pee*1000;   // PEE: balance at departure, no contributions, not locked
   // Cost basis = what was paid in (latent gains are taxed when drawn); never above the balance
   let basePea=Math.min(bPea, S['pea-basis']*1000), baseAv=bAv, baseCto=Math.min(bCto, S['cto-basis']*1000), basePer=bPer;
+  let basePee=Math.min(bPee, S['pee-basis']*1000);
   const col = {};
   COL_ENTRIES.forEach(e => {
     const on = colOn(e.id), v = on ? (S[e.id]*1e6)/COP_EUR : 0;
     col[e.id] = { bal:v, basis:v, rD:S[e.id+'-r']/100, active:on, everDrawn:false };
   });
   const colSum = () => COL_ENTRIES.reduce((t,e) => t + (col[e.id].active ? col[e.id].bal : 0), 0);
-  const initTotal = bPea+bAv+bCto+bLiv+bCash+bPer + colSum();
-  const everDrawn = { cto:false, pea:false, av:false, liv:false, per:false };
-  const hist = { pea:[], av:[], cto:[], liv:[], cash:[], per:[], col:{} };
+  const initTotal = bPea+bPee+bAv+bCto+bLiv+bCash+bPer + colSum();
+  const everDrawn = { cto:false, pee:false, pea:false, av:false, liv:false, per:false };
+  const hist = { pea:[], pee:[], av:[], cto:[], liv:[], cash:[], per:[], col:{} };
   COL_ENTRIES.forEach(e => { hist.col[e.id] = []; });
   const rows = [], shortYears = [], earlyYears = [];
   let depleteAge = null, firstShortAge = null, atLock = null;
@@ -1261,7 +1278,7 @@ function simulate(p2Side = null) {
     // 🇨🇴 growth in EUR = COP return minus the peso's depreciation against the euro.
     const gPea = Math.sqrt(1+rateFor('pea',y)), gAv = Math.sqrt(1+avR), gCto = Math.sqrt(1+rateFor('cto',y)), gLiv = Math.sqrt(1+livR), gPer = Math.sqrt(1+perR);
     const halfYear = () => {
-      bPea*=gPea; bAv*=gAv; bCto*=gCto; bLiv*=gLiv; bPer*=gPer;
+      bPea*=gPea; bPee*=gPea; bAv*=gAv; bCto*=gCto; bLiv*=gLiv; bPer*=gPer;   // PEE: same equity return as the PEA
       COL_ENTRIES.forEach(e => { if (col[e.id].active) col[e.id].bal *= Math.sqrt((1+col[e.id].rD) / (1+copDepr)); });
     };
     halfYear();
@@ -1278,7 +1295,7 @@ function simulate(p2Side = null) {
       if (r.drawn <= 1) return null;
       const seen = colEntry ? colEntry.everDrawn : everDrawn[key];
       if (!seen) { unlocks.push({ label, bal }); if (colEntry) colEntry.everDrawn = true; else everDrawn[key] = true; }
-      const isEarly = locked && !colEntry && key !== 'per';
+      const isEarly = locked && !colEntry && key !== 'per' && key !== 'pee';   // PEE is not locked
       sources.push({ cls, label: (colEntry ? label.replace('🇨🇴 ', '') : label) + (isEarly ? ' (early)' : ''), amount: r.drawn });
       if (isEarly) early += r.drawn;
       yearTaxPaid += r.taxPaid; need -= r.netReceived;
@@ -1295,8 +1312,13 @@ function simulate(p2Side = null) {
           sources.push({cls:'bk-liv', label:'Livrets', amount:d}); bLiv -= d; need -= d;
         }
       }
+      // PEE: same tax as the PEA after 5 years (prélèvements sociaux on the gain share only)
+      const drawPee = () => {
+        if (bPee > 0 && need > 0) { const r = take('PEE','bk-pee',bPee,basePee,TAX.pea,'pee'); if (r) { bPee=r.newBal; basePee=r.newBasis; } }
+      };
       const drawFr = () => {
         if (bCto > 0 && need > 0) { const r = take('CTO','bk-cto',bCto,baseCto,TAX.cto,'cto'); if (r) { bCto=r.newBal; baseCto=r.newBasis; } }
+        drawPee();
         if (bPea > 0 && need > 0) { const r = take('PEA','bk-pea',bPea,basePea,TAX.pea,'pea'); if (r) { bPea=r.newBal; basePea=r.newBasis; } }
         if (bAv  > 0 && need > 0) { const r = take('AV','bk-av',bAv,baseAv,TAX.av,'av');       if (r) { bAv=r.newBal;  baseAv=r.newBasis;  } }
         // PER: legally locked until the pension age — never drawn early
@@ -1308,9 +1330,9 @@ function simulate(p2Side = null) {
           if (c.active && c.bal > 0 && need > 0) { const r = take('🇨🇴 '+e.label, e.bkCls, c.bal, c.basis, 0, null, c); if (r) { c.bal=r.newBal; c.basis=r.newBasis; } }
         }
       };
-      // Order: CTO → PEA → AV → 🇨🇴. While locked, 🇨🇴 (not part of the lock) pays first, then
-      // PEA/AV/CTO cover what is still missing — that breaks the lock and is flagged as "(early)".
-      if (!locked) { drawFr(); drawCol(); } else { drawCol(); drawFr(); }
+      // Order: CTO → PEE → PEA → AV → 🇨🇴. While locked, the PEE then 🇨🇴 (neither part of the lock) pay
+      // first, then PEA/AV/CTO cover what is still missing — that breaks the lock and is flagged as "(early)".
+      if (!locked) { drawFr(); drawCol(); } else { drawPee(); drawCol(); drawFr(); }
       if (need > 1) shortfall = need;   // spending that nothing could pay this year
     } else if (netCash < 0 && cashBefore > 0) {
       sources.push({cls:'bk-cash', label:'Cash', amount:Math.min(-netCash, cashBefore)});
@@ -1318,10 +1340,10 @@ function simulate(p2Side = null) {
 
     halfYear();
     if (y === lockYrs && atLock === null) atLock = bPea+bAv+bCto;
-    bPea=Math.max(0,bPea); bAv=Math.max(0,bAv); bCto=Math.max(0,bCto); bLiv=Math.max(0,bLiv); bCash=Math.max(0,bCash); bPer=Math.max(0,bPer);
+    bPea=Math.max(0,bPea); bAv=Math.max(0,bAv); bCto=Math.max(0,bCto); bLiv=Math.max(0,bLiv); bCash=Math.max(0,bCash); bPer=Math.max(0,bPer); bPee=Math.max(0,bPee);
     COL_ENTRIES.forEach(e => { col[e.id].bal = Math.max(0, col[e.id].bal); });
 
-    const totalAfter = bPea+bAv+bCto+bLiv+bCash+bPer + colSum();
+    const totalAfter = bPea+bPee+bAv+bCto+bLiv+bCash+bPer + colSum();
     if (early > 0) earlyYears.push({ age, amount: early });
     if (shortfall > 0) {
       shortYears.push({ age, amount: shortfall });
@@ -1331,6 +1353,7 @@ function simulate(p2Side = null) {
 
     hist.pea.push(Math.round(bPea/1000)); hist.av.push(Math.round(bAv/1000)); hist.cto.push(Math.round(bCto/1000));
     hist.liv.push(Math.round(bLiv/1000)); hist.cash.push(Math.round(bCash/1000)); hist.per.push(Math.round(bPer/1000));
+    hist.pee.push(Math.round(bPee/1000));
     COL_ENTRIES.forEach(e => { hist.col[e.id].push(col[e.id].active ? Math.round(col[e.id].bal/1000) : null); });
     rows.push({ year:y+1, age, phase, locked, inflow, spend:inflSpend*12, taxPaid:yearTaxPaid, net:netCash-yearTaxPaid,
                 shortfall, early, sources, unlocks, total:Math.max(0,totalAfter), initTotal });
@@ -1582,7 +1605,7 @@ function buildTotalProjGrid(elId, entries) {
 
 function buildLegend(activeColEntries) {
   const items = [
-    {color:'#5B9BD5',label:'PEA'}, {color:'#4DC79A',label:'AV'}, {color:'#E8A040',label:'CTO'},
+    {color:'#5B9BD5',label:'PEA'}, {color:'#3FA7B5',label:'PEE'}, {color:'#4DC79A',label:'AV'}, {color:'#E8A040',label:'CTO'},
     {color:'#7DC94E',label:'Livrets'}, {color:'#B07CE0',label:'PER'}, {color:'#9E9D97',label:'Cash'},
   ];
   activeColEntries.forEach(e => items.push({color:e.chartColor, label:'🇨🇴 '+e.label}));
@@ -1667,7 +1690,7 @@ function draw(silent) {
   badge.style.color        = activeCount > 0 ? 'var(--color-text-success)' : 'var(--color-text-warning)';
   badge.style.borderColor  = activeCount > 0 ? 'var(--teal-border)'        : 'var(--amb-border)';
   document.getElementById('order-note').innerHTML =
-    'Withdrawal order: <strong>Cash → Livrets → CTO → PEA → AV → PER (from ' + S.pensionAge + ')' +
+    'Withdrawal order: <strong>Cash → Livrets → CTO → PEE → PEA → AV → PER (from ' + S.pensionAge + ')' +
     (activeCount > 0 ? ' → ' + activeColEntries.map(e=>'🇨🇴 '+e.label).join(' → ') : '') + '</strong>';
 
   // ── Colombian asset cards & totals ──
@@ -1690,10 +1713,10 @@ function draw(silent) {
   buildTotalProjGrid('cop-total-proj', copEntries);
 
   // ── French totals ──
-  const pea=S.pea*1000, av=S.av*1000, cto=S.cto*1000, liv=S.liv*1000, cash=S.cash*1000, per=S.per*1000;
+  const pea=S.pea*1000, av=S.av*1000, cto=S.cto*1000, liv=S.liv*1000, cash=S.cash*1000, per=S.per*1000, pee=S.pee*1000;
   const peaR=cagr('pea'), avR=S['av-r']/100, ctoR=cagr('cto'), livR=S['liv-r']/100, perR=S['per-r']/100;
-  const frTotal  = pea+av+cto+liv+cash+per;
-  const passive  = pea*peaR + av*avR + cto*ctoR + liv*livR + per*perR;
+  const frTotal  = pea+pee+av+cto+liv+cash+per;
+  const passive  = pea*peaR + pee*peaR + av*avR + cto*ctoR + liv*livR + per*perR;
   const avgRet   = frTotal > 0 ? (passive/frTotal*100) : 0;
   document.getElementById('fr-total-eur').textContent    = '€' + fmt(frTotal/1000) + 'K';
   document.getElementById('fr-total-sub').textContent    = 'Weighted avg return: ' + avgRet.toFixed(1) + '%  ·  Passive income: €' + fmt(passive) + '/yr';
@@ -1718,7 +1741,7 @@ function draw(silent) {
   document.getElementById('pension-note').textContent = `French pension (base + complementary, net) from age ${S.pensionAge}, in today's euros`;
   document.getElementById('per-note').textContent = `Locked until age ${S.pensionAge} (pension age), never drawn early. Gains ~18.6% at exit (approximation).`;
   document.getElementById('lock-info').innerHTML =
-    '<strong>PEA, AV and CTO</strong> locked until age <strong>'+(sa+lockYrs)+'</strong>. Cash, Livrets and ticked 🇨🇴 assets available from day one.';
+    '<strong>PEA, AV and CTO</strong> locked until age <strong>'+(sa+lockYrs)+'</strong>. Cash, Livrets, PEE and ticked 🇨🇴 assets available from day one.';
 
   // ── Net burn metrics ──
   const n = ages.length;
@@ -1761,6 +1784,7 @@ function draw(silent) {
   const gc = getCSS('--color-border-tertiary') || 'rgba(128,128,128,0.15)';
   const datasets = [
     {label:'PEA',    data:sim.hist.pea,  borderColor:'#5B9BD5', backgroundColor:'rgba(91,155,213,0.15)',  fill:true, tension:0.35, pointRadius:0, borderWidth:2},
+    {label:'PEE',    data:sim.hist.pee,  borderColor:'#3FA7B5', backgroundColor:'rgba(63,167,181,0.12)',  fill:true, tension:0.35, pointRadius:0, borderWidth:2},
     {label:'AV',     data:sim.hist.av,   borderColor:'#4DC79A', backgroundColor:'rgba(77,199,154,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
     {label:'CTO',    data:sim.hist.cto,  borderColor:'#E8A040', backgroundColor:'rgba(232,160,64,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
     {label:'Livrets',data:sim.hist.liv,  borderColor:'#7DC94E', backgroundColor:'rgba(125,201,78,0.12)',   fill:true, tension:0.35, pointRadius:0, borderWidth:2},
