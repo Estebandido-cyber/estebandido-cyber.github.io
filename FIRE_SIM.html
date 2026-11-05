@@ -1053,7 +1053,11 @@ function saveState(silent) {
       S: { ...S }, colChecks: getColChecks(),
       scenarios, activeScenario, savedAt: new Date().toISOString()
     }));
-    cloudSaveDebounced();
+    // Before the cloud copy is loaded, only a real edit may be queued for upload. Automatic saves on open
+    // (first render, migrateState upgrades, rate redraws) would otherwise mark this device's older copy as
+    // an unsent edit, and cloudLoad() would push it over newer cloud data from another device.
+    if (cloudReady) cloudSaveDebounced();
+    else if (!silent) editedBeforeCloud = true;
     if (!silent) showToast('Saved ✓');
   } catch(e) { console.warn('Save failed', e); }
 }
@@ -1093,6 +1097,8 @@ function showToast(msg) {
 ═══════════════════════════════════════════════ */
 const CLOUD = LifeSync.cloud('fire-sim');
 let cfSaveTimer = null;
+let cloudReady = false;          // true once cloudLoad() has finished (loaded, failed or nothing to load)
+let editedBeforeCloud = false;   // the owner edited before the cloud answered: keep and upload that edit
 
 function cfStatus(type) {
   const bar  = document.getElementById('cf-status-bar');
@@ -1146,7 +1152,8 @@ LifeSync.onLeave(() => { if (cfSaveTimer) { clearTimeout(cfSaveTimer); cfSaveTim
 async function cloudLoad() {
   try {
     const p = await CLOUD.get();
-    if (!p || !p.S) return;
+    if (!p || !p.S || editedBeforeCloud) return;   // early edit: finally{} uploads it instead
+    cloudReady = true;
     p2Init.clear();
     migrateState(p.S);
     Object.keys(p.S).forEach(k => { S[k] = p.S[k]; if (!(k in LIM)) LIM[k] = [0, 1e9]; });
@@ -1157,6 +1164,11 @@ async function cloudLoad() {
     draw(true);
     cfStatus('ok');
   } catch(e) { console.warn('Cloud load failed', e); cfStatus('err'); }
+  finally {
+    const early = !cloudReady && editedBeforeCloud;
+    cloudReady = true;   // from now on every save syncs; offline edits are kept as pending as before
+    if (early) cloudSaveDebounced();
+  }
 }
 
 /* ═══════════════════════════════════════════════

@@ -806,6 +806,36 @@ def fire_pee_rules(b):
     ctx.close()
 
 @test
+def fire_open_never_pushes_stale_copy(b):
+    # Regression (Nov 2026): on open, an automatic save whose content differed from the last sync (a migrateState
+    # upgrade, e.g. the PEE default) was queued as an unsent edit and pushed over newer cloud data.
+    W = FakeWorker()
+    lap, ph = new_context(b, W), new_context(b, W)
+    def openp(ctx):
+        pg, errs = open_page(ctx, 'FIRE_SIM.html'); pg.wait_for_timeout(1200); return pg, errs
+    pg, errs = openp(lap); pg.evaluate("S.pea = 100; draw(); cloudSave()"); pg.wait_for_timeout(600); assert not errs, errs; pg.close()
+    pg, _ = openp(ph); assert pg.evaluate('S.pea') == 100; pg.close()
+    # Laptop edits the PEA and saves a scenario (the per-tab save)
+    pg, _ = openp(lap); pg.evaluate("S.pea = 150; draw(); saveScenario(1); cloudSave()"); pg.wait_for_timeout(800); pg.close()
+    assert W.posted('fire-sim')['S']['pea'] == 150
+    # Phone's local copy now differs from its last sync without being an edit (as after an upgrade)
+    pg, _ = openp(ph)
+    pg.evaluate("() => { const k = LS_KEY, d = JSON.parse(localStorage.getItem(k)); delete d.S.pee; d.S.liv = 7; localStorage.setItem(k, JSON.stringify(d)); }")
+    pg.close()
+    pg, errs = openp(ph); pg.wait_for_timeout(800)
+    assert pg.evaluate('S.pea') == 150 and pg.evaluate('!!scenarios[1]'), 'phone must show the laptop edit and scenario'
+    assert W.posted('fire-sim')['S']['pea'] == 150, 'opening the phone must not overwrite the cloud'
+    assert not errs, errs; pg.close()
+    pg, _ = openp(lap); assert pg.evaluate('S.pea') == 150; pg.close()
+    # An edit made while the cloud is unreachable at open is kept and uploaded once back online
+    W.offline = True
+    pg, _ = open_page(ph, 'FIRE_SIM.html'); pg.wait_for_timeout(400)
+    pg.evaluate("S.pea = 175; draw()"); wait_until(pg, lambda: pg.evaluate("cloudReady"), 20)
+    assert W.posted('fire-sim')['S']['pea'] == 150
+    W.offline = False; pg.evaluate("LifeSync.flushPending()"); wait_until(pg, lambda: W.posted('fire-sim')['S']['pea'] == 175, 10)
+    pg.close(); lap.close(); ph.close()
+
+@test
 def fire_live_cop_rate(b):
     ctx = new_context(b, FakeWorker())
     pg = ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
