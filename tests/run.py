@@ -836,6 +836,55 @@ def fire_open_never_pushes_stale_copy(b):
     pg.close(); lap.close(); ph.close()
 
 @test
+def fire_type_and_hold(b):
+    ctx = new_context(b, FakeWorker())
+    pg, errs = open_page(ctx, 'FIRE_SIM.html'); pg.wait_for_timeout(600)
+    def typ(key, text, finish='Enter'):
+        pg.click('#' + key + '-v'); pg.wait_for_selector('#' + key + '-v input')
+        pg.fill('#' + key + '-v input', text); pg.keyboard.press(finish); pg.wait_for_timeout(100)
+        return pg.evaluate(f"S['{key}']")
+    for t, v in (('1,75', 1.75), ('2.450', 2450), ('2 450 €', 2450), ('−3%', -3), ('1.75', 1.75)):
+        got = pg.evaluate("t => parseTyped(t)", t); assert got == v, (t, got)
+    assert pg.evaluate("Number.isNaN(parseTyped('abc'))")
+    assert typ('pea', '137') == 137
+    assert typ('infl', '2,4') == 2.4                      # comma decimal, 0.25 grid not forced
+    assert typ('spend3', '2.150') == 2150                 # European thousands
+    hi = pg.evaluate("LIM.pea[1]"); got = typ("pea", "999999"); assert got == hi, (got, hi, pg.evaluate("S.pea"))   # clamped to the limit
+    assert typ('lock', '2,6') == 3                        # integer step → whole number
+    before = pg.evaluate("S.pea"); assert typ('pea', '12', 'Escape') == before   # Esc cancels
+    assert typ('pea', 'abc') == before                    # junk is ignored
+    assert pg.evaluate("document.getElementById('pea-v').textContent") == pg.evaluate("fmtLabel('pea', S.pea)")
+    # Tab saves and opens the next value
+    typ('pea', '120', 'Tab'); assert pg.evaluate("S.pea") == 120
+    assert pg.evaluate("!!document.querySelector('#pea-basis-v input')"); pg.keyboard.press('Escape')
+    # The edit is saved like a stepper edit
+    assert json.loads(pg.evaluate("localStorage.getItem(LS_KEY)"))['S']['pea'] == 120
+    # Press and hold: repeats, and the release adds no extra step
+    pg.evaluate("S.pea = 100; draw(true)")
+    btn = pg.locator("#pea-v + button"); box = btn.bounding_box()
+    pg.mouse.move(box['x'] + 5, box['y'] + 5); pg.mouse.down(); pg.wait_for_timeout(950); pg.mouse.up(); pg.wait_for_timeout(250)
+    held = pg.evaluate("S.pea"); assert held >= 115, held
+    pg.wait_for_timeout(300); assert pg.evaluate("S.pea") == held, 'repeat must stop on release'
+    pg.click("#pea-v + button"); assert pg.evaluate("S.pea") == held + 5, 'a plain tap is one step'
+    # Desktop: nothing collapsed, group headers inert
+    pg.evaluate("mgToggle('lock')")
+    assert pg.evaluate("document.querySelectorAll('.mg.m-closed').length") == 0
+    assert pg.is_visible('#lock-v') and pg.is_visible('#fr-body')
+    assert not errs, errs; ctx.close()
+    # Phone: groups start closed with their value, one open at a time
+    ctx = new_context(b, FakeWorker()); pg = ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
+    pg.set_viewport_size({'width': 411, 'height': 784}); pg.goto('file://' + os.path.join(ROOT, 'FIRE_SIM.html')); pg.wait_for_timeout(600)
+    assert not pg.is_visible('#lock-v') and not pg.is_visible('#fr-body')
+    assert pg.text_content('#mg-lock-sum') == pg.evaluate("fmtLabel('lock', S.lock)")
+    pg.click('#mg-lock .mg-head'); assert pg.is_visible('#lock-v')
+    pg.click('#mg-ph4 .mg-head'); assert pg.is_visible('#spend3-v') and not pg.is_visible('#lock-v')
+    pg.click('.fr-header'); assert pg.is_visible('#pea-v') and not pg.is_visible('#spend3-v')
+    note = pg.locator('#fr-body .m-note').first; assert not note.is_visible()
+    pg.locator('#fr-body .m-info').first.click(); assert note.is_visible()
+    assert typ('pea', '88') == 88
+    assert not errs, errs; ctx.close()
+
+@test
 def fire_live_cop_rate(b):
     ctx = new_context(b, FakeWorker())
     pg = ctx.new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))

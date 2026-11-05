@@ -194,6 +194,12 @@ body { margin: 0; padding: 0; background: var(--color-bg-tertiary); color: var(-
 .stepper { display: flex; align-items: center; border: 0.5px solid var(--color-border-secondary); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; }
 .stepper button { width: 30px; height: 30px; border: none; background: transparent; color: var(--color-text-primary); font-size: 16px; cursor: pointer; line-height: 1; }
 .stepper button:hover { background: var(--color-bg-secondary); }
+.stepper button { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.stepper .sval { cursor: text; }
+.stepper .sval:hover { text-decoration: underline dotted var(--color-text-tertiary); text-underline-offset: 3px; }
+.stepper .sval-in { display: block; width: 100%; min-width: 0; box-sizing: border-box; height: 100%; border: none; outline: 2px solid var(--color-text-info); outline-offset: -2px; background: var(--color-bg-primary); color: var(--color-text-primary); font: inherit; text-align: center; padding: 0; }
+/* Phone-only helpers (shown by the 640px block below) */
+.mg-sum, .m-info { display: none; }
 .stepper .sval { min-width: 70px; text-align: center; font-size: 13px; font-weight: 500; color: var(--color-text-primary); height: 30px; line-height: 30px; padding: 0 4px; border-left: 0.5px solid var(--color-border-tertiary); border-right: 0.5px solid var(--color-border-tertiary); background: var(--color-bg-primary); }
 .section-title { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .05em; margin: 16px 0 6px; }
 .divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 14px 0; }
@@ -444,6 +450,24 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
   .hdr-btn { font-size: 10px; padding: 4px 8px; }
 }
 
+/* ── MOBILE: bigger steppers, collapsed groups with their value, notes behind ⓘ ── */
+@media (max-width: 640px) {
+  .stepper button { width: 44px; height: 44px; font-size: 20px; }
+  .stepper .sval { height: 44px; line-height: 44px; min-width: 64px; font-size: 14px; }
+  .mg-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .mg-head > :first-child { flex: 1; min-width: 0; }
+  .mg-sum { display: inline; font-size: 12px; font-weight: 500; color: var(--color-text-secondary); white-space: nowrap; }
+  .mg-sum::after { content: ' ▾'; color: var(--color-text-tertiary); }
+  .mg.m-closed .mg-sum::after { content: ' ▸'; }
+  .mg.m-closed .mg-body { display: none; }
+  .mg.m-closed .panel-title { margin: 0; }
+  .mg.m-closed .ph { margin-bottom: 4px; }
+  .m-note { display: none; }
+  .m-note.show { display: block; }
+  .m-info { display: inline-block; border: none; background: none; color: var(--color-text-tertiary); font-size: 15px; line-height: 1; padding: 2px 4px; cursor: pointer; }
+  .m-info.alone { display: block; margin: 2px 0 0 auto; }
+}
+
 /* ── MOBILE: scenario strip — label on own line, cards fill width ── */
 @media (max-width: 640px) {
   #sticky-row2 {
@@ -677,7 +701,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
           <div class="ret-presets"><button onclick="applyRetPreset('pea','base')">Base</button><button onclick="applyRetPreset('pea','crash')">Crash early</button><button onclick="applyRetPreset('pea','lost')">Lost decade</button></div>
           <div id="pea-ret-rows"></div>
         </div>
-        <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">Grows tax-free. Only gains taxed at withdrawal.</p>
+        <p class="m-note" style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">Grows tax-free. Only gains taxed at withdrawal.</p>
       </div>
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -686,7 +710,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('pee',-5)">−</button><span class="sval" id="pee-v">95</span><button onclick="step('pee',5)">+</button></div></div>
         <div class="row"><label>of which paid in (€K)</label><div class="stepper"><button onclick="step('pee-basis',-5)">−</button><span class="sval" id="pee-basis-v">60</span><button onclick="step('pee-basis',5)">+</button></div></div>
-        <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">Balance at departure, no new contributions. Grows at the PEA return periods. Not locked — available from departure, drawn after the CTO and before the PEA.</p>
+        <p class="m-note" style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">Balance at departure, no new contributions. Grows at the PEA return periods. Not locked — available from departure, drawn after the CTO and before the PEA.</p>
       </div>
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -704,7 +728,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
           </div>
           <p class="ret-sync-note" id="cto-sync-note" style="display:none">Copies the PEA periods — both are equities, a crash hits both.</p>
         </div>
-        <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">31.4% on realised gains. Principal tax-free.</p>
+        <p class="m-note" style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">31.4% on realised gains. Principal tax-free.</p>
       </div>
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -713,7 +737,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('av',-1)">−</button><span class="sval" id="av-v">20K</span><button onclick="step('av',1)">+</button></div></div>
         <div class="row"><label>Annual return (%)</label><div class="stepper"><button onclick="step('av-r',-0.5)">−</button><span class="sval" id="av-r-v">4%</span><button onclick="step('av-r',0.5)">+</button></div></div>
-        <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">After 8 yrs: €4 600/yr gains tax-free. Above: ~18% effective.</p>
+        <p class="m-note" style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">After 8 yrs: €4 600/yr gains tax-free. Above: ~18% effective.</p>
       </div>
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -722,7 +746,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('per',-1)">−</button><span class="sval" id="per-v">0</span><button onclick="step('per',1)">+</button></div></div>
         <div class="row"><label>Annual return (%)</label><div class="stepper"><button onclick="step('per-r',-0.5)">−</button><span class="sval" id="per-r-v">5%</span><button onclick="step('per-r',0.5)">+</button></div></div>
-        <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0" id="per-note"></p>
+        <p class="m-note" style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0" id="per-note"></p>
       </div>
       <div class="sub-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -731,7 +755,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('liv',-1)">−</button><span class="sval" id="liv-v">37K</span><button onclick="step('liv',1)">+</button></div></div>
         <div class="row"><label>Annual return (%)</label><div class="stepper"><button onclick="step('liv-r',-0.25)">−</button><span class="sval" id="liv-r-v">1.75%</span><button onclick="step('liv-r',0.25)">+</button></div></div>
-        <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">Not locked — available immediately alongside cash.</p>
+        <p class="m-note" style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">Not locked — available immediately alongside cash.</p>
       </div>
       <div class="sub-card" style="margin-bottom:0">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -739,7 +763,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
           <span class="tax-tag tax-free">No return, no tax</span>
         </div>
         <div class="row"><label>Amount (€K)</label><div class="stepper"><button onclick="step('cash',-5)">−</button><span class="sval" id="cash-v">30K</span><button onclick="step('cash',5)">+</button></div></div>
-        <p style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">Drawn first. Surplus inflow accumulates here.</p>
+        <p class="m-note" style="font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0">Drawn first. Surplus inflow accumulates here.</p>
       </div>
       <div class="total-box">
         <p class="total-label">🇫🇷 Total French assets</p>
@@ -810,7 +834,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
         <p class="col-total-eur" id="cop-total-eur">—</p>
         <div class="total-proj-grid" id="cop-total-proj"></div>
         <div class="row" style="margin:10px 0 0"><label>Peso vs euro, depreciation (%/yr)</label><div class="stepper"><button onclick="step('cop-depr',-0.5)">−</button><span class="sval" id="cop-depr-v">0%</span><button onclick="step('cop-depr',0.5)">+</button></div></div>
-        <p style="font-size:11px;color:var(--color-text-tertiary);margin:4px 0 0">Returns are in COP; the peso has lost ~2–4%/yr against the euro over the long run (inflation gap). Applied to projections and the simulation.</p>
+        <p class="m-note" style="font-size:11px;color:var(--color-text-tertiary);margin:4px 0 0">Returns are in COP; the peso has lost ~2–4%/yr against the euro over the long run (inflation gap). Applied to projections and the simulation.</p>
       </div>
     </div>
   </div>
@@ -834,51 +858,64 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
   <hr class="divider">
 
   <!-- LOCK & INFLATION -->
-  <div class="panel panel-lock">
-    <p class="panel-title">🔒 Investment lock period — PEA, AV, CTO only</p>
+  <div class="panel panel-lock mg" id="mg-lock">
+    <div class="mg-head" onclick="mgToggle('lock')"><p class="panel-title">🔒 Investment lock period — PEA, AV, CTO only</p><span class="mg-sum" id="mg-lock-sum"></span></div>
+    <div class="mg-body">
     <div class="row" style="margin:0 0 8px"><label>Lock for (years)</label><div class="stepper"><button onclick="step('lock',-1)">−</button><span class="sval" id="lock-v">3 yrs</span><button onclick="step('lock',1)">+</button></div></div>
     <p class="info-box" id="lock-info" style="margin:0"></p>
-    <p style="font-size:11px;color:var(--color-text-warning);margin:8px 0 0" id="order-note">Withdrawal order: <strong>Cash → Livrets → CTO → PEE → PEA → AV</strong></p>
+    <p class="m-note" style="font-size:11px;color:var(--color-text-warning);margin:8px 0 0" id="order-note">Withdrawal order: <strong>Cash → Livrets → CTO → PEE → PEA → AV</strong></p>
+    </div>
   </div>
-  <div class="panel panel-infl">
-    <p class="panel-title">Inflation rate</p>
+  <div class="panel panel-infl mg" id="mg-infl">
+    <div class="mg-head" onclick="mgToggle('infl')"><p class="panel-title">Inflation rate</p><span class="mg-sum" id="mg-infl-sum"></span></div>
+    <div class="mg-body">
     <div class="row" style="margin:0"><label>Annual inflation (%)</label><div class="stepper"><button onclick="step('infl',-0.25)">−</button><span class="sval" id="infl-v">2%</span><button onclick="step('infl',0.25)">+</button></div></div>
-    <p style="font-size:11px;color:var(--color-text-success);margin:6px 0 0">Compounds spending, side income, partner and pension annually — enter all amounts in today's euros.</p>
+    <p class="m-note" style="font-size:11px;color:var(--color-text-success);margin:6px 0 0">Compounds spending, side income, partner and pension annually — enter all amounts in today's euros.</p>
+    </div>
   </div>
 
   <hr class="divider">
   <p class="section-title">Life phases — cashflow</p>
 
-  <div class="panel panel-age" style="margin-bottom:16px">
-    <p class="panel-title">Departure age</p>
+  <div class="panel panel-age mg" id="mg-age" style="margin-bottom:16px">
+    <div class="mg-head" onclick="mgToggle('age')"><p class="panel-title">Departure age</p><span class="mg-sum" id="mg-age-sum"></span></div>
+    <div class="mg-body">
     <div class="row" style="margin:0 0 6px"><label>Age at departure</label><div class="stepper"><button onclick="step('startAge',-1)">−</button><span class="sval" id="startAge-v">Age 46</span><button onclick="step('startAge',1)">+</button></div></div>
     <p style="font-size:12px;color:var(--color-text-info);margin:0" id="phase-summary">—</p>
+    </div>
   </div>
 
   <!-- PHASE 1 -->
-  <div class="ph ph1" id="ph1-label">Phase 1 — Chômage: age 46</div>
-  <div class="panel panel-chomage" style="margin-top:8px">
+  <div class="mg" id="mg-ph1">
+  <div class="mg-head" onclick="mgToggle('ph1')"><div class="ph ph1" id="ph1-label">Phase 1 — Chômage: age 46</div><span class="mg-sum" id="mg-ph1-sum"></span></div>
+  <div class="panel panel-chomage mg-body" style="margin-top:8px">
     <div class="row" style="margin:0 0 4px"><label>ARE net, months 1–6 (€/mo)</label><div class="stepper"><button onclick="step('salary',-50)">−</button><span class="sval" id="salary-v">2 700</span><button onclick="step('salary',50)">+</button></div></div>
     <div class="row" style="margin:0 0 4px"><label>ARE net, from month 7 (€/mo)</label><div class="stepper"><button onclick="step('are2',-50)">−</button><span class="sval" id="are2-v">2 450</span><button onclick="step('are2',50)">+</button></div></div>
     <div class="row" style="margin:0 0 4px"><label>Duration (months)</label><div class="stepper"><button onclick="step('areM',-1)">−</button><span class="sval" id="areM-v">18 mo</span><button onclick="step('areM',1)">+</button></div></div>
     <div class="row" style="margin:0"><label>Starts after (months)</label><div class="stepper"><button onclick="step('areDelay',-1)">−</button><span class="sval" id="areDelay-v">0 mo</span><button onclick="step('areDelay',1)">+</button></div></div>
     <p style="font-size:11px;color:var(--ph1-fg);margin:6px 0 0" id="chomage-desc"></p>
   </div>
+  </div>
 
   <!-- PHASE 2 (dynamic) -->
   <div id="ph2-container"></div>
 
   <!-- PHASE 3 -->
-  <div class="ph ph3" style="margin-top:14px" id="ph3-label">Phase 3 — Winding down: age 60–64</div>
+  <div class="mg" id="mg-ph3">
+  <div class="mg-head" onclick="mgToggle('ph3')"><div class="ph ph3" style="margin-top:14px" id="ph3-label">Phase 3 — Winding down: age 60–64</div><span class="mg-sum" id="mg-ph3-sum"></span></div>
+  <div class="mg-body">
   <div class="row"><label>Monthly spend (€)</label><div class="stepper"><button onclick="step('spend2',-50)">−</button><span class="sval" id="spend2-v">1 800</span><button onclick="step('spend2',50)">+</button></div></div>
   <div class="row"><label>Monthly side income (€)</label><div class="stepper"><button onclick="step('side2',-50)">−</button><span class="sval" id="side2-v">200</span><button onclick="step('side2',50)">+</button></div></div>
   <div class="partner-block">
     <p class="partner-title">Partner's monthly contribution (€)</p>
     <div class="row" style="margin:0"><label>Phase 3 contribution</label><div class="stepper"><button onclick="step('partner2',-50)">−</button><span class="sval" id="partner2-v">0</span><button onclick="step('partner2',50)">+</button></div></div>
   </div>
+  </div></div>
 
   <!-- PHASE 4 -->
-  <div class="ph ph4" style="margin-top:14px" id="ph4-label">Phase 4 — Retirement: age 65+</div>
+  <div class="mg" id="mg-ph4">
+  <div class="mg-head" onclick="mgToggle('ph4')"><div class="ph ph4" style="margin-top:14px" id="ph4-label">Phase 4 — Retirement: age 65+</div><span class="mg-sum" id="mg-ph4-sum"></span></div>
+  <div class="mg-body">
   <div class="row"><label>Pension starts at</label><div class="stepper"><button onclick="step('pensionAge',-1)">−</button><span class="sval" id="pensionAge-v">Age 64</span><button onclick="step('pensionAge',1)">+</button></div></div>
   <div class="row"><label>Monthly spend (€)</label><div class="stepper"><button onclick="step('spend3',-50)">−</button><span class="sval" id="spend3-v">1 800</span><button onclick="step('spend3',50)">+</button></div></div>
   <div class="row"><label>Monthly side income (€)</label><div class="stepper"><button onclick="step('side3',-50)">−</button><span class="sval" id="side3-v">200</span><button onclick="step('side3',50)">+</button></div></div>
@@ -888,6 +925,7 @@ table.bd tr.unlock-row td { padding-top: 8px; border-top: 2px solid var(--teal-b
     <p class="partner-title">Partner's monthly contribution (€)</p>
     <div class="row" style="margin:0"><label>Phase 4 contribution</label><div class="stepper"><button onclick="step('partner3',-50)">−</button><span class="sval" id="partner3-v">0</span><button onclick="step('partner3',50)">+</button></div></div>
   </div>
+  </div></div>
 
   <!-- SUMMARY METRICS -->
   <div class="metrics-panel">
@@ -1487,6 +1525,7 @@ function step(k, d) {
 
 function toggleSection(id) {
   const b = document.getElementById(id+'-body'), t = document.getElementById(id+'-toggle');
+  if (isPhone() && b.classList.contains('hidden')) mgCloseAll();
   b.classList.toggle('hidden');
   t.classList.toggle('open', !b.classList.contains('hidden'));
 }
@@ -1548,7 +1587,8 @@ function showTab(t) {
    UI BUILDERS
 ═══════════════════════════════════════════════ */
 function updateLabels() {
-  Object.keys(S).forEach(k => { const el=document.getElementById(k+'-v'); if(el) el.textContent=fmtLabel(k,S[k]); });
+  Object.keys(S).forEach(k => { const el=document.getElementById(k+'-v'); if(el && !el.querySelector('input')) el.textContent=fmtLabel(k,S[k]); });
+  mgSummaries();
   getP2Ages().forEach(a => {
     const sv=document.getElementById(`p2s_${a}-v`), iv=document.getElementById(`p2i_${a}-v`);
     if(sv) sv.textContent=fmt(S[`p2s_${a}`]);
@@ -1963,10 +2003,140 @@ async function fetchCopEurRate() {
 }
 
 /* ═══════════════════════════════════════════════
+   PHONE GROUPS (≤ 640px): collapsed, value in the header, one open at a time
+═══════════════════════════════════════════════ */
+const PHONE_MQ = window.matchMedia('(max-width: 640px)');
+const isPhone = () => PHONE_MQ.matches;
+const eur = v => '€' + Math.round(v).toLocaleString('de-DE');
+function mgCloseAll() {
+  document.querySelectorAll('.mg').forEach(g => g.classList.add('m-closed'));
+  ['fr', 'col'].forEach(id => {
+    document.getElementById(id + '-body').classList.add('hidden');
+    document.getElementById(id + '-toggle').classList.remove('open');
+  });
+}
+function mgToggle(id) {
+  if (!isPhone()) return;
+  const g = document.getElementById('mg-' + id), open = g.classList.contains('m-closed');
+  mgCloseAll();
+  if (open) g.classList.remove('m-closed');
+}
+function mgSummaries() {
+  const set = (id, t) => { const el = document.getElementById('mg-' + id + '-sum'); if (el) el.textContent = t; };
+  set('lock', fmtLabel('lock', S.lock));
+  set('infl', S.infl + '%');
+  set('age', 'Age ' + S.startAge);
+  set('ph1', eur(S.salary) + ' · ' + S.areM + ' mo');
+  set('ph3', eur(S.spend2) + '/mo');
+  set('ph4', eur(S.spend3) + '/mo · ' + eur(S.retraite));
+}
+function initPhone() {
+  // ⓘ per note: in the card header when there is one, otherwise on its own line
+  document.querySelectorAll('.m-note').forEach(n => {
+    const b = document.createElement('button');
+    b.className = 'm-info'; b.textContent = 'ⓘ'; b.setAttribute('aria-label', 'Details');
+    b.onclick = e => { e.stopPropagation(); n.classList.toggle('show'); };
+    const head = n.closest('.sub-card')?.firstElementChild;
+    if (head && head.tagName === 'DIV' && head !== n) head.appendChild(b);
+    else { b.classList.add('alone'); n.parentNode.insertBefore(b, n); }
+  });
+  if (isPhone()) mgCloseAll();
+}
+
+/* ═══════════════════════════════════════════════
+   TYPE A VALUE (all devices): click/tap the number, type, Enter / Tab / leave = save, Esc = cancel
+═══════════════════════════════════════════════ */
+// Step size of a stepper, from its − button: step('key', -0.5) → 0.5
+function stepOf(sval) {
+  const m = (sval.previousElementSibling?.getAttribute('onclick') || '').match(/step\('[^']+',\s*(-?[\d.]+)\)/);
+  return m ? Math.abs(Number(m[1])) : 1;
+}
+// "1,75" → 1.75 · "2.450" → 2450 · "2 450 €" → 2450 · "−3%" → -3 · "Age 46" → 46
+function parseTyped(txt) {
+  let t = String(txt).trim().replace(/[−–]/g, '-').replace(/[^\d,.\-]/g, '');
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(t)) return NaN;
+  return Number(t);
+}
+function setTyped(k, v, stepSize) {
+  if (!Number.isFinite(v)) return false;
+  const [lo, hi] = LIM[k] || [0, 1e9];
+  v = Math.min(hi, Math.max(lo, v));
+  v = Number.isInteger(stepSize) ? Math.round(v) : Math.round(v * 100) / 100;
+  S[k] = v;
+  draw();
+  return true;
+}
+function visibleSvals() {
+  return [...document.querySelectorAll('.stepper .sval')].filter(e => e.offsetParent !== null && e.id.endsWith('-v'));
+}
+function editSval(sval) {
+  if (!sval || sval.querySelector('input')) return;
+  const k = sval.id.slice(0, -2);
+  if (!(k in S)) return;
+  const size = stepOf(sval);
+  const inp = document.createElement('input');
+  inp.className = 'sval-in'; inp.type = 'text'; inp.inputMode = 'decimal'; inp.enterKeyHint = 'done';
+  inp.autocomplete = 'off'; inp.value = String(S[k]).replace('.', ',');
+  sval.style.width = sval.getBoundingClientRect().width + 'px';   // keep the box size while typing
+  sval.textContent = ''; sval.appendChild(inp);
+  inp.focus(); inp.select();
+  setTimeout(() => { try { inp.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' }); } catch (_) {} }, 300);   // above the keypad
+  let done = false;
+  const finish = (commit, jump) => {
+    if (done) return; done = true;
+    sval.style.width = '';
+    const list = visibleSvals(), i = list.indexOf(sval);
+    const nextId = jump ? list[i + jump]?.id : null;
+    const v = parseTyped(inp.value);
+    sval.textContent = fmtLabel(k, S[k]);   // remove the input first: draw() skips values that still hold one
+    if (commit) setTyped(k, v, size);
+    if (nextId) editSval(document.getElementById(nextId));
+  };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); inp.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    else if (e.key === 'Tab') { e.preventDefault(); finish(true, e.shiftKey ? -1 : 1); }
+  });
+  inp.addEventListener('blur', () => finish(true));
+}
+document.addEventListener('click', e => {
+  const sval = e.target.closest?.('.stepper .sval');
+  if (sval && !e.target.closest('input')) editSval(sval);
+});
+
+/* ═══════════════════════════════════════════════
+   PRESS AND HOLD − / + (all devices): repeats after 400 ms, then every 100 ms
+═══════════════════════════════════════════════ */
+let holdT = null, holdI = null, holdFired = false;
+function holdStop() { clearTimeout(holdT); clearInterval(holdI); holdT = holdI = null; }
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest?.('.stepper button');
+  if (!b || e.button !== 0) return;
+  const m = (b.getAttribute('onclick') || '').match(/step\('([^']+)',\s*(-?[\d.]+)\)/);
+  if (!m) return;
+  holdStop(); holdFired = false;
+  holdT = setTimeout(() => {
+    holdFired = true;
+    step(m[1], Number(m[2]));
+    holdI = setInterval(() => step(m[1], Number(m[2])), 100);
+  }, 400);
+});
+['pointerup', 'pointercancel', 'blur'].forEach(ev => window.addEventListener(ev, holdStop));
+// The click that ends a hold must not add one more step
+document.addEventListener('click', e => {
+  if (holdFired && e.target.closest?.('.stepper button')) { e.stopPropagation(); e.preventDefault(); }
+  holdFired = false;
+}, true);
+document.addEventListener('contextmenu', e => { if (e.target.closest?.('.stepper button')) e.preventDefault(); });
+
+/* ═══════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════ */
 ensureAllP2();
 loadState();
+initPhone();
 draw(true);       // first render with fallback rate (instant)
 fetchCopEurRate(); // async: updates rate + redraws when ready
 cloudLoad();
