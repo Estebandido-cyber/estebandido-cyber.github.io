@@ -23,7 +23,7 @@
   --border: rgba(0,0,0,0.11); --border2: rgba(0,0,0,0.2);
   --teal: #0f8a7a; --teal-bg: #def5f0; --teal-tx: #0a5f54; --on-teal: #ffffff;
   --route: #e8590c; --heat0: #e6e5e0; --heat1: #8fd8cb; --heat2: #0f8a7a;
-  --danger: #c43c3c;
+  --danger: #c43c3c; --amber-bg: #fdf1e0; --amber-tx: #7a4300;
   --font: 'DM Sans', system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
@@ -33,7 +33,7 @@
     --border: rgba(255,255,255,0.09); --border2: rgba(255,255,255,0.18);
     --teal: #3cc4b0; --teal-bg: #12302b; --teal-tx: #9be6da; --on-teal: #0b1f1c;
     --route: #ff8a3d; --heat0: #2e2e2b; --heat1: #1f6b5f; --heat2: #3cc4b0;
-    --danger: #e06666;
+    --danger: #e06666; --amber-bg: #2b1f0c; --amber-tx: #f5c27a;
   }
   .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
   .leaflet-container { background: #2a2a28; }
@@ -41,6 +41,7 @@
 html, body { height: 100%; }
 body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 button, input, textarea { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
 button { cursor: pointer; }
 
 /* Header (same pattern as the other widgets) */
@@ -85,7 +86,7 @@ button { cursor: pointer; }
 
 /* Side panel */
 .actions { display: flex; gap: 8px; margin-bottom: 12px; }
-.actions button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--border2); background: var(--card); font-size: 14px; font-weight: 500; }
+.actions button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--border2); background: var(--card); font-size: 13px; font-weight: 500; padding: 0 6px; white-space: nowrap; }
 .actions button.primary { background: var(--teal); color: var(--on-teal); border-color: var(--teal); }
 .sec-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin: 14px 0 8px; }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -108,6 +109,28 @@ button { cursor: pointer; }
 .ride-title { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ride-meta { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { flex: none; font-size: 11px; font-weight: 700; color: var(--teal-tx); background: var(--teal-bg); border-radius: 99px; padding: 3px 8px; }
+.badge.amber { color: var(--amber-tx); background: var(--amber-bg); }
+.ride.plan { border-style: dashed; border-color: var(--teal); }
+.ride.plan.sel { border-style: solid; }
+.cps { display: flex; flex-direction: column; gap: 6px; }
+.cp { display: flex; gap: 10px; align-items: flex-start; background: var(--sub); border-radius: 10px; padding: 8px 10px; }
+.cp-n { flex: none; width: 26px; height: 26px; border-radius: 50%; border: none; background: var(--teal); color: var(--on-teal); font-size: 12px; font-weight: 700; }
+.cp.done .cp-n { background: var(--text3); }
+.cp-main { flex: 1; min-width: 0; }
+.cp-name { font-weight: 500; font-size: 14px; }
+.cp.done .cp-name { text-decoration: line-through; color: var(--text2); }
+.cp-what { font-size: 13px; color: var(--text2); margin-top: 2px; line-height: 1.35; }
+.cp-fact { font-size: 12px; color: var(--text3); font-style: italic; margin-top: 2px; line-height: 1.35; }
+.cp-check { flex: none; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border2); background: var(--card); font-size: 16px; }
+.cp.done .cp-check { background: var(--teal-bg); border-color: var(--teal); color: var(--teal-tx); }
+.cp-empty { font-size: 13px; color: var(--text2); line-height: 1.45; }
+.paste { display: flex; flex-direction: column; gap: 6px; }
+.paste textarea { width: 100%; min-height: 110px; border: 1px solid var(--border2); background: var(--sub); border-radius: 10px; padding: 8px 10px; font-family: ui-monospace, monospace; font-size: 12px; }
+.paste-err { color: var(--danger); font-size: 13px; min-height: 0; }
+.paste button, .sheet-actions button.primary { background: var(--teal); color: var(--on-teal); border-color: var(--teal); }
+.paste button { border: 1px solid var(--teal); border-radius: 10px; padding: 8px 12px; font-size: 13px; align-self: flex-start; }
+.cp-pin { width: 26px; height: 26px; border-radius: 50%; background: #0f8a7a; color: #fff; border: 2px solid #fff; font: 700 12px/22px 'DM Sans', system-ui, sans-serif; text-align: center; box-shadow: 0 1px 5px rgba(0,0,0,0.45); }
+.cp-pin.done { background: #8a8880; }
 .empty { background: var(--card); border: 1px dashed var(--border2); border-radius: 12px; padding: 14px; font-size: 13px; color: var(--text2); line-height: 1.5; }
 
 /* Ride editor: drawer over the side panel (wide) or bottom sheet (narrow) */
@@ -179,6 +202,7 @@ button { cursor: pointer; }
     <div class="map-tools">
       <button id="btn-fog" class="on" title="Show / hide the fog">🌫</button>
       <button id="btn-home" title="Set home: then tap the map">⌂</button>
+      <button id="btn-locate" title="Where am I">◎</button>
       <button id="btn-fit" title="Show all rides">⤢</button>
     </div>
     <div class="map-hint" id="map-hint"></div>
@@ -186,10 +210,17 @@ button { cursor: pointer; }
 
   <aside class="side">
     <div class="actions">
-      <button class="primary" id="btn-import">⬆ Import GPX</button>
-      <button id="btn-draw">✎ Draw a ride</button>
+      <button class="primary" id="btn-import">⬆ Ride GPX</button>
+      <button id="btn-plan">🗺 Plan GPX</button>
+      <button id="btn-draw">✎ Draw</button>
     </div>
     <input type="file" id="gpx-input" multiple hidden>
+    <input type="file" id="plan-input" multiple hidden>
+
+    <div id="plans-sec" hidden>
+      <div class="sec-title">Planned</div>
+      <div class="rides" id="plans"></div>
+    </div>
 
     <div class="sec-title">Exploration</div>
     <div class="stats" id="stats"></div>
@@ -213,6 +244,7 @@ button { cursor: pointer; }
       <div class="field"><label for="f-end">Back</label><input id="f-end" type="time"></div>
     </div>
     <div class="ride-info" id="f-info"></div>
+    <div class="field" id="f-cps-wrap" hidden><label>Checkpoints</label><div class="cps" id="f-cps" data-owner="ride"></div></div>
     <div class="field"><label>Tags</label><div class="chips" id="f-tags"></div></div>
     <div class="field"><label for="f-note">What I saw</label><textarea id="f-note" placeholder="Places, details, the sandwich stop…"></textarea></div>
     <div class="field"><label for="f-thought">What I thought about</label><textarea id="f-thought" placeholder="Ideas and reflections from the ride"></textarea></div>
@@ -223,14 +255,40 @@ button { cursor: pointer; }
     </div>
   </div>
 </section>
+<section class="sheet" id="psheet" aria-label="Planned route">
+  <div class="sheet-head"><span class="t">Planned route</span><button id="psheet-done">Done</button></div>
+  <div class="sheet-body">
+    <div class="field"><label for="p-title">Title</label><input id="p-title" maxlength="80" placeholder="Monts d'Or loop"></div>
+    <div class="ride-info" id="p-info"></div>
+    <div class="field"><label>Checkpoints</label><div class="cps" id="p-cps" data-owner="plan"></div></div>
+    <div class="sheet-actions">
+      <button id="p-ask">📋 Copy request for Claude</button>
+      <button id="p-paste-open">Paste checkpoints</button>
+    </div>
+    <div class="paste" id="p-paste" hidden>
+      <textarea id="p-paste-text" placeholder='Paste the JSON from Claude: {"title":…,"points":[…]}'></textarea>
+      <div class="paste-err" id="p-paste-err"></div>
+      <button id="p-paste-add">Add checkpoints</button>
+    </div>
+    <div class="field"><label>After the ride</label>
+      <div class="sheet-actions">
+        <button class="primary" id="p-done-gpx">⬆ Import my ride GPX</button>
+        <button id="p-done-plan">Ridden as planned</button>
+      </div>
+    </div>
+    <div class="sheet-actions"><button class="del" id="p-delete">Delete plan</button></div>
+  </div>
+</section>
 <div class="toast" id="toast"></div>
 
 <script>
 // ════════════════════════════════════════════════════════════════════
 //  DATA
-//  state = { v: 1, settings: { home: [lat, lng] | null }, rides: [ride] }
+//  state = { v: 1, settings: { home: [lat, lng] | null }, rides: [ride], plans: [plan] }
 //  ride  = { id, date 'YYYY-MM-DD', start 'HH:MM'|'', end 'HH:MM'|'', title, note, thought,
-//            tags: [tag id], tr: encoded polyline (1e-5, simplified), km, src: 'gpx' | 'drawn' }
+//            tags: [tag id], tr: encoded polyline (1e-5, simplified), km, src: 'gpx' | 'drawn' | 'plan', cps?: [cp] }
+//  plan  = { id, date, title, tr (planned route, '' = none), km, cps: [cp] }   — a route to ride, not counted yet
+//  cp    = { id, name, lat, lng, what, fact, done }                            — checkpoint, usually pasted from Claude
 //  Explored squares = zoom-14 map tiles (~1,7 km wide at Lyon) crossed by any route.
 // ════════════════════════════════════════════════════════════════════
 const LS_KEY = 'bici_v1';
@@ -244,7 +302,7 @@ const TAGS = [
 ];
 const TAG = Object.fromEntries(TAGS.map(t => [t[0], t]));
 
-let state = { v: 1, settings: { home: null }, rides: [] };
+let state = { v: 1, settings: { home: null }, rides: [], plans: [] };
 
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function n1(x) { return x.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
@@ -379,9 +437,14 @@ function compute(s) {
     const m = rideMinutes(r); if (m) mins += m;
     if (home) for (const p of decodePoly(r.tr)) far = Math.max(far, distM(home, p));
   }
-  const year = todayStr().slice(0, 4);
+  const year = todayStr().slice(0, 4), planNew = {}, preview = new Set();
+  for (const p of s.plans || []) {
+    let n = 0;
+    if (p.tr) for (const t of routeTiles(p.tr)) if (!explored.has(t)) { n++; preview.add(t); }
+    planNew[p.id] = n;
+  }
   return {
-    rides, per, explored, km, mins, year,
+    rides, per, explored, km, mins, year, planNew, preview,
     yN: rides.filter(r => r.date.startsWith(year)).length,
     sq: explored.size, max: maxSquare(explored),
     farKm: home && rides.length ? far / 1000 : null,
@@ -429,21 +492,96 @@ function importGpxText(text, intoId) {
 }
 function roundHome(p) { return [Math.round(p[0] * 1000) / 1000, Math.round(p[1] * 1000) / 1000]; }   // ~100 m
 
+// ── Plans (routes to ride) and checkpoints ──
+function importPlanGpx(text) {
+  const g = parseGpx(text), f = routeFields(g.pts);
+  if (state.plans.some(p => p.tr === f.tr)) return null;
+  const p = { id: 'p' + newId().slice(1), date: todayStr(), title: g.name, ...f, cps: [] };
+  state.plans.push(p);
+  return p;
+}
+// Checkpoints as pasted from the chat: {title, points: [{name, lat, lng, what, fact}]}, a bare array, or inside ``` fences
+function parseCheckpoints(text) {
+  let t = String(text || '').trim().replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '');
+  const i = t.search(/[\[{]/);
+  if (i < 0) throw new Error('no JSON found');
+  let d;
+  try { d = JSON.parse(t.slice(i)); } catch (_) { throw new Error('the text is not valid JSON'); }
+  const cps = cleanCps(Array.isArray(d) ? d : (d && (d.points || d.checkpoints)));
+  if (!cps.length) throw new Error('no checkpoint with a name, lat and lng');
+  cps.forEach(c => { c.id = 'c' + newId().slice(1); c.done = false; });
+  return { title: d && typeof d.title === 'string' ? d.title.slice(0, 80) : '', cps };
+}
+function setCheckpoints(planId, text) {
+  const p = state.plans.find(x => x.id === planId); if (!p) return 0;
+  const r = parseCheckpoints(text);
+  p.cps = r.cps;
+  if (!p.title && r.title) p.title = r.title;
+  return r.cps.length;
+}
+// Plan → ride: with the GPX actually recorded, or with the planned route. Title and checkpoints go with it.
+function completePlan(planId, gpxText) {
+  const p = state.plans.find(x => x.id === planId); if (!p) return null;
+  let r;
+  if (gpxText) { r = importGpxText(gpxText); if (!r) return null; }
+  else {
+    if (!p.tr) throw new Error('this plan has no route');
+    r = { id: newId(), date: todayStr(), start: '', end: '', title: '', note: '', thought: '', tags: [], tr: p.tr, km: p.km, src: 'plan' };
+    state.rides.push(r);
+    if (!state.settings.home) state.settings.home = roundHome(decodePoly(p.tr)[0]);
+  }
+  if (!r.title) r.title = p.title;
+  if (p.cps.length) r.cps = p.cps.map(c => ({ ...c }));
+  state.plans = state.plans.filter(x => x.id !== planId);
+  return r;
+}
+// Text to paste in the chat so Claude can suggest checkpoints for this route
+function claudeRequest(p) {
+  const pts = p.tr ? decodePoly(p.tr) : [];
+  const step = Math.max(1, Math.floor(pts.length / 12));
+  const sample = pts.filter((_, i) => i % step === 0);
+  if (pts.length && sample[sample.length - 1] !== pts[pts.length - 1]) sample.push(pts[pts.length - 1]);
+  return [
+    'Bici: checkpoints request',
+    'Route: ' + (p.title || 'untitled') + (p.km ? ' · ' + n1(p.km) + ' km' : ''),
+    'Route points in order (lat,lng): ' + sample.map(q => q[0].toFixed(4) + ',' + q[1].toFixed(4)).join(' ; '),
+    'Suggest 4–6 checkpoints along or close to this route that are worth seeing and photographing (architecture, history, viewpoints, parks, good stops). ' +
+    'For each: name, lat, lng, what (what to look at or photograph, one sentence), fact (one short historical or curious fact).',
+    'Answer with this JSON only: {"title":"…","points":[{"name":"…","lat":45.0,"lng":4.0,"what":"…","fact":"…"}]}',
+  ].join('\n');
+}
+
 // ════════════════════════════════════════════════════════════════════
 //  STORAGE + CLOUDFLARE SYNC
 // ════════════════════════════════════════════════════════════════════
+function str(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
+function cleanCp(c) {
+  if (!c || typeof c !== 'object' || typeof c.name !== 'string' || !c.name.trim()) return null;
+  const lat = Number(c.lat), lng = Number(c.lng ?? c.lon);
+  if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 85 || Math.abs(lng) > 180) return null;
+  return { id: str(c.id, 40) || 'c' + newId().slice(1), name: c.name.trim().slice(0, 80), lat: Math.round(lat * 1e5) / 1e5, lng: Math.round(lng * 1e5) / 1e5,
+           what: str(c.what, 300), fact: str(c.fact, 300), done: c.done === true };
+}
+function cleanCps(a) { return Array.isArray(a) ? a.map(cleanCp).filter(Boolean).slice(0, 30) : []; }
 function cleanRide(r) {
   if (!r || typeof r.id !== 'string' || !/^\d{4}-\d\d-\d\d$/.test(r.date || '') || typeof r.tr !== 'string' || !r.tr) return null;
-  const str = (v, max) => typeof v === 'string' ? v.slice(0, max) : '';
+  const cps = cleanCps(r.cps);
   return { id: r.id, date: r.date, start: str(r.start, 5), end: str(r.end, 5), title: str(r.title, 80), note: str(r.note, 5000),
            thought: str(r.thought, 5000), tags: Array.isArray(r.tags) ? r.tags.filter(t => TAG[t]) : [],
            tr: r.tr, km: typeof r.km === 'number' && isFinite(r.km) ? r.km : Math.round(pathKm(decodePoly(r.tr)) * 10) / 10,
-           src: r.src === 'drawn' ? 'drawn' : 'gpx' };
+           src: r.src === 'drawn' || r.src === 'plan' ? r.src : 'gpx', ...(cps.length ? { cps } : {}) };
+}
+function cleanPlan(p) {
+  if (!p || typeof p.id !== 'string' || typeof (p.tr ?? '') !== 'string') return null;
+  const tr = p.tr || '';
+  return { id: p.id, date: /^\d{4}-\d\d-\d\d$/.test(p.date || '') ? p.date : todayStr(), title: str(p.title, 80), tr,
+           km: typeof p.km === 'number' && isFinite(p.km) ? p.km : (tr ? Math.round(pathKm(decodePoly(tr)) * 10) / 10 : 0), cps: cleanCps(p.cps) };
 }
 function normalize(data) {
   if (!data || typeof data !== 'object' || !Array.isArray(data.rides)) return null;
   const h = data.settings && Array.isArray(data.settings.home) && data.settings.home.length === 2 && data.settings.home.every(isFinite) ? data.settings.home.map(Number) : null;
-  return { v: 1, settings: { home: h }, rides: data.rides.map(cleanRide).filter(Boolean) };
+  return { v: 1, settings: { home: h }, rides: data.rides.map(cleanRide).filter(Boolean),
+           plans: Array.isArray(data.plans) ? data.plans.map(cleanPlan).filter(Boolean) : [] };
 }
 function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (_) {} }
 function loadLocal() { try { const s = normalize(JSON.parse(localStorage.getItem(LS_KEY))); if (s) state = s; } catch (_) {} }
@@ -464,7 +602,7 @@ function hubSummary() {
   if (c.farKm !== null) hub.fk = Math.round(c.farKm * 10) / 10;
   return hub;
 }
-function cloudPayload() { return { v: 1, settings: state.settings, rides: state.rides, hub: hubSummary() }; }
+function cloudPayload() { return { v: 1, settings: state.settings, rides: state.rides, plans: state.plans, hub: hubSummary() }; }
 function scheduleCloudsave() {
   clearTimeout(cfSaveTimer);
   CLOUD.stage(cloudPayload());   // kept as pending now, so leaving before the upload loses nothing
@@ -511,7 +649,7 @@ const DRIVE = LifeDrive.create({
   filename: GD_FILENAME,
   status: gdStatus,
   busy: gdSetBusy,
-  payload: () => ({ v: 1, exportedAt: new Date().toISOString(), settings: state.settings, rides: state.rides }),
+  payload: () => ({ v: 1, exportedAt: new Date().toISOString(), settings: state.settings, rides: state.rides, plans: state.plans }),
   apply: payload => {
     const s = normalize(payload);
     if (!s) throw new Error('This file is not a Bici backup');
@@ -529,7 +667,7 @@ document.getElementById('driveloadbtn').addEventListener('click', gdriveLoad);
 //  MAP (Leaflet + OpenStreetMap) — the page works without it (offline, CDN down)
 // ════════════════════════════════════════════════════════════════════
 let map = null, fogLayer = null, routesLayer = null, homeMarker = null, squareRect = null, drawLine = null;
-let explored = new Set(), selId = null, fogOn = true;
+let explored = new Set(), preview = new Set(), selId = null, selPlanId = null, fogOn = true, meMarker = null;
 let mode = null;                                // null | 'home' | 'draw'
 let drawPts = [], drawInto = null;
 
@@ -558,19 +696,23 @@ function drawFogTile(coords) {
   const c = document.createElement('canvas'); c.width = c.height = 256;
   const g = c.getContext('2d'), dark = matchMedia('(prefers-color-scheme: dark)').matches;
   const fog = dark ? 'rgba(10,10,12,0.72)' : 'rgba(70,74,84,0.48)', line = dark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)';
+  const pre = dark ? 'rgba(240,166,64,0.45)' : 'rgba(245,158,11,0.42)';   // not explored yet, on a planned route
+  const fill = k => explored.has(k) ? null : preview.has(k) ? pre : fog;
   const d = coords.z - Z;
   if (d >= 0) {                                  // map tile inside one square
     const k = 1 << d, sx = Math.floor(coords.x / k), sy = Math.floor(coords.y / k);
-    if (!explored.has(sx + ',' + sy)) { g.fillStyle = fog; g.fillRect(0, 0, 256, 256); }
+    const f = fill(sx + ',' + sy);
+    if (f) { g.fillStyle = f; g.fillRect(0, 0, 256, 256); }
     g.strokeStyle = line; g.lineWidth = 1; g.beginPath();
     if (coords.x % k === 0) { g.moveTo(0.5, 0); g.lineTo(0.5, 256); }
     if (coords.y % k === 0) { g.moveTo(0, 0.5); g.lineTo(256, 0.5); }
     g.stroke();
   } else {                                       // map tile holding k×k squares
     const k = 1 << -d, cs = 256 / k;
-    g.fillStyle = fog;
-    for (let i = 0; i < k; i++) for (let j = 0; j < k; j++)
-      if (!explored.has((coords.x * k + i) + ',' + (coords.y * k + j))) g.fillRect(i * cs, j * cs, cs, cs);
+    for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) {
+      const f = fill((coords.x * k + i) + ',' + (coords.y * k + j));
+      if (f) { g.fillStyle = f; g.fillRect(i * cs, j * cs, cs, cs); }
+    }
     if (cs >= 8) {
       g.strokeStyle = line; g.lineWidth = 1; g.beginPath();
       for (let i = 0; i < k; i++) { const p = Math.round(i * cs) + 0.5; g.moveTo(p, 0); g.lineTo(p, 256); g.moveTo(0, p); g.lineTo(256, p); }
@@ -582,7 +724,7 @@ function drawFogTile(coords) {
 
 function drawMap(c) {
   if (!map) return;
-  explored = c.explored;
+  explored = c.explored; preview = c.preview;
   fogLayer.redraw();
   routesLayer.clearLayers();
   const col = cssVar('--route') || '#e8590c';
@@ -593,6 +735,22 @@ function drawMap(c) {
     routesLayer.addLayer(line);
     if (sel) line.bringToFront();
   }
+  const teal = cssVar('--teal') || '#0f8a7a';
+  for (const p of state.plans) {
+    if (!p.tr) continue;
+    const sel = p.id === selPlanId;
+    const line = L.polyline(decodePoly(p.tr), { color: teal, weight: sel ? 6 : 4, dashArray: '10 8', opacity: 0.95 });
+    line.on('click', e => { L.DomEvent.stopPropagation(e); if (!mode) openPlan(p.id); });
+    routesLayer.addLayer(line);
+  }
+  const pins = (cps, open) => cps.forEach((cp, i) => {
+    const m = L.marker([cp.lat, cp.lng], { icon: L.divIcon({ className: '', html: `<div class="cp-pin${cp.done ? ' done' : ''}">${i + 1}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) });
+    m.bindTooltip(esc(cp.name)); m.on('click', e => { L.DomEvent.stopPropagation(e); if (!mode) open(); });
+    routesLayer.addLayer(m);
+  });
+  for (const p of state.plans) pins(p.cps, () => openPlan(p.id));
+  const sr = selId && state.rides.find(r => r.id === selId);
+  if (sr && sr.cps) pins(sr.cps, () => {});
   if (homeMarker) { homeMarker.remove(); homeMarker = null; }
   const h = state.settings.home;
   if (h) homeMarker = L.circleMarker(h, { radius: 7, color: '#ffffff', weight: 2, fillColor: cssVar('--teal') || '#0f8a7a', fillOpacity: 1 }).bindTooltip('Home').addTo(map);
@@ -605,12 +763,18 @@ function drawMap(c) {
 }
 function fitAll() {
   if (!map) return;
-  const pts = state.rides.flatMap(r => decodePoly(r.tr));
+  const pts = state.rides.flatMap(r => decodePoly(r.tr)).concat(...state.plans.map(planPts));
   if (state.settings.home) pts.push(state.settings.home);
   if (pts.length > 1) map.fitBounds(L.latLngBounds(pts), { padding: [30, 30], maxZoom: 14 });
   else if (pts.length) map.setView(pts[0], 13);
 }
 function fitRide(r) { if (map) map.fitBounds(L.latLngBounds(decodePoly(r.tr)), { padding: [40, 40], maxZoom: 15 }); }
+function planPts(p) { return (p.tr ? decodePoly(p.tr) : []).concat(p.cps.map(c => [c.lat, c.lng])); }
+function fitPlan(p) {
+  const pts = planPts(p);
+  if (map && pts.length > 1) map.fitBounds(L.latLngBounds(pts), { padding: [40, 40], maxZoom: 15 });
+  else if (map && pts.length) map.setView(pts[0], 15);
+}
 
 // ── Map modes: set home / draw a route by tapping ──
 function setMode(m, into) {
@@ -666,7 +830,7 @@ function finishDraw() {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function renderAll(refit) {
   const c = compute(state);
-  renderStats(c); renderHeat(c); renderList(c); drawMap(c);
+  renderStats(c); renderHeat(c); renderPlans(c); renderList(c); drawMap(c);
   if (refit) fitAll();
   return c;
 }
@@ -701,8 +865,8 @@ function renderHeat(c) {
 function renderList(c) {
   const el = document.getElementById('rides');
   if (!c.rides.length) {
-    el.innerHTML = '<div class="empty">No rides yet. After a ride, open it in Komoot → ⋮ → <b>Download GPX file</b>, then tap <b>Import GPX</b> here. ' +
-      'No GPX? Use <b>Draw a ride</b> and tap your route on the map.</div>';
+    el.innerHTML = '<div class="empty">No rides yet. Before a ride: plan it in Komoot → ⋮ → <b>Download GPX file</b> → <b>Plan GPX</b> here. ' +
+      'After the ride: same with the recorded tour → <b>Ride GPX</b> (or from the plan: <b>Import my ride GPX</b>). No GPX? <b>Draw</b> it on the map.</div>';
     return;
   }
   el.innerHTML = c.rides.slice().reverse().map(r => {
@@ -715,6 +879,41 @@ function renderList(c) {
       (nw ? `<span class="badge">+${nw}</span>` : '') + '</button>';
   }).join('');
 }
+function renderPlans(c) {
+  F('plans-sec').hidden = !state.plans.length;
+  F('plans').innerHTML = state.plans.map(p => {
+    const done = p.cps.filter(x => x.done).length, nw = c.planNew[p.id];
+    const meta = [p.tr ? n1(p.km) + ' km' : 'no route', p.cps.length ? done + '/' + p.cps.length + ' checkpoints' : 'no checkpoints yet'].join(' · ');
+    return `<button class="ride plan${p.id === selPlanId ? ' sel' : ''}" data-id="${esc(p.id)}">` +
+      `<div class="ride-date"><b>🗺</b><span>Plan</span></div>` +
+      `<div class="ride-main"><div class="ride-title">${esc(p.title || 'Planned route')}</div><div class="ride-meta">${esc(meta)}</div></div>` +
+      (nw ? `<span class="badge amber" title="New squares if you ride it">+${nw}</span>` : '') + '</button>';
+  }).join('');
+}
+document.getElementById('plans').addEventListener('click', e => {
+  const b = e.target.closest('.ride'); if (b) openPlan(b.dataset.id, true);
+});
+function cpsHTML(cps) {
+  return cps.map((c, i) => `<div class="cp${c.done ? ' done' : ''}" data-i="${i}">` +
+    `<button class="cp-n" title="Show on the map">${i + 1}</button>` +
+    `<div class="cp-main"><div class="cp-name">${esc(c.name)}</div>${c.what ? `<div class="cp-what">${esc(c.what)}</div>` : ''}${c.fact ? `<div class="cp-fact">${esc(c.fact)}</div>` : ''}</div>` +
+    `<button class="cp-check" title="Done">${c.done ? '✓' : ''}</button></div>`).join('');
+}
+// Checkpoint list clicks (plan or ride sheet): number → show on map, box → done / not done
+function onCpClick(e) {
+  const row = e.target.closest('.cp'); if (!row) return;
+  const owner = e.currentTarget.dataset.owner;
+  const obj = owner === 'plan' ? state.plans.find(p => p.id === selPlanId) : state.rides.find(r => r.id === selId);
+  const cp = obj && obj.cps && obj.cps[+row.dataset.i]; if (!cp) return;
+  if (e.target.closest('.cp-check')) {
+    cp.done = !cp.done; persist();
+    if (owner === 'plan') renderPlanSheet(); else renderSheet();
+    renderAll();
+  } else if (e.target.closest('.cp-n') && map) {
+    if (innerWidth < 900) { F('psheet').classList.remove('open'); F('sheet').classList.remove('open'); }   // phone: the sheet covers the map
+    map.setView([cp.lat, cp.lng], Math.max(map.getZoom(), 16));
+  }
+}
 document.getElementById('rides').addEventListener('click', e => {
   const b = e.target.closest('.ride'); if (b) openRide(b.dataset.id, true);
 });
@@ -723,6 +922,7 @@ document.getElementById('rides').addEventListener('click', e => {
 const F = id => document.getElementById(id);
 function openRide(id, fit) {
   const r = state.rides.find(x => x.id === id); if (!r) return;
+  closePlanSilently();
   selId = id;
   F('f-title').value = r.title; F('f-date').value = r.date; F('f-start').value = r.start; F('f-end').value = r.end;
   F('f-note').value = r.note; F('f-thought').value = r.thought;
@@ -737,7 +937,9 @@ function renderSheet() {
   const c = compute(state), m = rideMinutes(r), d = new Date(r.date + 'T12:00:00');
   F('sheet-title').textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   F('f-info').textContent = [n1(r.km) + ' km', m ? Math.floor(m / 60) + 'h' + pad(m % 60) + ' outside' : '',
-    '+' + c.per[r.id].newSq + ' new squares', r.src === 'drawn' ? 'route drawn by hand' : 'route from GPX'].filter(Boolean).join(' · ');
+    '+' + c.per[r.id].newSq + ' new squares', r.src === 'drawn' ? 'route drawn by hand' : r.src === 'plan' ? 'route as planned' : 'route from GPX'].filter(Boolean).join(' · ');
+  F('f-cps-wrap').hidden = !(r.cps && r.cps.length);
+  F('f-cps').innerHTML = r.cps ? cpsHTML(r.cps) : '';
   F('f-tags').innerHTML = TAGS.map(t => `<button class="chip${r.tags.includes(t[0]) ? ' on' : ''}" data-t="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
 }
 function closeSheet() { F('sheet').classList.remove('open'); selId = null; renderAll(); }
@@ -761,6 +963,71 @@ F('f-tags').addEventListener('click', e => {
   renderSheet(); renderAll();
 });
 F('sheet-done').addEventListener('click', closeSheet);
+F('f-cps').addEventListener('click', onCpClick);
+F('p-cps').addEventListener('click', onCpClick);
+
+// ── Plan sheet ──
+function openPlan(id, fit) {
+  const p = state.plans.find(x => x.id === id); if (!p) return;
+  closeSheetSilently();
+  selPlanId = id;
+  F('p-title').value = p.title;
+  F('p-paste').hidden = true; F('p-paste-err').textContent = '';
+  renderPlanSheet();
+  F('psheet').classList.add('open');
+  renderAll();
+  if (fit) fitPlan(p);
+}
+function renderPlanSheet() {
+  const p = state.plans.find(x => x.id === selPlanId); if (!p) return;
+  const c = compute(state), done = p.cps.filter(x => x.done).length;
+  F('p-info').textContent = [p.tr ? n1(p.km) + ' km' : 'no route', p.tr ? '+' + c.planNew[p.id] + ' new squares if you ride it' : '',
+    p.cps.length ? done + '/' + p.cps.length + ' checkpoints done' : ''].filter(Boolean).join(' · ');
+  F('p-cps').innerHTML = p.cps.length ? cpsHTML(p.cps)
+    : '<div class="cp-empty">No checkpoints yet. Tap <b>Copy request for Claude</b>, paste it in the chat, then tap <b>Paste checkpoints</b> and paste the answer.</div>';
+}
+function closePlanSilently() { F('psheet').classList.remove('open'); selPlanId = null; }
+function closePlan() { closePlanSilently(); renderAll(); }
+F('psheet-done').addEventListener('click', closePlan);
+let planTimer = null;
+F('p-title').addEventListener('input', e => {
+  const p = state.plans.find(x => x.id === selPlanId); if (!p) return;
+  p.title = e.target.value.slice(0, 80); persist();
+  clearTimeout(planTimer); planTimer = setTimeout(renderAll, 400);
+});
+F('p-ask').addEventListener('click', async () => {
+  const p = state.plans.find(x => x.id === selPlanId); if (!p) return;
+  const text = claudeRequest(p);
+  try { await navigator.clipboard.writeText(text); toast('Copied. Paste it in your chat with Claude', 4000); }
+  catch (_) { window.prompt('Copy this text and paste it in your chat with Claude:', text); }
+});
+F('p-paste-open').addEventListener('click', () => { F('p-paste').hidden = !F('p-paste').hidden; if (!F('p-paste').hidden) F('p-paste-text').focus(); });
+F('p-paste-text').addEventListener('input', () => { F('p-paste-err').textContent = ''; });
+F('p-paste-add').addEventListener('click', () => {
+  const p = state.plans.find(x => x.id === selPlanId); if (!p) return;
+  if (p.cps.length && !confirm('Replace the ' + p.cps.length + ' checkpoints of this plan?')) return;
+  try {
+    const n = setCheckpoints(p.id, F('p-paste-text').value);
+    persist(); F('p-paste-text').value = ''; F('p-paste').hidden = true;
+    F('p-title').value = p.title; renderPlanSheet(); renderAll(); fitPlan(p);
+    toast(n + ' checkpoint' + (n > 1 ? 's' : '') + ' added');
+  } catch (err) { F('p-paste-err').textContent = 'Not added: ' + err.message + '.'; }
+});
+let completeFrom = null;
+F('p-done-gpx').addEventListener('click', () => { completeFrom = selPlanId; importInto = null; F('gpx-input').click(); });
+F('p-done-plan').addEventListener('click', () => {
+  const p = state.plans.find(x => x.id === selPlanId); if (!p) return;
+  if (!p.tr) { toast('This plan has no route: import your ride GPX instead'); return; }
+  if (!confirm('Save this plan as a ride done today, with the planned route?')) return;
+  const r = completePlan(p.id, null); persist(); closePlanSilently();
+  const c = openRide(r.id, true);
+  toast('Ride saved · +' + c.per[r.id].newSq + ' new squares', 4000);
+});
+F('p-delete').addEventListener('click', () => {
+  const p = state.plans.find(x => x.id === selPlanId); if (!p) return;
+  if (!confirm('Delete this plan? This cannot be undone.')) return;
+  state.plans = state.plans.filter(x => x.id !== p.id); persist(); closePlan();
+});
 F('f-delete').addEventListener('click', () => {
   const r = state.rides.find(x => x.id === selId); if (!r) return;
   if (!confirm('Delete this ride (' + r.date + ')? This cannot be undone.')) return;
@@ -770,10 +1037,22 @@ F('f-redraw').addEventListener('click', () => { const id = selId; F('sheet').cla
 
 // ── Import ──
 let importInto = null;
-F('btn-import').addEventListener('click', () => { importInto = null; F('gpx-input').click(); });
-F('f-regpx').addEventListener('click', () => { importInto = selId; F('gpx-input').click(); });
+F('btn-import').addEventListener('click', () => { importInto = null; completeFrom = null; F('gpx-input').click(); });
+F('f-regpx').addEventListener('click', () => { importInto = selId; completeFrom = null; F('gpx-input').click(); });
 F('gpx-input').addEventListener('change', async e => {
   const files = [...e.target.files]; e.target.value = '';
+  if (completeFrom) {                                  // the real GPX of a planned route
+    const id = completeFrom; completeFrom = null;
+    if (!files[0]) return;
+    try {
+      const r = completePlan(id, await files[0].text());
+      if (!r) { toast('This ride is already imported'); return; }
+      persist(); closePlanSilently();
+      const c = openRide(r.id, true);
+      toast('Ride saved from your plan · +' + c.per[r.id].newSq + ' new squares', 5000);
+    } catch (err) { toast('Not imported — ' + err.message, 6000); }
+    return;
+  }
   const hadHome = !!state.settings.home;
   let added = [], dup = 0, bad = [];
   for (const f of files) {
@@ -793,8 +1072,36 @@ F('gpx-input').addEventListener('change', async e => {
   if (added.length === 1) openRide(added[0].id, true); else if (added.length) fitAll();
   importInto = null;
 });
-F('btn-draw').addEventListener('click', () => { if (!map) { toast('The map is not available'); return; } closeSheetSilently(); setMode('draw'); });
-F('btn-home').addEventListener('click', () => { if (!map) return; closeSheetSilently(); setMode(mode === 'home' ? null : 'home'); });
+F('btn-plan').addEventListener('click', () => F('plan-input').click());
+F('plan-input').addEventListener('change', async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  const added = [], bad = [];
+  for (const f of files) {
+    try { const p = importPlanGpx(await f.text()); if (p) added.push(p); }
+    catch (err) { bad.push(f.name + ': ' + err.message); }
+  }
+  if (added.length) persist();
+  const c = renderAll();
+  if (bad.length) toast('Not imported — ' + bad.join(' · '), 6000);
+  else if (added.length === 1) toast('Plan added · +' + c.planNew[added[0].id] + ' new squares if you ride it', 5000);
+  else if (added.length) toast(added.length + ' plans added');
+  else if (files.length) toast('This plan is already here');
+  if (added.length === 1) openPlan(added[0].id, true); else if (added.length) fitAll();
+});
+F('btn-locate').addEventListener('click', () => {
+  if (!map) return;
+  if (!navigator.geolocation) { toast('Location is not available on this device'); return; }
+  toast('Finding you…');
+  navigator.geolocation.getCurrentPosition(pos => {
+    const ll = [pos.coords.latitude, pos.coords.longitude];
+    if (meMarker) meMarker.remove();
+    meMarker = L.circleMarker(ll, { radius: 8, color: '#ffffff', weight: 3, fillColor: '#1a73e8', fillOpacity: 1 }).bindTooltip('You').addTo(map);
+    map.setView(ll, Math.max(map.getZoom(), 15));
+    toast('You are here', 1500);
+  }, err => toast('Location: ' + err.message, 4000), { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
+});
+F('btn-draw').addEventListener('click', () => { if (!map) { toast('The map is not available'); return; } closeSheetSilently(); closePlanSilently(); setMode('draw'); });
+F('btn-home').addEventListener('click', () => { if (!map) return; closeSheetSilently(); closePlanSilently(); setMode(mode === 'home' ? null : 'home'); });
 F('btn-fit').addEventListener('click', fitAll);
 F('btn-fog').addEventListener('click', e => {
   fogOn = !fogOn; e.currentTarget.classList.toggle('on', fogOn);
