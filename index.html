@@ -661,7 +661,7 @@ const TILES = [
   { id: 'kals',    name: 'Kals',       icon: '⚡', file: 'kals_track.html',         key: 'kalstrack',
     hub: kalsFromHub, paint: paintKals, noLocal: true,
     full: cf => [kalsFromData(cf), null] },
-  { id: 'bici',    name: 'Bici',       icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-bici)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="16" r="3.5"/><circle cx="18.5" cy="16" r="3.5"/><path d="M5.5 16 9 9h7l2.5 7M9 9l3 7h-6.5M16 9l-4 7M7.5 7h3M16 9l-1-3h2.5"/></svg>', file: 'bici.html',               key: 'bici',
+  { id: 'bici',    name: 'Bici',       icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="16" r="3.5"/><circle cx="18.5" cy="16" r="3.5"/><path d="M5.5 16 9 9h7l2.5 7M9 9l3 7h-6.5M16 9l-4 7M7.5 7h3M16 9l-1-3h2.5"/></svg>', file: 'bici.html',               key: 'bici',
     hub: biciFromHub, paint: paintBici,
     full: cf => { const d = cf || safeParse(safeGet('bici_v1')); return [biciFromData(d), null]; } },
   { id: 'lukas',   name: 'Lukas',      icon: '📊', file: 'lukas_analyzer.html',     key: 'lukas-flow',
