@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="lib/pwa.js"></script>
+<script src="lib/sync-auth.js"></script>
+<script src="lib/sync.js"></script>
+<script src="lib/drive.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bici</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #eeede9; --card: #ffffff; --sub: #f5f5f3;
+  --text: #1a1a18; --text2: #5f5e5a; --text3: #8a8880;
+  --border: rgba(0,0,0,0.11); --border2: rgba(0,0,0,0.2);
+  --teal: #0f8a7a; --teal-bg: #def5f0; --teal-tx: #0a5f54; --on-teal: #ffffff;
+  --route: #e8590c; --heat0: #e6e5e0; --heat1: #8fd8cb; --heat2: #0f8a7a;
+  --danger: #c43c3c;
+  --font: 'DM Sans', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615; --card: #1f1f1d; --sub: #2a2a28;
+    --text: #f0ede6; --text2: #a8a69f; --text3: #7a7872;
+    --border: rgba(255,255,255,0.09); --border2: rgba(255,255,255,0.18);
+    --teal: #3cc4b0; --teal-bg: #12302b; --teal-tx: #9be6da; --on-teal: #0b1f1c;
+    --route: #ff8a3d; --heat0: #2e2e2b; --heat1: #1f6b5f; --heat2: #3cc4b0;
+    --danger: #e06666;
+  }
+  .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
+  .leaflet-container { background: #2a2a28; }
+}
+html, body { height: 100%; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+/* Header (same pattern as the other widgets) */
+.site-header { position: sticky; top: 0; z-index: 1100; background: var(--card); border-bottom: 1px solid var(--border); }
+.header-row { max-width: 1400px; margin: 0 auto; height: 52px; padding: 0 14px; display: flex; align-items: center; gap: 12px; }
+#home-link { display: flex; align-items: center; opacity: 0.85; text-decoration: none; }
+#home-link:hover { opacity: 1; }
+.header-sep { width: 1px; height: 26px; background: var(--border); }
+.logo { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
+.logo-main { font-size: 24px; font-weight: 700; letter-spacing: 0.01em; color: var(--teal); line-height: 1; white-space: nowrap; }
+@media (max-width: 520px) { .logo-sub { display: none; } }
+.logo-sub { font-size: 12px; letter-spacing: 0.16em; color: var(--text2); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#drivesavebtn, #driveloadbtn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 7px 12px; border-radius: 99px; border: none; background: rgba(26,115,232,0.14); color: #1a73e8; white-space: nowrap; }
+#drivesavebtn:disabled, #driveloadbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.status-bar { max-width: 1400px; margin: 0 auto; padding: 0 16px 4px; display: flex; gap: 14px; justify-content: center; font-size: 11px; color: var(--text3); min-height: 16px; }
+#drive-status { display: none; }
+#drive-status.visible { display: block; }
+#drive-status.ok { color: var(--teal); } #drive-status.err { color: var(--danger); } #drive-status.working { color: #b25f00; }
+#cf-status { display: flex; align-items: center; gap: 5px; }
+#cf-status .cf-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
+#cf-status.ok { color: var(--teal); } #cf-status.ok .cf-dot { background: var(--teal); }
+#cf-status.err { color: var(--danger); } #cf-status.err .cf-dot { background: var(--danger); }
+
+/* Layout: map + side panel (side by side from 900 px, stacked below) */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; height: calc(100vh - 73px); height: calc(100dvh - 73px); }
+.map-wrap { position: relative; min-height: 0; }
+#map { position: absolute; inset: 0; background: var(--sub); }
+.side { min-height: 0; overflow-y: auto; padding: 12px 14px 24px; border-left: 1px solid var(--border); background: var(--bg); }
+@media (max-width: 899px) {
+  .layout { display: block; height: auto; }
+  .map-wrap { height: 56vh; height: 56dvh; }
+  .side { border-left: none; overflow: visible; }
+}
+.map-tools { position: absolute; top: 10px; right: 10px; z-index: 900; display: flex; flex-direction: column; gap: 6px; }
+.map-tools button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border2); background: var(--card); font-size: 17px; display: flex; align-items: center; justify-content: center; }
+.map-tools button.on { background: var(--teal-bg); border-color: var(--teal); }
+.map-hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 900; background: var(--card); border: 1px solid var(--border2); border-radius: 12px; padding: 8px 10px; display: none; align-items: center; gap: 8px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); max-width: calc(100% - 24px); flex-wrap: wrap; justify-content: center; }
+.map-hint.visible { display: flex; }
+.map-hint button { border: 1px solid var(--border2); background: var(--sub); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+.map-hint button.primary { background: var(--teal); color: var(--on-teal); border-color: var(--teal); }
+.no-map { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--text2); font-size: 14px; }
+
+/* Side panel */
+.actions { display: flex; gap: 8px; margin-bottom: 12px; }
+.actions button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--border2); background: var(--card); font-size: 14px; font-weight: 500; }
+.actions button.primary { background: var(--teal); color: var(--on-teal); border-color: var(--teal); }
+.sec-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin: 14px 0 8px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.stat-l { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-v { font-size: 19px; font-weight: 700; margin-top: 2px; white-space: nowrap; }
+.stat-s { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 899px) and (min-width: 600px) { .stats { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 11px); gap: 2px; justify-content: start; }
+.heat i { width: 11px; height: 11px; border-radius: 2px; background: var(--heat0); display: block; }
+.heat i.l1 { background: var(--heat1); } .heat i.l2 { background: var(--heat2); } .heat i.out { visibility: hidden; }
+.heat-foot { font-size: 11px; color: var(--text3); margin-top: 4px; }
+.rides { display: flex; flex-direction: column; gap: 6px; }
+.ride { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 9px 11px; }
+.ride.sel { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
+.ride-date { flex: none; width: 44px; text-align: center; line-height: 1.1; }
+.ride-date b { display: block; font-size: 18px; }
+.ride-date span { font-size: 11px; color: var(--text2); text-transform: uppercase; }
+.ride-main { flex: 1; min-width: 0; }
+.ride-title { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ride-meta { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge { flex: none; font-size: 11px; font-weight: 700; color: var(--teal-tx); background: var(--teal-bg); border-radius: 99px; padding: 3px 8px; }
+.empty { background: var(--card); border: 1px dashed var(--border2); border-radius: 12px; padding: 14px; font-size: 13px; color: var(--text2); line-height: 1.5; }
+
+/* Ride editor: drawer over the side panel (wide) or bottom sheet (narrow) */
+.sheet { position: fixed; z-index: 1200; background: var(--card); border: 1px solid var(--border2); box-shadow: 0 8px 30px rgba(0,0,0,0.2); display: none; flex-direction: column; }
+.sheet.open { display: flex; }
+@media (min-width: 900px) { .sheet { top: 73px; right: 0; bottom: 0; width: 380px; border-radius: 0; border-top: none; border-right: none; border-bottom: none; } }
+@media (max-width: 899px) { .sheet { left: 0; right: 0; bottom: 0; max-height: 78vh; max-height: 78dvh; border-radius: 16px 16px 0 0; } }
+.sheet-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.sheet-head .t { flex: 1; font-weight: 700; font-size: 15px; }
+.sheet-head button { border: none; background: var(--teal); color: var(--on-teal); border-radius: 10px; padding: 8px 14px; font-weight: 500; }
+.sheet-body { overflow-y: auto; padding: 12px 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+.field label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin-bottom: 4px; }
+.field input, .field textarea { width: 100%; border: 1px solid var(--border2); background: var(--sub); border-radius: 10px; padding: 9px 10px; font-size: 15px; }
+.field textarea { min-height: 84px; resize: vertical; line-height: 1.4; }
+.row3 { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.row3 input { min-width: 0; padding: 9px 6px; font-size: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--border2); background: var(--sub); border-radius: 99px; padding: 6px 10px; font-size: 13px; }
+.chip.on { background: var(--teal-bg); border-color: var(--teal); color: var(--teal-tx); font-weight: 500; }
+.ride-info { font-size: 13px; color: var(--text2); background: var(--sub); border-radius: 10px; padding: 8px 10px; }
+.sheet-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sheet-actions button { border: 1px solid var(--border2); background: var(--sub); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.sheet-actions button.del { color: var(--danger); margin-left: auto; }
+.toast { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); z-index: 1300; background: var(--text); color: var(--bg); border-radius: 10px; padding: 9px 14px; font-size: 13px; max-width: calc(100% - 24px); display: none; }
+.toast.visible { display: block; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-row">
+    <a id="home-link" href="index.html" title="Back to Life Hub">
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="13.5" stroke="url(#hl-g1)" stroke-width="1.2" fill="none" opacity="0.7"/>
+        <ellipse cx="16" cy="16" rx="13.5" ry="5.5" stroke="url(#hl-g2)" stroke-width="1" fill="none" opacity="0.55" transform="rotate(-35 16 16)"/>
+        <ellipse cx="16" cy="16" rx="13.5" ry="5.5" stroke="url(#hl-g3)" stroke-width="1" fill="none" opacity="0.45" transform="rotate(35 16 16)"/>
+        <circle cx="16" cy="16" r="2.5" fill="url(#hl-g4)"/>
+        <circle cx="16" cy="2.5" r="1.5" fill="white" opacity="0.9"/>
+        <defs>
+          <linearGradient id="hl-g1" x1="2.5" y1="2.5" x2="29.5" y2="29.5" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#7dd3fc"/>
+          </linearGradient>
+          <linearGradient id="hl-g2" x1="2.5" y1="2.5" x2="29.5" y2="29.5" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#00e5a0"/>
+          </linearGradient>
+          <linearGradient id="hl-g3" x1="2.5" y1="29.5" x2="29.5" y2="2.5" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#ffd166"/><stop offset="100%" stop-color="#a78bfa"/>
+          </linearGradient>
+          <radialGradient id="hl-g4" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#a78bfa"/>
+          </radialGradient>
+        </defs>
+      </svg>
+    </a>
+    <div class="header-sep"></div>
+    <div class="logo"><span class="logo-main">🚲 Bici</span><span class="logo-sub">Rides &amp; exploration</span></div>
+    <button id="drivesavebtn" title="Save to Google Drive">☁ Save</button>
+    <button id="driveloadbtn" title="Load from Google Drive">☁ Load</button>
+  </div>
+  <div class="status-bar">
+    <span id="cf-status"><span class="cf-dot"></span><span id="cf-status-msg"></span></span>
+    <span id="drive-status"></span>
+  </div>
+</header>
+
+<main class="layout">
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-tools">
+      <button id="btn-fog" class="on" title="Show / hide the fog">🌫</button>
+      <button id="btn-home" title="Set home: then tap the map">⌂</button>
+      <button id="btn-fit" title="Show all rides">⤢</button>
+    </div>
+    <div class="map-hint" id="map-hint"></div>
+  </div>
+
+  <aside class="side">
+    <div class="actions">
+      <button class="primary" id="btn-import">⬆ Import GPX</button>
+      <button id="btn-draw">✎ Draw a ride</button>
+    </div>
+    <input type="file" id="gpx-input" multiple hidden>
+
+    <div class="sec-title">Exploration</div>
+    <div class="stats" id="stats"></div>
+
+    <div class="sec-title">Last 6 months</div>
+    <div class="heat" id="heat"></div>
+    <div class="heat-foot" id="heat-foot"></div>
+
+    <div class="sec-title">Rides</div>
+    <div class="rides" id="rides"></div>
+  </aside>
+</main>
+
+<section class="sheet" id="sheet" aria-label="Ride">
+  <div class="sheet-head"><span class="t" id="sheet-title">Ride</span><button id="sheet-done">Done</button></div>
+  <div class="sheet-body">
+    <div class="field"><label for="f-title">Title</label><input id="f-title" maxlength="80" placeholder="Along the Saône to the island"></div>
+    <div class="row3">
+      <div class="field"><label for="f-date">Date</label><input id="f-date" type="date"></div>
+      <div class="field"><label for="f-start">Left</label><input id="f-start" type="time"></div>
+      <div class="field"><label for="f-end">Back</label><input id="f-end" type="time"></div>
+    </div>
+    <div class="ride-info" id="f-info"></div>
+    <div class="field"><label>Tags</label><div class="chips" id="f-tags"></div></div>
+    <div class="field"><label for="f-note">What I saw</label><textarea id="f-note" placeholder="Places, details, the sandwich stop…"></textarea></div>
+    <div class="field"><label for="f-thought">What I thought about</label><textarea id="f-thought" placeholder="Ideas and reflections from the ride"></textarea></div>
+    <div class="sheet-actions">
+      <button id="f-regpx">⬆ Replace route (GPX)</button>
+      <button id="f-redraw">✎ Redraw route</button>
+      <button class="del" id="f-delete">Delete ride</button>
+    </div>
+  </div>
+</section>
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+//  DATA
+//  state = { v: 1, settings: { home: [lat, lng] | null }, rides: [ride] }
+//  ride  = { id, date 'YYYY-MM-DD', start 'HH:MM'|'', end 'HH:MM'|'', title, note, thought,
+//            tags: [tag id], tr: encoded polyline (1e-5, simplified), km, src: 'gpx' | 'drawn' }
+//  Explored squares = zoom-14 map tiles (~1,7 km wide at Lyon) crossed by any route.
+// ════════════════════════════════════════════════════════════════════
+const LS_KEY = 'bici_v1';
+const GD_FILENAME = 'bici_data.json';
+const Z = 14, NT = 1 << Z;                     // explorer square = zoom-14 tile
+const DEFAULT_VIEW = [[45.764, 4.836], 12];    // first open, before any ride or home
+const TAGS = [
+  ['park', '🌳', 'Park'], ['river', '🌊', 'River'], ['arch', '🏛', 'Architecture'], ['picnic', '🧺', 'Picnic'],
+  ['village', '🏘', 'Village'], ['view', '⛰', 'Viewpoint'], ['cafe', '☕', 'Café'], ['photos', '📷', 'Photos'],
+  ['sunset', '🌅', 'Sunset'], ['forest', '🌲', 'Forest'],
+];
+const TAG = Object.fromEntries(TAGS.map(t => [t[0], t]));
+
+let state = { v: 1, settings: { home: null }, rides: [] };
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function n1(x) { return x.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+function pad(n) { return String(n).padStart(2, '0'); }
+function localDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function localTime(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function todayStr() { return localDate(new Date()); }
+function newId() { return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+// ── Geometry ──
+const R_EARTH = 6371008.8;
+function distM(a, b) {
+  const r = Math.PI / 180, dLat = (b[0] - a[0]) * r, dLng = (b[1] - a[1]) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLng / 2) ** 2;
+  return 2 * R_EARTH * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+function pathKm(pts) { let m = 0; for (let i = 1; i < pts.length; i++) m += distM(pts[i - 1], pts[i]); return m / 1000; }
+
+// Douglas–Peucker in a local metric projection (keeps the shape within tolM metres)
+function simplify(pts, tolM) {
+  if (pts.length < 3) return pts.slice();
+  const lat0 = pts[0][0] * Math.PI / 180, kx = R_EARTH * Math.PI / 180 * Math.cos(lat0), ky = R_EARTH * Math.PI / 180;
+  const P = pts.map(p => [p[1] * kx, p[0] * ky]);
+  const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [i, j] = stack.pop();
+    const [ax, ay] = P[i], [bx, by] = P[j], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+    let best = -1, bi = -1;
+    for (let k = i + 1; k < j; k++) {
+      let t = L2 ? ((P[k][0] - ax) * dx + (P[k][1] - ay) * dy) / L2 : 0; t = Math.max(0, Math.min(1, t));
+      const ex = P[k][0] - (ax + t * dx), ey = P[k][1] - (ay + t * dy), d = ex * ex + ey * ey;
+      if (d > best) { best = d; bi = k; }
+    }
+    if (bi > 0 && best > tolM * tolM) { keep[bi] = 1; stack.push([i, bi], [bi, j]); }
+  }
+  return pts.filter((_, k) => keep[k]);
+}
+
+// Google encoded polyline, precision 1e-5 (~1 m): compact storage for routes
+function encodePoly(pts) {
+  const enc = v => { v = v < 0 ? ~(v << 1) : v << 1; let s = ''; while (v >= 0x20) { s += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; } return s + String.fromCharCode(v + 63); };
+  let out = '', pa = 0, pb = 0;
+  for (const p of pts) { const a = Math.round(p[0] * 1e5), b = Math.round(p[1] * 1e5); out += enc(a - pa) + enc(b - pb); pa = a; pb = b; }
+  return out;
+}
+function decodePoly(s) {
+  const pts = []; let i = 0, a = 0, b = 0;
+  const next = () => { let r = 0, sh = 0, c; do { c = s.charCodeAt(i++) - 63; r |= (c & 0x1f) << sh; sh += 5; } while (c >= 0x20 && i <= s.length); return (r & 1) ? ~(r >> 1) : r >> 1; };
+  while (i < s.length) { a += next(); if (i > s.length) break; b += next(); pts.push([a / 1e5, b / 1e5]); }
+  return pts;
+}
+
+// ── Explorer squares (zoom-14 tiles) ──
+function tileOf(lat, lng) { const t = tileXY(lat, lng); return [Math.floor(t[0]), Math.floor(t[1])]; }
+function tileLng(x) { return x / NT * 360 - 180; }
+function tileLat(y) { const n = Math.PI - 2 * Math.PI * y / NT; return 180 / Math.PI * Math.atan(Math.sinh(n)); }
+function tileXY(lat, lng) {                     // fractional zoom-14 tile coordinates (Web Mercator)
+  const r = lat * Math.PI / 180;
+  return [(lng + 180) / 360 * NT, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * NT];
+}
+const tileCache = new Map();                   // encoded route → Set of 'x,y'
+function routeTiles(tr) {
+  if (tileCache.has(tr)) return tileCache.get(tr);
+  const pts = decodePoly(tr).map(p => tileXY(p[0], p[1])), set = new Set();
+  if (pts.length) set.add(Math.floor(pts[0][0]) + ',' + Math.floor(pts[0][1]));
+  for (let i = 1; i < pts.length; i++) {        // exact grid walk: every square the segment crosses, even a clipped corner
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    let cx = Math.floor(x0), cy = Math.floor(y0);
+    const ex = Math.floor(x1), ey = Math.floor(y1), dx = x1 - x0, dy = y1 - y0;
+    const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
+    const tdx = dx ? Math.abs(1 / dx) : Infinity, tdy = dy ? Math.abs(1 / dy) : Infinity;
+    let tx = dx ? ((sx > 0 ? cx + 1 : cx) - x0) / dx : Infinity, ty = dy ? ((sy > 0 ? cy + 1 : cy) - y0) / dy : Infinity;
+    for (let guard = 0; (cx !== ex || cy !== ey) && guard < 10000; guard++) {
+      if (tx < ty) { cx += sx; tx += tdx; } else { cy += sy; ty += tdy; }
+      set.add(cx + ',' + cy);
+    }
+  }
+  tileCache.set(tr, set);
+  return set;
+}
+// Largest n×n block of explored squares
+function maxSquare(explored) {
+  if (!explored.size) return { n: 0 };
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const k of explored) { const [x, y] = k.split(',').map(Number); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  const w = x1 - x0 + 1, h = y1 - y0 + 1;
+  if (w * h > 4e6) return { n: 1 };            // rides very far apart: not worth the memory
+  let prev = new Uint16Array(w + 1), best = { n: 0 };
+  for (let y = y0; y <= y1; y++) {
+    const cur = new Uint16Array(w + 1);
+    for (let x = x0; x <= x1; x++) {
+      const i = x - x0 + 1;
+      if (explored.has(x + ',' + y)) {
+        cur[i] = 1 + Math.min(cur[i - 1], prev[i], prev[i - 1]);
+        if (cur[i] > best.n) best = { n: cur[i], x: x - cur[i] + 1, y: y - cur[i] + 1 };
+      }
+    }
+    prev = cur;
+  }
+  return best;
+}
+// Share of the squares whose centre is within km of home that are explored
+function coverage(explored, home, km) {
+  if (!home) return null;
+  const [cx, cy] = tileOf(home[0], home[1]), span = Math.ceil(km / 1.2) + 1;
+  let tot = 0, got = 0;
+  for (let x = cx - span; x <= cx + span; x++) for (let y = cy - span; y <= cy + span; y++) {
+    const c = [(tileLat(y) + tileLat(y + 1)) / 2, (tileLng(x) + tileLng(x + 1)) / 2];
+    if (distM(home, c) <= km * 1000) { tot++; if (explored.has(x + ',' + y)) got++; }
+  }
+  return tot ? got / tot : null;
+}
+function rideMinutes(r) {
+  if (!/^\d\d:\d\d$/.test(r.start || '') || !/^\d\d:\d\d$/.test(r.end || '')) return null;
+  const m = (+r.end.slice(0, 2) * 60 + +r.end.slice(3)) - (+r.start.slice(0, 2) * 60 + +r.start.slice(3));
+  return m > 0 ? m : null;
+}
+function byDate(a, b) { return (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')) || a.id.localeCompare(b.id); }
+
+// Everything shown comes from here
+function compute(s) {
+  const rides = s.rides.slice().sort(byDate);
+  const explored = new Set(), per = {};
+  let km = 0, mins = 0, far = 0;
+  const home = s.settings.home;
+  for (const r of rides) {
+    let nw = 0;
+    for (const t of routeTiles(r.tr)) if (!explored.has(t)) { explored.add(t); nw++; }
+    per[r.id] = { newSq: nw };
+    km += r.km || 0;
+    const m = rideMinutes(r); if (m) mins += m;
+    if (home) for (const p of decodePoly(r.tr)) far = Math.max(far, distM(home, p));
+  }
+  const year = todayStr().slice(0, 4);
+  return {
+    rides, per, explored, km, mins, year,
+    yN: rides.filter(r => r.date.startsWith(year)).length,
+    sq: explored.size, max: maxSquare(explored),
+    farKm: home && rides.length ? far / 1000 : null,
+    cov10: rides.length ? coverage(explored, home, 10) : null,
+    last: rides[rides.length - 1] || null,
+  };
+}
+
+// ── GPX ──
+function parseGpx(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('not a valid GPX file');
+  let nodes = [...doc.getElementsByTagName('trkpt')];
+  if (!nodes.length) nodes = [...doc.getElementsByTagName('rtept')];
+  const pts = [], times = [];
+  for (const n of nodes) {
+    const lat = parseFloat(n.getAttribute('lat')), lng = parseFloat(n.getAttribute('lon'));
+    if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 85 || Math.abs(lng) > 180) continue;
+    pts.push([lat, lng]);
+    const t = n.getElementsByTagName('time')[0];
+    if (t) { const d = new Date(t.textContent.trim()); if (!isNaN(d)) times.push(d); }
+  }
+  if (pts.length < 2) throw new Error('no route points in this file');
+  const nameEl = doc.querySelector('trk > name') || doc.querySelector('rte > name') || doc.querySelector('metadata > name');
+  return { pts, name: nameEl ? nameEl.textContent.trim().slice(0, 80) : '', first: times[0] || null, last: times[times.length - 1] || null };
+}
+function routeFields(pts) {
+  return { tr: encodePoly(simplify(pts, 6)), km: Math.round(pathKm(pts) * 10) / 10 };
+}
+// New ride from GPX text (or replaces the route of an existing ride). Returns the ride, or null if it is a duplicate.
+function importGpxText(text, intoId) {
+  const g = parseGpx(text), f = routeFields(g.pts);
+  if (intoId) {
+    const r = state.rides.find(x => x.id === intoId);
+    if (r) { Object.assign(r, f, { src: 'gpx' }); if (g.first && !r.start) r.start = localTime(g.first); if (g.last && !r.end) r.end = localTime(g.last); }
+    return r || null;
+  }
+  const date = g.first ? localDate(g.first) : todayStr();
+  if (state.rides.some(r => r.date === date && r.tr === f.tr)) return null;
+  const r = { id: newId(), date, start: g.first ? localTime(g.first) : '', end: g.last ? localTime(g.last) : '',
+              title: g.name, note: '', thought: '', tags: [], ...f, src: 'gpx' };
+  state.rides.push(r);
+  if (!state.settings.home) state.settings.home = roundHome(g.pts[0]);
+  return r;
+}
+function roundHome(p) { return [Math.round(p[0] * 1000) / 1000, Math.round(p[1] * 1000) / 1000]; }   // ~100 m
+
+// ════════════════════════════════════════════════════════════════════
+//  STORAGE + CLOUDFLARE SYNC
+// ════════════════════════════════════════════════════════════════════
+function cleanRide(r) {
+  if (!r || typeof r.id !== 'string' || !/^\d{4}-\d\d-\d\d$/.test(r.date || '') || typeof r.tr !== 'string' || !r.tr) return null;
+  const str = (v, max) => typeof v === 'string' ? v.slice(0, max) : '';
+  return { id: r.id, date: r.date, start: str(r.start, 5), end: str(r.end, 5), title: str(r.title, 80), note: str(r.note, 5000),
+           thought: str(r.thought, 5000), tags: Array.isArray(r.tags) ? r.tags.filter(t => TAG[t]) : [],
+           tr: r.tr, km: typeof r.km === 'number' && isFinite(r.km) ? r.km : Math.round(pathKm(decodePoly(r.tr)) * 10) / 10,
+           src: r.src === 'drawn' ? 'drawn' : 'gpx' };
+}
+function normalize(data) {
+  if (!data || typeof data !== 'object' || !Array.isArray(data.rides)) return null;
+  const h = data.settings && Array.isArray(data.settings.home) && data.settings.home.length === 2 && data.settings.home.every(isFinite) ? data.settings.home.map(Number) : null;
+  return { v: 1, settings: { home: h }, rides: data.rides.map(cleanRide).filter(Boolean) };
+}
+function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (_) {} }
+function loadLocal() { try { const s = normalize(JSON.parse(localStorage.getItem(LS_KEY))); if (s) state = s; } catch (_) {} }
+function persist() { saveLocal(); scheduleCloudsave(); }
+
+const CLOUD = LifeSync.cloud('bici');
+let cfSaveTimer = null;
+function cfStatus(msg, type) {
+  const el = document.getElementById('cf-status');
+  document.getElementById('cf-status-msg').textContent = msg;
+  el.className = type || '';
+}
+// Small summary for the Life Hub tile (no timestamps inside)
+function hubSummary() {
+  const c = compute(state);
+  if (!c.rides.length) return {};
+  const hub = { n: c.rides.length, y: c.year, yN: c.yN, sq: c.sq, msq: c.max.n, last: c.last.date, lt: (c.last.title || '').slice(0, 40) };
+  if (c.farKm !== null) hub.fk = Math.round(c.farKm * 10) / 10;
+  return hub;
+}
+function cloudPayload() { return { v: 1, settings: state.settings, rides: state.rides, hub: hubSummary() }; }
+function scheduleCloudsave() {
+  clearTimeout(cfSaveTimer);
+  CLOUD.stage(cloudPayload());   // kept as pending now, so leaving before the upload loses nothing
+  cfSaveTimer = setTimeout(() => { cfSaveTimer = null; cloudSave(); }, 3000);
+}
+LifeSync.onLeave(() => { if (cfSaveTimer) { clearTimeout(cfSaveTimer); cfSaveTimer = null; cloudSave(); } });
+async function cloudSave() {
+  try {
+    cfStatus('Syncing…', 'working');
+    await CLOUD.put(cloudPayload());
+    cfStatus('Synced at ' + LifeSync.time(), 'ok');
+  } catch (e) {
+    console.warn('Cloud save failed', e);
+    cfStatus('Sync failed', 'err');
+  }
+}
+async function cloudLoad() {
+  try {
+    const s = normalize(await CLOUD.get());
+    if (s) { state = s; saveLocal(); renderAll(true); }
+    cfStatus('Synced at ' + LifeSync.time(), 'ok');
+  } catch (e) {
+    console.warn('Cloud load failed', e);
+    cfStatus('Sync failed', 'err');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  GOOGLE DRIVE BACKUP — shared logic in lib/drive.js
+// ════════════════════════════════════════════════════════════════════
+let gdStatusTimer = null;
+function gdStatus(msg, type) {
+  const el = document.getElementById('drive-status');
+  el.textContent = msg;
+  el.className = 'visible' + (type ? ' ' + type : '');
+  clearTimeout(gdStatusTimer);
+  if (type === 'ok') gdStatusTimer = setTimeout(() => { el.className = ''; }, 5000);
+}
+function gdSetBusy(busy) {
+  document.getElementById('drivesavebtn').disabled = busy;
+  document.getElementById('driveloadbtn').disabled = busy;
+}
+const DRIVE = LifeDrive.create({
+  filename: GD_FILENAME,
+  status: gdStatus,
+  busy: gdSetBusy,
+  payload: () => ({ v: 1, exportedAt: new Date().toISOString(), settings: state.settings, rides: state.rides }),
+  apply: payload => {
+    const s = normalize(payload);
+    if (!s) throw new Error('This file is not a Bici backup');
+    state = s; saveLocal(); renderAll(true); scheduleCloudsave();
+  },
+});
+function gdriveSave() { DRIVE.save(); }
+
+function gdriveLoad() { DRIVE.load(); }
+
+document.getElementById('drivesavebtn').addEventListener('click', gdriveSave);
+document.getElementById('driveloadbtn').addEventListener('click', gdriveLoad);
+
+// ════════════════════════════════════════════════════════════════════
+//  MAP (Leaflet + OpenStreetMap) — the page works without it (offline, CDN down)
+// ════════════════════════════════════════════════════════════════════
+let map = null, fogLayer = null, routesLayer = null, homeMarker = null, squareRect = null, drawLine = null;
+let explored = new Set(), selId = null, fogOn = true;
+let mode = null;                                // null | 'home' | 'draw'
+let drawPts = [], drawInto = null;
+
+function cssVar(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function initMap() {
+  if (typeof L === 'undefined' || !L.map) {
+    document.getElementById('map').innerHTML = '<div class="no-map">Map unavailable (offline?). Your rides and stats are still here.</div>';
+    return;
+  }
+  map = L.map('map', { zoomControl: true, minZoom: 8, maxZoom: 18, attributionControl: true });
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }).addTo(map);
+  map.createPane('fog').style.zIndex = 350;
+  map.getPane('fog').style.pointerEvents = 'none';
+  const Fog = L.GridLayer.extend({ createTile: drawFogTile });
+  fogLayer = new Fog({ pane: 'fog', tileSize: 256, updateWhenZooming: false });
+  fogLayer.addTo(map);
+  routesLayer = L.layerGroup().addTo(map);
+  map.on('click', onMapClick);
+  map.setView(DEFAULT_VIEW[0], DEFAULT_VIEW[1]);
+}
+
+// One canvas per map tile: grey fog over every square not explored yet, faint square grid
+function drawFogTile(coords) {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d'), dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const fog = dark ? 'rgba(10,10,12,0.72)' : 'rgba(70,74,84,0.48)', line = dark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)';
+  const d = coords.z - Z;
+  if (d >= 0) {                                  // map tile inside one square
+    const k = 1 << d, sx = Math.floor(coords.x / k), sy = Math.floor(coords.y / k);
+    if (!explored.has(sx + ',' + sy)) { g.fillStyle = fog; g.fillRect(0, 0, 256, 256); }
+    g.strokeStyle = line; g.lineWidth = 1; g.beginPath();
+    if (coords.x % k === 0) { g.moveTo(0.5, 0); g.lineTo(0.5, 256); }
+    if (coords.y % k === 0) { g.moveTo(0, 0.5); g.lineTo(256, 0.5); }
+    g.stroke();
+  } else {                                       // map tile holding k×k squares
+    const k = 1 << -d, cs = 256 / k;
+    g.fillStyle = fog;
+    for (let i = 0; i < k; i++) for (let j = 0; j < k; j++)
+      if (!explored.has((coords.x * k + i) + ',' + (coords.y * k + j))) g.fillRect(i * cs, j * cs, cs, cs);
+    if (cs >= 8) {
+      g.strokeStyle = line; g.lineWidth = 1; g.beginPath();
+      for (let i = 0; i < k; i++) { const p = Math.round(i * cs) + 0.5; g.moveTo(p, 0); g.lineTo(p, 256); g.moveTo(0, p); g.lineTo(256, p); }
+      g.stroke();
+    }
+  }
+  return c;
+}
+
+function drawMap(c) {
+  if (!map) return;
+  explored = c.explored;
+  fogLayer.redraw();
+  routesLayer.clearLayers();
+  const col = cssVar('--route') || '#e8590c';
+  for (const r of c.rides) {
+    const sel = r.id === selId;
+    const line = L.polyline(decodePoly(r.tr), { color: col, weight: sel ? 6 : 3, opacity: selId && !sel ? 0.45 : 0.9 });
+    line.on('click', e => { L.DomEvent.stopPropagation(e); if (!mode) openRide(r.id); });
+    routesLayer.addLayer(line);
+    if (sel) line.bringToFront();
+  }
+  if (homeMarker) { homeMarker.remove(); homeMarker = null; }
+  const h = state.settings.home;
+  if (h) homeMarker = L.circleMarker(h, { radius: 7, color: '#ffffff', weight: 2, fillColor: cssVar('--teal') || '#0f8a7a', fillOpacity: 1 }).bindTooltip('Home').addTo(map);
+  if (squareRect) { squareRect.remove(); squareRect = null; }
+  if (c.max.n >= 2) {
+    const m = c.max;
+    squareRect = L.rectangle([[tileLat(m.y + m.n), tileLng(m.x)], [tileLat(m.y), tileLng(m.x + m.n)]],
+      { color: cssVar('--teal') || '#0f8a7a', weight: 2, dashArray: '6 5', fill: false, interactive: false }).addTo(map);
+  }
+}
+function fitAll() {
+  if (!map) return;
+  const pts = state.rides.flatMap(r => decodePoly(r.tr));
+  if (state.settings.home) pts.push(state.settings.home);
+  if (pts.length > 1) map.fitBounds(L.latLngBounds(pts), { padding: [30, 30], maxZoom: 14 });
+  else if (pts.length) map.setView(pts[0], 13);
+}
+function fitRide(r) { if (map) map.fitBounds(L.latLngBounds(decodePoly(r.tr)), { padding: [40, 40], maxZoom: 15 }); }
+
+// ── Map modes: set home / draw a route by tapping ──
+function setMode(m, into) {
+  mode = m; drawInto = into || null; drawPts = [];
+  if (drawLine) { drawLine.remove(); drawLine = null; }
+  document.getElementById('btn-home').classList.toggle('on', m === 'home');
+  if (map) map.getContainer().style.cursor = m ? 'crosshair' : '';
+  hint();
+}
+function hint() {
+  const el = document.getElementById('map-hint');
+  if (mode === 'home') {
+    el.innerHTML = '<span>Tap your home on the map</span><button data-a="cancel">Cancel</button>';
+  } else if (mode === 'draw') {
+    const km = drawPts.length > 1 ? n1(pathKm(drawPts)) + ' km' : '';
+    el.innerHTML = `<span>Tap along your route · ${drawPts.length} pts ${km ? '· ' + km : ''}</span>` +
+      '<button data-a="undo">Undo</button><button data-a="cancel">Cancel</button><button class="primary" data-a="save">Save</button>';
+  } else { el.innerHTML = ''; }
+  el.classList.toggle('visible', !!mode);
+}
+document.getElementById('map-hint').addEventListener('click', e => {
+  const a = e.target.dataset && e.target.dataset.a; if (!a) return;
+  if (a === 'cancel') setMode(null);
+  else if (a === 'undo') { drawPts.pop(); updateDrawLine(); hint(); }
+  else if (a === 'save') finishDraw();
+});
+function updateDrawLine() {
+  if (!map) return;
+  if (!drawLine) drawLine = L.polyline([], { color: cssVar('--teal') || '#0f8a7a', weight: 4, dashArray: '8 6' }).addTo(map);
+  drawLine.setLatLngs(drawPts);
+}
+function onMapClick(e) {
+  const p = [Math.round(e.latlng.lat * 1e5) / 1e5, Math.round(e.latlng.lng * 1e5) / 1e5];
+  if (mode === 'home') { state.settings.home = roundHome(p); setMode(null); persist(); renderAll(); toast('Home saved'); }
+  else if (mode === 'draw') { drawPts.push(p); updateDrawLine(); hint(); }
+}
+function finishDraw() {
+  if (drawPts.length < 2) { toast('Tap at least 2 points'); return; }
+  const f = routeFields(drawPts), into = drawInto;
+  let r;
+  if (into && (r = state.rides.find(x => x.id === into))) Object.assign(r, f, { src: 'drawn' });
+  else {
+    r = { id: newId(), date: todayStr(), start: '', end: '', title: '', note: '', thought: '', tags: [], ...f, src: 'drawn' };
+    state.rides.push(r);
+    if (!state.settings.home) state.settings.home = roundHome(drawPts[0]);
+  }
+  setMode(null); persist(); renderAll(); openRide(r.id);
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════════════════
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function renderAll(refit) {
+  const c = compute(state);
+  renderStats(c); renderHeat(c); renderList(c); drawMap(c);
+  if (refit) fitAll();
+  return c;
+}
+function stat(label, value, sub) {
+  return `<div class="stat"><div class="stat-l">${esc(label)}</div><div class="stat-v">${esc(value)}</div><div class="stat-s">${esc(sub || '\u00a0')}</div></div>`;
+}
+function renderStats(c) {
+  const lastNew = c.last ? c.per[c.last.id].newSq : 0;
+  const h = c.mins / 60;
+  document.getElementById('stats').innerHTML =
+    stat('Rides', c.rides.length, c.yN + ' in ' + c.year) +
+    stat('Squares', c.sq, c.last ? '+' + lastNew + ' last ride' : 'explored') +
+    stat('Max square', c.max.n ? c.max.n + '×' + c.max.n : '—', 'fully explored') +
+    stat('Farthest', c.farKm !== null ? n1(c.farKm) + ' km' : '—', 'from home') +
+    stat('Near home', c.cov10 !== null ? Math.round(c.cov10 * 100) + '%' : '—', 'of 10 km radius') +
+    stat('Outside', c.mins ? (h >= 10 ? Math.round(h) : n1(h)) + ' h' : '—', c.km ? Math.round(c.km).toLocaleString('de-DE') + ' km rolled' : '');
+}
+function renderHeat(c) {
+  const count = {};
+  for (const r of c.rides) count[r.date] = (count[r.date] || 0) + 1;
+  const today = new Date(); today.setHours(12, 0, 0, 0);
+  const start = new Date(today); start.setDate(start.getDate() - 25 * 7 - ((today.getDay() + 6) % 7));   // Monday, 26 weeks ago
+  let html = '', n = 0;
+  for (const d = new Date(start); d <= today || d.getDay() !== 1; d.setDate(d.getDate() + 1)) {
+    const k = localDate(d), v = count[k] || 0, out = d > today;
+    if (v && !out) n += v;
+    html += `<i class="${out ? 'out' : v > 1 ? 'l2' : v ? 'l1' : ''}" title="${k}${v ? ' · ' + v + ' ride' + (v > 1 ? 's' : '') : ''}"></i>`;
+  }
+  document.getElementById('heat').innerHTML = html;
+  document.getElementById('heat-foot').textContent = n + ' ride' + (n === 1 ? '' : 's') + ' since ' + start.getDate() + ' ' + MONTHS[start.getMonth()];
+}
+function renderList(c) {
+  const el = document.getElementById('rides');
+  if (!c.rides.length) {
+    el.innerHTML = '<div class="empty">No rides yet. After a ride, open it in Komoot → ⋮ → <b>Download GPX file</b>, then tap <b>Import GPX</b> here. ' +
+      'No GPX? Use <b>Draw a ride</b> and tap your route on the map.</div>';
+    return;
+  }
+  el.innerHTML = c.rides.slice().reverse().map(r => {
+    const d = new Date(r.date + 'T12:00:00'), m = rideMinutes(r);
+    const meta = [r.tags.map(t => TAG[t][1]).join(''), n1(r.km) + ' km', m ? Math.floor(m / 60) + 'h' + pad(m % 60) : ''].filter(Boolean).join(' · ');
+    const nw = c.per[r.id].newSq;
+    return `<button class="ride${r.id === selId ? ' sel' : ''}" data-id="${esc(r.id)}">` +
+      `<div class="ride-date"><b>${d.getDate()}</b><span>${MONTHS[d.getMonth()]}</span></div>` +
+      `<div class="ride-main"><div class="ride-title">${esc(r.title || 'Ride')}</div><div class="ride-meta">${esc(meta)}</div></div>` +
+      (nw ? `<span class="badge">+${nw}</span>` : '') + '</button>';
+  }).join('');
+}
+document.getElementById('rides').addEventListener('click', e => {
+  const b = e.target.closest('.ride'); if (b) openRide(b.dataset.id, true);
+});
+
+// ── Ride editor ──
+const F = id => document.getElementById(id);
+function openRide(id, fit) {
+  const r = state.rides.find(x => x.id === id); if (!r) return;
+  selId = id;
+  F('f-title').value = r.title; F('f-date').value = r.date; F('f-start').value = r.start; F('f-end').value = r.end;
+  F('f-note').value = r.note; F('f-thought').value = r.thought;
+  renderSheet();
+  F('sheet').classList.add('open');
+  const c = renderAll();
+  if (fit) fitRide(r);
+  return c;
+}
+function renderSheet() {
+  const r = state.rides.find(x => x.id === selId); if (!r) return;
+  const c = compute(state), m = rideMinutes(r), d = new Date(r.date + 'T12:00:00');
+  F('sheet-title').textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  F('f-info').textContent = [n1(r.km) + ' km', m ? Math.floor(m / 60) + 'h' + pad(m % 60) + ' outside' : '',
+    '+' + c.per[r.id].newSq + ' new squares', r.src === 'drawn' ? 'route drawn by hand' : 'route from GPX'].filter(Boolean).join(' · ');
+  F('f-tags').innerHTML = TAGS.map(t => `<button class="chip${r.tags.includes(t[0]) ? ' on' : ''}" data-t="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
+}
+function closeSheet() { F('sheet').classList.remove('open'); selId = null; renderAll(); }
+function editRide(fn) {
+  const r = state.rides.find(x => x.id === selId); if (!r) return;
+  fn(r); persist();
+}
+let listTimer = null;
+function onField(key, max) {
+  return e => editRide(r => { r[key] = e.target.value.slice(0, max); clearTimeout(listTimer); listTimer = setTimeout(() => { renderAll(); renderSheet(); }, 400); });
+}
+F('f-title').addEventListener('input', onField('title', 80));
+F('f-note').addEventListener('input', onField('note', 5000));
+F('f-thought').addEventListener('input', onField('thought', 5000));
+F('f-start').addEventListener('change', onField('start', 5));
+F('f-end').addEventListener('change', onField('end', 5));
+F('f-date').addEventListener('change', e => { if (/^\d{4}-\d\d-\d\d$/.test(e.target.value)) editRide(r => { r.date = e.target.value; }); renderAll(); renderSheet(); });
+F('f-tags').addEventListener('click', e => {
+  const t = e.target.closest('.chip'); if (!t) return;
+  editRide(r => { const k = t.dataset.t; r.tags = r.tags.includes(k) ? r.tags.filter(x => x !== k) : [...r.tags, k]; });
+  renderSheet(); renderAll();
+});
+F('sheet-done').addEventListener('click', closeSheet);
+F('f-delete').addEventListener('click', () => {
+  const r = state.rides.find(x => x.id === selId); if (!r) return;
+  if (!confirm('Delete this ride (' + r.date + ')? This cannot be undone.')) return;
+  state.rides = state.rides.filter(x => x.id !== r.id); persist(); closeSheet();
+});
+F('f-redraw').addEventListener('click', () => { const id = selId; F('sheet').classList.remove('open'); setMode('draw', id); toast('Tap the new route, then Save'); });
+
+// ── Import ──
+let importInto = null;
+F('btn-import').addEventListener('click', () => { importInto = null; F('gpx-input').click(); });
+F('f-regpx').addEventListener('click', () => { importInto = selId; F('gpx-input').click(); });
+F('gpx-input').addEventListener('change', async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  const hadHome = !!state.settings.home;
+  let added = [], dup = 0, bad = [];
+  for (const f of files) {
+    try {
+      const r = importGpxText(await f.text(), importInto);
+      if (r) added.push(r); else dup++;
+    } catch (err) { bad.push(f.name + ': ' + err.message); }
+  }
+  if (added.length) persist();
+  const c = renderAll();
+  if (bad.length) toast('Not imported — ' + bad.join(' · '), 6000);
+  else if (added.length) {
+    const nw = added.reduce((s, r) => s + c.per[r.id].newSq, 0);
+    toast((importInto ? 'Route replaced' : added.length + ' ride' + (added.length > 1 ? 's' : '') + ' imported') + ' · +' + nw + ' new squares' +
+      (!hadHome && state.settings.home ? ' · home set at the start (change with ⌂)' : '') + (dup ? ' · ' + dup + ' already here' : ''), 5000);
+  } else if (dup) toast('Already imported');
+  if (added.length === 1) openRide(added[0].id, true); else if (added.length) fitAll();
+  importInto = null;
+});
+F('btn-draw').addEventListener('click', () => { if (!map) { toast('The map is not available'); return; } closeSheetSilently(); setMode('draw'); });
+F('btn-home').addEventListener('click', () => { if (!map) return; closeSheetSilently(); setMode(mode === 'home' ? null : 'home'); });
+F('btn-fit').addEventListener('click', fitAll);
+F('btn-fog').addEventListener('click', e => {
+  fogOn = !fogOn; e.currentTarget.classList.toggle('on', fogOn);
+  if (map) { if (fogOn) fogLayer.addTo(map); else fogLayer.remove(); }
+});
+function closeSheetSilently() { F('sheet').classList.remove('open'); selId = null; }
+
+let toastTimer = null;
+function toast(msg, ms) {
+  const el = F('toast'); el.textContent = msg; el.classList.add('visible');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('visible'), ms || 3000);
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  START
+// ════════════════════════════════════════════════════════════════════
+loadLocal();
+initMap();
+renderAll(true);
+cloudLoad();
+</script>
+</body>
+</html>

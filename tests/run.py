@@ -38,12 +38,18 @@ DRIVE_STATUS_IDS = ['drive-status-bar', 'drive-status', 'statusText']
 # ───────────────────────── helpers ─────────────────────────
 def read(name): return open(os.path.join(ROOT, name), encoding='utf-8').read()
 
-def chart_js():
-    path = os.path.join(CACHE, 'node_modules', 'chart.js', 'dist', 'chart.umd.js')
-    if not os.path.exists(path):
+CACHE_DEPS = ['chart.js@4.4.1', 'leaflet@1.9.4']   # installed together: a separate `npm i --no-save` prunes the other
+
+def cache_deps():
+    nm = os.path.join(CACHE, 'node_modules')
+    if not all(os.path.exists(os.path.join(nm, p)) for p in ('chart.js/dist/chart.umd.js', 'leaflet/dist/leaflet.js')):
         os.makedirs(CACHE, exist_ok=True)
-        subprocess.run(['npm', 'i', '--silent', '--no-save', '--no-audit', '--no-fund', '--prefix', CACHE, 'chart.js@4.4.1'], check=True)
-    return path
+        subprocess.run(['npm', 'i', '--silent', '--no-save', '--no-audit', '--no-fund', '--prefix', CACHE, *CACHE_DEPS], check=True)
+    return nm
+
+def chart_js(): return os.path.join(cache_deps(), 'chart.js', 'dist', 'chart.umd.js')
+
+def leaflet_dir(): return os.path.join(cache_deps(), 'leaflet', 'dist')
 
 def widget_info():
     """Discover cloud key / Drive file / Drive functions from the HTML itself."""
@@ -125,7 +131,7 @@ class FakeDrive:
 
 def new_context(browser, worker, drive=None, secret=KEY, google_stub=False):
     ctx = browser.new_context()
-    chart = chart_js()
+    chart = chart_js(); leaflet = leaflet_dir()
     net = {'offline': False}
     def handler(route):
         u = route.request.url
@@ -135,6 +141,10 @@ def new_context(browser, worker, drive=None, secret=KEY, google_stub=False):
         if host == WORKER_HOST: return worker.handle(route)          # never the real Worker
         if host in ('cdnjs.cloudflare.com', 'cdn.jsdelivr.net') and 'chart' in u.lower():
             return route.fulfill(path=chart, content_type='application/javascript', headers=CORS)
+        if host == 'cdnjs.cloudflare.com' and '/leaflet/' in u:
+            css = u.endswith('.css')
+            return route.fulfill(path=os.path.join(leaflet, 'leaflet.css' if css else 'leaflet.js'),
+                                 content_type='text/css' if css else 'application/javascript', headers=CORS)
         if host == 'www.googleapis.com' and drive: return drive.handle(route)
         if host == 'accounts.google.com': return route.fulfill(status=200, body='', content_type='application/javascript')
         return route.fulfill(status=200, body='{}', headers=JSONH)   # fonts, FX rates, prices, proxies
@@ -643,6 +653,100 @@ def fire_sim_rules(b):
     ctx.close()
 
 
+# ── Bici: GPX import, explored squares, summary ──
+import math, html
+def z14(lat, lng):
+    n = 1 << 14; r = math.radians(lat)
+    return ((lng + 180) / 360 * n, (1 - math.log(math.tan(r) + 1 / math.cos(r)) / math.pi) / 2 * n)
+def z14_lng(x): return x / (1 << 14) * 360 - 180
+def z14_lat(y): return math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * y / (1 << 14)))))
+def squares_of(pts):
+    """Independent reference: walk each straight segment in 1 m steps, collect the z14 squares."""
+    out = set()
+    for (a, b) in zip(pts, pts[1:]):
+        steps = max(1, int(hav_km(a, b) * 1000))
+        for k in range(steps + 1):
+            x, y = z14(a[0] + (b[0] - a[0]) * k / steps, a[1] + (b[1] - a[1]) * k / steps)
+            out.add('%d,%d' % (math.floor(x), math.floor(y)))
+    return out
+def hav_km(a, b):
+    la1, la2, dl = math.radians(a[0]), math.radians(b[0]), math.radians(b[1] - a[1])
+    h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin(dl / 2) ** 2
+    return 2 * 6371.0088 * math.asin(min(1, math.sqrt(h)))
+def gpx(pts, name='', t0=None):
+    rows = []
+    for i, (la, lo) in enumerate(pts):
+        t = '' if t0 is None else '<time>%s</time>' % (t0 + datetime.timedelta(minutes=10 * i)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        rows.append('<trkpt lat="%.6f" lon="%.6f"><ele>170</ele>%s</trkpt>' % (la, lo, t))
+    return ('<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="komoot" xmlns="http://www.topografix.com/GPX/1/1">'
+            '<metadata><name>meta</name></metadata><trk><name>%s</name><trkseg>%s</trkseg></trk></gpx>' % (html.escape(name), ''.join(rows)))
+
+@test
+def bici_rules(b):
+    worker = FakeWorker(); ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'bici.html'); wait_until(pg, lambda: 'bici' in worker.keys('GET')); pg.wait_for_timeout(300)
+    ev = pg.evaluate
+    assert ev('!!map'), 'map did not start with Leaflet available'
+    # Ride 1: a zig-zag through a 3×3 block of squares (centres of the squares), with times and a name
+    x0, y0 = 8432, 5875                                                # squares near Lyon
+    c = lambda x, y: (z14_lat(y + 0.5), z14_lng(x + 0.5))
+    r1 = [c(x0, y0), c(x0 + 2, y0), c(x0 + 2, y0 + 1), c(x0, y0 + 1), c(x0, y0 + 2), c(x0 + 2, y0 + 2)]
+    t0 = datetime.datetime(2026, 5, 3, 8, 30)
+    id1 = ev("t => importGpxText(t).id", gpx(r1, 'Saône & <i>parks</i>', t0))
+    ride = ev("id => state.rides.find(r => r.id === id)", id1)
+    assert ride['title'] == 'Saône & <i>parks</i>', ride['title']
+    assert ride['date'] == ev("localDate(new Date('2026-05-03T08:30:00Z'))") and ride['start'] == ev("localTime(new Date('2026-05-03T08:30:00Z'))") \
+        and ride['end'] == ev("localTime(new Date('2026-05-03T09:20:00Z'))"), ride
+    km = sum(hav_km(a, b2) for a, b2 in zip(r1, r1[1:]))
+    assert abs(ride['km'] - km) <= 0.06, (ride['km'], km)
+    got = set(ev("id => [...routeTiles(state.rides.find(r => r.id === id).tr)]", id1))
+    assert got == squares_of(r1) and len(got) == 9, (sorted(got), sorted(squares_of(r1)))
+    assert ev("state.settings.home") == [round(r1[0][0], 3), round(r1[0][1], 3)], 'home must default to the first ride start (rounded)'
+    # Duplicate import is ignored
+    assert ev("t => importGpxText(t)", gpx(r1, 'again', t0)) is None, 'same route on the same day must not be imported twice'
+    # Ride 2 (later): a diagonal that clips a square corner, partly over ride 1 → only its new squares count
+    r2 = [c(x0 + 2, y0 + 2), (z14_lat(y0 + 3.009), z14_lng(x0 + 4.98))]
+    id2 = ev("t => importGpxText(t).id", gpx(r2, '', datetime.datetime(2026, 6, 1, 7, 0)))
+    s2 = squares_of(r2)
+    assert set(ev("id => [...routeTiles(state.rides.find(r => r.id === id).tr)]", id2)) == s2, 'corner-clipped square missed'
+    # Ride 3: no times (planned route) → dated today, no start/end; earlier ride dates keep "new squares" chronological
+    r3 = [c(x0 - 3, y0), c(x0 - 1, y0)]
+    id3 = ev("t => importGpxText(t).id", gpx(r3))
+    assert ev("id => { const r = state.rides.find(x => x.id === id); return [r.date, r.start, r.end] }", id3) == [ev('todayStr()'), '', '']
+    C = ev("(() => { const c = compute(state); return { sq: c.sq, max: c.max.n, per: c.per, far: c.farKm, mins: c.mins } })()")
+    allsq = squares_of(r1) | s2 | squares_of(r3)
+    assert C['sq'] == len(allsq), (C['sq'], len(allsq))
+    assert C['per'][id1]['newSq'] == 9 and C['per'][id2]['newSq'] == len(s2 - squares_of(r1)) and C['per'][id3]['newSq'] == len(squares_of(r3) - squares_of(r1) - s2), C['per']
+    assert C['max'] == 3, C['max']
+    assert C['mins'] == 50 + 10, C['mins']
+    home = ev("state.settings.home"); far = max(hav_km(home, p) for p in r1 + r2 + r3)
+    assert abs(C['far'] - far) < 0.01, (C['far'], far)
+    # Fog: explored square is clear, unexplored is fogged (zoom 14 and zoom 12)
+    alpha = "([x, y, z]) => drawFogTile({ x, y, z }).getContext('2d').getImageData(128, 128, 1, 1).data[3]"
+    pg.evaluate("renderAll()")
+    assert ev(alpha, [x0 + 1, y0 + 1, 14]) == 0 and ev(alpha, [x0 + 40, y0 + 40, 14]) > 0, 'fog at z14'
+    assert ev(alpha, [(x0 + 1) >> 2, (y0 + 1) >> 2, 12]) >= 0 and ev("([x,y]) => drawFogTile({x:x>>2,y:y>>2,z:12}).getContext('2d').getImageData(((x%4)*64)+32, ((y%4)*64)+32, 1, 1).data[3]", [x0 + 1, y0 + 1]) == 0, 'fog at z12'
+    # Hand-drawn ride through map taps
+    ev("setMode('draw')")
+    for la, lo in (c(x0 + 10, y0 + 10), c(x0 + 11, y0 + 10)):
+        ev("([la, lo]) => onMapClick({ latlng: { lat: la, lng: lo } })", [la, lo])
+    ev("finishDraw()")
+    assert ev("state.rides.length") == 4 and ev("state.rides[3].src") == 'drawn' and ev("document.getElementById('sheet').classList.contains('open')")
+    # Escaped in the list, synced to the cloud with a small summary
+    assert not pg.query_selector('#rides i'), 'ride title must be escaped in the list'
+    ev("scheduleCloudsave()")
+    assert wait_until(pg, lambda: len((worker.posted('bici') or {}).get('rides', [])) == 4, 6), 'rides not synced'
+    h = worker.posted('bici')['hub']
+    assert (h['n'], h['yN'], h['sq'], h['msq'], h['lt']) == (4, ev("compute(state).yN"), len(allsq) + 2, 3, ''), h
+    assert h['y'] == datetime.date.today().isoformat()[:4]
+    # Loading keeps valid rides, drops broken ones, ignores unknown keys
+    n = ev("normalize({ v: 1, extra: 1, settings: { home: [1, 2], x: 1 }, rides: [state.rides[0], { id: 'bad' }, null, { ...state.rides[1], tags: ['park', 'nope'] }] })")
+    assert len(n['rides']) == 2 and n['settings'] == {'home': [1, 2]} and n['rides'][1]['tags'] == ['park'], n
+    assert ev("normalize({ weeks: {} })") is None
+    assert not errs, errs
+    ctx.close()
+
+
 # ── Hub summaries (ROADMAP step 1) ──
 import datetime
 def periods_now():
@@ -917,6 +1021,7 @@ def seed_hub(worker, P):
         'fire-sim': {'total': 216667, 'fr': 150000, 'co': 66667, 'scen': 'Plan <A>'},
         'workout': {'m': P['month'], 'mN': 5, 'best': 520, 'last': '2026-10-18', 'dur': 45},
         'kalstrack': {'wk': '2026-10-12', 'v': 'good', 'vt': 'On <track>', 'tw': 74.2, 'wa': 86, 'mt': 2540},
+        'bici': {'n': 9, 'y': P['year'], 'yN': 4, 'sq': 57, 'msq': 3, 'last': '2026-10-18', 'lt': 'Saône <b>banks</b>', 'fk': 12.3},
         'lukas-flow': {'v': 123456, 'gl': -5432, 'glp': -4.2},
     }
     worker.meta = {k: {'savedAt': at, 'hub': h} for k, h in hubs.items()}
@@ -929,7 +1034,7 @@ def hub_renders_from_summaries_only(b):
     assert wait_until(pg, lambda: '850' in stats_text(pg, 'calc')), 'Hub did not render summaries'
     pg.wait_for_timeout(300)
     assert worker.keys('GET') == set(), f'Hub fetched full payloads although summaries exist: {worker.keys("GET")}'
-    t = {k: stats_text(pg, k) for k in ('notes', 'tracker', 'calc', 'planner', 'fire', 'workout', 'kals', 'lukas')}
+    t = {k: stats_text(pg, k) for k in ('notes', 'tracker', 'calc', 'planner', 'fire', 'workout', 'kals', 'lukas', 'bici')}
     assert '<b>bold</b> & co' in t['notes'] and not pg.query_selector('#stats-notes b'), 'Do it! text must be escaped'
     assert '43' in t['tracker'], t['tracker']
     assert '90% of income' in t['tracker'], t['tracker']
@@ -939,6 +1044,8 @@ def hub_renders_from_summaries_only(b):
     assert 'On <track>' in t['kals'] and '74,2 kg' in t['kals'] and '86,0 cm' in t['kals'] and '2.540 kcal' in t['kals'], t['kals']
     assert not pg.query_selector('#stats-kals track'), 'Kals verdict must be escaped'
     assert '-4.2%' in t['lukas'], t['lukas']
+    assert '4 rides' in t['bici'] and '57 squares' in t['bici'] and '3×3' in t['bici'] and 'Saône <b>banks</b>' in t['bici'], t['bici']
+    assert not pg.query_selector('#stats-bici b'), 'Bici ride title must be escaped'
     foot = pg.evaluate("document.getElementById('footer-tracker').textContent")
     assert foot.startswith('Last logged'), f'footer must come from the cloud save time: {foot!r}'
     assert not errs, errs
@@ -1002,7 +1109,7 @@ def lukas_hub_saves_on_100_eur_or_daily(b):
 ORDER_JS = "[...document.querySelectorAll('#tiles .tile')].map(e => e.dataset.id)"
 def seed_ordered(worker, P, layout=None, layout_at='2026-10-20T08:00:00Z'):
     seed_hub(worker, P)
-    order = ['kalstrack', 'xpenser', 'workout', 'lukas-flow', 'fire-sim', 'xpenses-calculator', 'weekplanner', 'doit-lcc']
+    order = ['kalstrack', 'xpenser', 'workout', 'lukas-flow', 'fire-sim', 'xpenses-calculator', 'weekplanner', 'doit-lcc', 'bici']
     for i, k in enumerate(order): worker.meta[k]['savedAt'] = '2026-10-20T%02d:00:00Z' % (12 - i)
     if layout is not None: worker.meta['hub-layout'] = {'savedAt': layout_at, 'hub': layout}
 
@@ -1013,7 +1120,7 @@ def hub_order_pins_and_more(b):
     worker.store['weekplanner'] = json.dumps({'curWeek': 0, 'weekPlaces': [{'a': {'d': 0, 'dur': 7}}], 'acts': [], 'weekNotes': []})
     ctx = new_context(b, worker)
     pg, errs = open_page(ctx, 'index.html')
-    expect = ['calc', 'notes', 'kals', 'tracker', 'workout', 'lukas', 'fire']
+    expect = ['calc', 'notes', 'kals', 'tracker', 'workout', 'lukas', 'fire', 'bici']
     assert wait_until(pg, lambda: pg.evaluate(ORDER_JS) == expect), f'order: {pg.evaluate(ORDER_JS)}'
     assert pg.evaluate("document.querySelector('#more-count').textContent") == '2'
     assert not pg.query_selector('#more-tiles .tile'), 'More must start collapsed'
@@ -1116,7 +1223,7 @@ def hub_layout_newest_copy_wins(b):
 
 # ── Leaving a widget right after an edit (bug 2026-10-21: edit not in the Hub / lost on reopen) ──
 DEBOUNCED = {'notes.html': "scheduleCfSave()", 'XPENSES_CALCULATOR.html': "cloudSave()", 'FIRE_SIM.html': "cloudSaveDebounced()",
-             'workout_dashboard.html': "cloudSave()", 'kals_track.html': "scheduleCloudsave()",
+             'workout_dashboard.html': "cloudSave()", 'kals_track.html': "scheduleCloudsave()", 'bici.html': "scheduleCloudsave()",
              'lukas_analyzer.html': "debouncedCloudSave()", 'WEEK_PLANNER.html': "#clearbtn"}
 
 # Over http like the real site: under file:// Chromium sometimes does not show the next page a

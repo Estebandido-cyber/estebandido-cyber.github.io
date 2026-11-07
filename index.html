@@ -54,6 +54,9 @@
     --accent-kals: #eab308;
     --accent-kals-dim: rgba(234,179,8,0.12);
     --accent-kals-glow: rgba(234,179,8,0.25);
+    --accent-bici: #2dd4bf;
+    --accent-bici-dim: rgba(45,212,191,0.12);
+    --accent-bici-glow: rgba(45,212,191,0.25);
   }
 
   /* ── Light mode ── */
@@ -322,6 +325,11 @@
   .tile-kals:hover { border-color: var(--accent-kals-glow); }
   .tile-kals .tile-icon { background: rgba(251,146,60,0.15); }
   .tile-kals .tile-name { color: var(--accent-kals); }
+  .tile-bici { border-color: rgba(45,212,191,0.3); }
+  .tile-bici::before { background: radial-gradient(ellipse at top left, var(--accent-bici-dim), transparent 70%); }
+  .tile-bici:hover { border-color: var(--accent-bici-glow); }
+  .tile-bici .tile-icon { background: var(--accent-bici-dim); }
+  .tile-bici .tile-name { color: var(--accent-bici); }
   .tile-strat { border-color: rgba(251,113,133,0.3); }
   .tile-strat::before { background: radial-gradient(ellipse at top left, rgba(251,113,133,0.1), transparent 70%); }
   .tile-strat:hover { border-color: rgba(251,113,133,0.5); }
@@ -653,6 +661,9 @@ const TILES = [
   { id: 'kals',    name: 'Kals',       icon: '⚡', file: 'kals_track.html',         key: 'kalstrack',
     hub: kalsFromHub, paint: paintKals, noLocal: true,
     full: cf => [kalsFromData(cf), null] },
+  { id: 'bici',    name: 'Bici',       icon: '🚲', file: 'bici.html',               key: 'bici',
+    hub: biciFromHub, paint: paintBici,
+    full: cf => { const d = cf || safeParse(safeGet('bici_v1')); return [biciFromData(d), null]; } },
   { id: 'lukas',   name: 'Lukas',      icon: '📊', file: 'lukas_analyzer.html',     key: 'lukas-flow',
     hub: lukasFromHub, paint: paintLukas,
     full: cf => { const v = lukasFromLocal(); return [v, lukasSavedAt(v, cf)]; } },
@@ -1146,6 +1157,27 @@ function paintKals(v, savedAt) {
     '<div class="stat-divider"></div>' +
     statHTML('Real maintenance', typeof v.mt === 'number' ? v.mt.toLocaleString('de-DE') + ' kcal' : '—');
   setFoot('footer-kals', savedAt);
+}
+
+// ── Bici (rides + explored squares) ──
+// Summary: n (rides), y/yN (year, rides that year), sq (explored squares), msq (max square side), last/lt (last ride date/title), fk (farthest km from home)
+function biciFromData(data) { return data && data.v === 1 && data.hub ? biciFromHub(data.hub) : null; }
+function biciFromHub(h) { return h && h.n ? h : null; }
+function paintBici(v, savedAt) {
+  const el = document.getElementById('stats-bici');
+  if (!v) { el.innerHTML = noData('Open Bici to log your first ride'); return; }
+  const yN = v.y === periods().year ? (v.yN ?? 0) : 0;
+  const last = v.last ? new Date(v.last + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—';
+  el.innerHTML =
+    statHTML('This year', yN + (yN === 1 ? ' ride' : ' rides'), true) +
+    '<div class="stat-divider"></div>' +
+    `<div class="stat-pair">` +
+      statHTML('Explored', (v.sq ?? 0) + ' squares') +
+      statHTML('Max square', v.msq ? v.msq + '×' + v.msq : '—') +
+    `</div>` +
+    '<div class="stat-divider"></div>' +
+    statHTML('Last ride', esc(last + (v.lt ? ' · ' + v.lt : '')));
+  setFoot('footer-bici', savedAt);
 }
 
 // ── LUKAS Flow ──
