@@ -623,6 +623,32 @@ def workout_rings_rules(b):
     ctx.close()
 
 @test
+def workout_edit_last(b):
+    ctx = new_context(b, FakeWorker())
+    pg, errs = open_page(ctx, 'workout_dashboard.html'); pg.wait_for_timeout(500)
+    ev = pg.evaluate
+    ev("""() => { const p = t => parseWorkoutText(t, '', 'Home').session;
+        sessions = [{...p('* 20 PU'), d: '2026-10-01', loc: 'Home'}, {...p('* 30 PU\\n* 10 DOM'), d: '2026-10-05', loc: 'Home'}];
+        rebuildMonthly(); rebuildAll(); showTab('lastworkout'); }""")
+    pg.click('#tab-lastworkout button:has-text("Edit")'); pg.wait_for_timeout(300)
+    assert pg.is_visible('#tab-overview') and pg.is_visible('#addText'), 'Edit must open the Add Workout form'
+    assert pg.input_value('#addDate') == '2026-10-05'
+    # date-only correction: empty text keeps the exercises, moves the session
+    pg.fill('#addDate', '2026-10-04'); pg.click('button:has-text("Parse")'); pg.click('#confirmBtn'); pg.wait_for_timeout(200)
+    got = ev("sessions.map(s => [s.d, s.pu||0, s.dom||0])")
+    assert got == [['2026-10-01', 20, 0], ['2026-10-04', 30, 10]], f'date-only edit wrong: {got}'
+    ev("closeModal()")
+    # full edit with new text replaces the edited session, no duplicate
+    pg.click('.nav-btn:has-text("Last Workout")'); pg.click('#tab-lastworkout button:has-text("Edit")'); pg.wait_for_timeout(300)
+    ev("document.getElementById('addText').innerText = '* 50 PU'")
+    pg.click('button:has-text("Parse")'); pg.click('#confirmBtn'); pg.wait_for_timeout(200)
+    got = ev("sessions.map(s => [s.d, s.pu||0])")
+    assert got == [['2026-10-01', 20], ['2026-10-04', 50]], f'text edit wrong: {got}'
+    assert ev("editingDate") is None
+    assert not errs, errs
+    ctx.close()
+
+@test
 def fire_sim_rules(b):
     ctx = new_context(b, FakeWorker())
     pg, errs = open_page(ctx, 'FIRE_SIM.html'); pg.wait_for_timeout(500)

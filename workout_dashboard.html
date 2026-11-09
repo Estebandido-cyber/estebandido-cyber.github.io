@@ -541,6 +541,7 @@ const DRIVE_FILENAME = 'workout_insights_data.json';
 
 let sessions = [], monthly = [];
 let pendingWorkout = null;
+let editingDate = null; // date of the session being edited (null = adding)
 let charts = {};
 let volChartInst, puVariantInst, domVariantInst;
 let modalOkFn = () => {};
@@ -1048,14 +1049,18 @@ function parsePreview() {
     .split('\n').map(l => l.trim()).filter(Boolean).join('\n');
   const date = document.getElementById('addDate').value;
   const loc  = document.getElementById('addLoc').value;
-  if (!text) { showModal('No text','Please paste your workout text first.','OK'); return; }
+  const original = editingDate ? sessions.find(s => s.d === editingDate) : null;
+  if (!text && !original) { showModal('No text','Please paste your workout text first.','OK'); return; }
   if (!date) { showModal('No date','Please select a workout date.','OK'); return; }
 
-  // Check for duplicate
-  const existing = sessions.find(s => s.d === date);
+  // Another session already on the target date (other than the one being edited)
+  const existing = sessions.find(s => s.d === date && s !== original);
 
-  const {session, unrecognized: unknowns} = parseWorkoutText(text, date, loc, html);
-  pendingWorkout = {session, isEdit: !!existing, existingDate: date};
+  // Editing with an empty text box = keep the exercises, change date/location only
+  const {session, unrecognized: unknowns} = text
+    ? parseWorkoutText(text, date, loc, html)
+    : {session: {...original, d: date, loc}, unrecognized: []};
+  pendingWorkout = {session, isEdit: !!(existing || original), existingDate: date, originalDate: original ? original.d : null};
 
   // Build preview
   const card = document.getElementById('previewCard');
@@ -1119,15 +1124,13 @@ function parsePreview() {
 
 function confirmAdd() {
   if (!pendingWorkout) return;
-  const {session, isEdit, existingDate} = pendingWorkout;
+  const {session, isEdit, existingDate, originalDate} = pendingWorkout;
 
-  if (isEdit) {
-    const idx = sessions.findIndex(s => s.d === existingDate);
-    if (idx >= 0) sessions[idx] = session;
-  } else {
-    sessions.push(session);
-    sessions.sort((a,b) => a.d.localeCompare(b.d));
-  }
+  // Drop the edited session (old date) and any session on the target date, then insert
+  sessions = sessions.filter(s => s.d !== existingDate && s.d !== originalDate);
+  sessions.push(session);
+  sessions.sort((a,b) => a.d.localeCompare(b.d));
+  endEditMode();
 
   rebuildMonthly();
   saveToLS();
@@ -1189,17 +1192,19 @@ function editLastWorkout() {
   pendingWorkout = null;
 
   // Show placeholder message in the text area
+  editingDate = last.d;
   const addText = document.getElementById('addText');
-  addText.setAttribute('data-placeholder-override',
+  if (!addText.dataset.placeholderDefault) addText.dataset.placeholderDefault = addText.getAttribute('data-placeholder');
+  addText.setAttribute('data-placeholder',
     `Editing ${last.d} · ${last.loc}
-Paste your updated workout text here, then click Parse & Preview`);
+Paste updated workout text, or leave empty to only change date/location. Then click Parse & Preview`);
 
-  // Switch to Add Workout tab
-  const addBtn = document.querySelector('.nav-btn[onclick*="addworkout"]');
-  showTab('addworkout', addBtn);
+  // The Add Workout form lives (collapsed) in the Overview tab
+  showTab('overview');
+  if (!document.getElementById('addPanelBody').classList.contains('open')) toggleAddPanel();
 
   // Show a status message
-  setStatus(`Editing ${last.d} — paste updated text and click Parse & Preview`, 'warn');
+  setStatus(`Editing ${last.d} — change date/location and/or paste updated text, then Parse & Preview`, 'warn');
 
   // Scroll to text area and focus
   setTimeout(() => {
@@ -1209,7 +1214,14 @@ Paste your updated workout text here, then click Parse & Preview`);
   }, 150);
 }
 
+function endEditMode() {
+  editingDate = null;
+  const el = document.getElementById('addText');
+  if (el.dataset.placeholderDefault) el.setAttribute('data-placeholder', el.dataset.placeholderDefault);
+}
+
 function clearAdd() {
+  endEditMode();
   document.getElementById('addText').innerHTML='';
   document.getElementById('previewCard').classList.remove('show');
   document.getElementById('confirmBtn').disabled=true;
