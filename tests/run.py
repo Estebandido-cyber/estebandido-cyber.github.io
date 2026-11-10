@@ -680,7 +680,7 @@ def fire_sim_rules(b):
 
 
 # ── Bici: GPX import, explored squares, summary ──
-import math, html
+import math, html, base64
 BZ = 16                                                                 # Bici explorer square = zoom-16 map tile
 def zt(lat, lng):
     n = 1 << BZ; r = math.radians(lat)
@@ -753,6 +753,19 @@ def bici_rules(b):
     assert abs(K[0] - sum(K[2])) < 1e-9 and abs(K[1] - sum(K[2]) / 3) < 1e-9, K
     assert ev("pickColor([{ color: COLORS[0] }, { color: COLORS[1] }, { color: COLORS[0] }])") == cols[2]
     assert ev("pickColor(COLORS.map(c => ({ color: c })).concat([{ color: COLORS[0] }]))") == cols[1]
+    # Direction arrows: one every step along the route, first at half a step, pointing the way the ride went
+    lat, lng = 45.75, 4.85
+    dlng = 1000 / (111320 * math.cos(math.radians(lat))); dlat = 1000 / 111320
+    for pts, deg in (([[lat, lng], [lat, lng + dlng]], 90), ([[lat, lng], [lat + dlat, lng]], 0),
+                     ([[lat, lng + dlng], [lat, lng]], 270), ([[lat + dlat, lng], [lat, lng]], 180)):
+        A = ev("p => arrowsAlong(p, 100)", pts)
+        assert len(A) == 10 and all(abs(((a['deg'] - deg + 180) % 360) - 180) < 0.5 for a in A), (deg, A[:2])
+        first = hav_km(pts[0], (A[0]['lat'], A[0]['lng'])) * 1000
+        assert abs(first - 50) < 1, first
+    A = ev("p => arrowsAlong(p, 300)", [[lat, lng], [lat, lng + dlng / 2], [lat + dlat / 2, lng + dlng / 2]])   # east 500 m then north 500 m
+    assert [round(a['deg']) % 360 for a in A] == [90, 90, 0], A
+    ev("renderAll(true)")
+    assert ev("arrowsLayer.getLayers().length") > 0, 'no arrows drawn on the map'
     assert C['mins'] == 50 + 10, C['mins']
     home = ev("state.settings.home"); far = max(hav_km(home, p) for p in r1 + r2 + r3)
     assert abs(C['far'] - far) < 0.01, (C['far'], far)
@@ -845,6 +858,65 @@ def bici_import_rules(b):
     assert 'plans' not in ev("cloudPayload()")
     assert not errs, errs
     ctx.close()
+
+
+@test
+def bici_photo_rules(b):
+    worker = FakeWorker(); ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'bici.html'); wait_until(pg, lambda: 'bici' in worker.keys('GET')); pg.wait_for_timeout(200)
+    ev = pg.evaluate
+    route = [(45.75, 4.85), (45.76, 4.86)]
+    rid = ev("t => importGpxText(t).id", gpx(route, 'Park', datetime.datetime(2026, 11, 10, 13, 0)))
+    ev("renderAll()"); ev("id => openRide(id)", rid)
+    assert not pg.is_visible('#f-photo') and not pg.is_visible('#f-photo-del')
+    # A 2400×1600 picture (PNG) as if taken by the phone
+    png = ev("""() => { const c = document.createElement('canvas'); c.width = 2400; c.height = 1600; const g = c.getContext('2d');
+        g.fillStyle = '#2a7'; g.fillRect(0, 0, 2400, 1600); g.fillStyle = '#e53'; g.fillRect(0, 0, 1200, 800); return c.toDataURL('image/png').split(',')[1] }""")
+    pic = {'name': 'park.png', 'mimeType': 'image/png', 'buffer': base64.b64decode(png)}
+    # Offline: nothing is saved, the ride stays without photo
+    worker.offline = True
+    with pg.expect_file_chooser() as fc: pg.click('#f-photo-add')
+    fc.value.set_files(files=[pic])
+    assert wait_until(pg, lambda: 'not saved' in pg.inner_text('#toast'), 15), 'no error when offline'
+    assert not ev("id => state.rides.find(r => r.id === id).photo", rid) and 'bici-ph-' + rid not in worker.store
+    worker.offline = False
+    # Online: full photo in its own key (JPEG ≤ 1280 px, aspect kept), thumb in the ride, main payload stays small
+    with pg.expect_file_chooser() as fc: pg.click('#f-photo-add')
+    fc.value.set_files(files=[pic])
+    key = 'bici-ph-' + rid
+    assert wait_until(pg, lambda: key in worker.store, 15), 'photo not uploaded'
+    img = json.loads(worker.store[key])['img']
+    assert img.startswith('data:image/jpeg;base64,') and len(img) < 800000, len(img)
+    assert ev("async u => { const i = new Image(); i.src = u; await i.decode(); return [i.naturalWidth, i.naturalHeight] }", img) == [1280, 853]
+    R = ev("id => state.rides.find(r => r.id === id)", rid)
+    assert R['photo'] is True and R['thumb'].startswith('data:image/jpeg;base64,') and len(R['thumb']) < 30000, len(R.get('thumb', ''))
+    assert wait_until(pg, lambda: pg.get_attribute('#f-photo', 'src') == img, 5) and pg.is_visible('#f-photo') and pg.is_visible('#f-photo-del')
+    assert pg.locator('#rides .ride-thumb').count() == 1
+    ev("scheduleCloudsave()")
+    assert wait_until(pg, lambda: (worker.posted('bici') or {}).get('rides', [{}])[0].get('photo') is True, 6)
+    assert len(worker.store['bici']) < 60000 and 'img' not in worker.posted('bici')['rides'][0], 'full photo must not be in the main payload'
+    # Another device: the list shows the thumb, the sheet loads the full photo from the cloud
+    ctx.close()
+    ctx2 = new_context(b, worker); pg2, errs2 = open_page(ctx2, 'bici.html')
+    assert wait_until(pg2, lambda: pg2.evaluate("state.rides.length") == 1, 5)
+    assert pg2.locator('#rides .ride-thumb').count() == 1
+    pg2.click('#rides .ride')
+    assert wait_until(pg2, lambda: pg2.get_attribute('#f-photo', 'src') == img, 5), 'full photo not loaded on the other device'
+    # Remove: cloud key emptied, ride forgets it
+    pg2.dialog_answer = 'accept'; pg2.click('#f-photo-del'); pg2.dialog_answer = 'dismiss'
+    assert wait_until(pg2, lambda: worker.store.get(key) == '{}', 5) and not pg2.evaluate("state.rides[0].photo") and not pg2.evaluate("state.rides[0].thumb")
+    assert not pg2.is_visible('#f-photo') and pg2.locator('#rides .ride-thumb').count() == 0
+    # Deleting a ride with a photo also empties its photo key
+    with pg2.expect_file_chooser() as fc: pg2.click('#f-photo-add')
+    fc.value.set_files(files=[pic])
+    assert wait_until(pg2, lambda: worker.store.get(key, '{}') != '{}', 15)
+    pg2.dialog_answer = 'accept'; pg2.click('#f-delete'); pg2.dialog_answer = 'dismiss'
+    assert wait_until(pg2, lambda: worker.store.get(key) == '{}', 5) and pg2.evaluate("state.rides.length") == 0
+    # Loading: bad thumbs dropped, photo flag kept only when true
+    n = pg2.evaluate("r => normalize({ v: 1, rides: [r] }).rides[0]", {**R, 'thumb': 'javascript:alert(1)', 'photo': 'yes'})
+    assert 'thumb' not in n and 'photo' not in n, n
+    assert not errs and not errs2, (errs, errs2)
+    ctx2.close()
 
 
 # ── Hub summaries (ROADMAP step 1) ──

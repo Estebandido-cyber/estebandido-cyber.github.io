@@ -16,7 +16,7 @@ and can be backed up manually to Google Drive.
 | Xpenser Tracker | `XPENSE_TRACKER.html` | `xpenser` | `xpenser_data.json` | `depenses_data_v1` (+ `_settings_v1`, `_cashflow_v1`, `_notes_v1`) |
 | Workout Insights | `workout_dashboard.html` | `workout` | `workout_insights_data.json` | `workout_insights_v3` |
 | KALS Balance | `kals_track.html` | `kalstrack` (+ reads `workout`) | `kalstrack_data.json` | `kals_balance_v1` (+ `kals_balance_range`) |
-| Bici | `bici.html` | `bici` | `bici_data.json` | `bici_v1` |
+| Bici | `bici.html` | `bici` (+ one `bici-ph-<ride id>` per photo) | `bici_data.json` (photos not included) | `bici_v1` |
 | LUKAS Flow | `lukas_analyzer.html` | `lukas-flow` | `portfolio_dashboard_data.json` | `lukas_flow_snapshot` |
 | Xpenses Calculator | `XPENSES_CALCULATOR.html` | `xpenses-calculator` | `xpenses_calculator_data.json` | `xpenses_calculator_v1` |
 | FIRE Sim | `FIRE_SIM.html` | `fire-sim` | `fire-sim-data.json` | `fire-sim-v1` |
