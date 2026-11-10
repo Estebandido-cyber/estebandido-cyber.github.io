@@ -89,12 +89,12 @@ button { cursor: pointer; }
 .actions button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--border2); background: var(--card); font-size: 14px; font-weight: 500; }
 .actions button.narrow { flex: none; padding: 0 14px; }
 .sec-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin: 14px 0 8px; }
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.stat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.stat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 8px; min-width: 0; }
 .stat-l { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.stat-v { font-size: 19px; font-weight: 700; margin-top: 2px; white-space: nowrap; }
+.stat-v { font-size: 17px; font-weight: 700; margin-top: 2px; white-space: nowrap; }
 .stat-s { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 899px) and (min-width: 600px) { .stats { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 899px) and (min-width: 600px) { .stats { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
 .heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 11px); gap: 2px; justify-content: start; }
 .heat i { width: 11px; height: 11px; border-radius: 2px; background: var(--heat0); display: block; }
 .heat i.l1 { background: var(--heat1); } .heat i.l2 { background: var(--heat2); } .heat i.out { visibility: hidden; }
@@ -109,6 +109,10 @@ button { cursor: pointer; }
 .ride-title { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ride-meta { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { flex: none; font-size: 11px; font-weight: 700; color: var(--teal-tx); background: var(--teal-bg); border-radius: 99px; padding: 3px 8px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.sw { width: 32px; height: 32px; border-radius: 50%; border: 3px solid var(--card); box-shadow: 0 0 0 1px var(--border2); }
+.sw.on { box-shadow: 0 0 0 2px var(--text); }
+.ride-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
 .empty { background: var(--card); border: 1px dashed var(--border2); border-radius: 12px; padding: 14px; font-size: 13px; color: var(--text2); line-height: 1.5; }
 
 /* Ride editor: drawer over the side panel (wide) or bottom sheet (narrow) */
@@ -214,6 +218,7 @@ button { cursor: pointer; }
       <div class="field"><label for="f-end">Back</label><input id="f-end" type="time"></div>
     </div>
     <div class="ride-info" id="f-info"></div>
+    <div class="field"><label>Route colour</label><div class="swatches" id="f-colors"></div></div>
     <div class="field"><label>Tags</label><div class="chips" id="f-tags"></div></div>
     <div class="field"><label for="f-note">What I saw</label><textarea id="f-note" placeholder="Places, details, the sandwich stop…"></textarea></div>
     <div class="field"><label for="f-thought">What I thought about</label><textarea id="f-thought" placeholder="Ideas and reflections from the ride"></textarea></div>
@@ -232,11 +237,11 @@ button { cursor: pointer; }
 //  state = { v: 1, settings: { home: [lat, lng] | null }, rides: [ride] }
 //  ride  = { id, date 'YYYY-MM-DD', start 'HH:MM'|'', end 'HH:MM'|'', title, note, thought,
 //            tags: [tag id], tr: encoded polyline (1e-5, simplified), km, src: 'gpx' | 'drawn' | 'plan' (older saves) }
-//  Explored squares = zoom-14 map tiles (~1,7 km wide at Lyon) crossed by any route.
+//  Explored squares = zoom-16 map tiles (~430 m wide at Lyon) crossed by any route. ride.color = route colour (palette).
 // ════════════════════════════════════════════════════════════════════
 const LS_KEY = 'bici_v1';
 const GD_FILENAME = 'bici_data.json';
-const Z = 14, NT = 1 << Z;                     // explorer square = zoom-14 tile
+const Z = 16, NT = 1 << Z;                     // explorer square = zoom-16 tile (~430 m wide at Lyon)
 const DEFAULT_VIEW = [[45.764, 4.836], 12];    // first open, before any ride or home
 const TAGS = [
   ['park', '🌳', 'Park'], ['river', '🌊', 'River'], ['arch', '🏛', 'Architecture'], ['picnic', '🧺', 'Picnic'],
@@ -244,6 +249,15 @@ const TAGS = [
   ['sunset', '🌅', 'Sunset'], ['forest', '🌲', 'Forest'],
 ];
 const TAG = Object.fromEntries(TAGS.map(t => [t[0], t]));
+const COLORS = ['#e8590c', '#1c7ed6', '#d6336c', '#0ca678', '#7048e8', '#f59f00', '#c92a2a', '#0b7285', '#5c940d', '#862e9c'];
+// Least used palette colour among these rides (palette order breaks ties)
+function pickColor(rides) {
+  const used = new Map(COLORS.map(c => [c, 0]));
+  for (const r of rides) if (used.has(r.color)) used.set(r.color, used.get(r.color) + 1);
+  let best = COLORS[0];
+  for (const c of COLORS) if (used.get(c) < used.get(best)) best = c;
+  return best;
+}
 
 let state = { v: 1, settings: { home: null }, rides: [] };
 
@@ -351,7 +365,8 @@ function maxSquare(explored) {
 // Share of the squares whose centre is within km of home that are explored
 function coverage(explored, home, km) {
   if (!home) return null;
-  const [cx, cy] = tileOf(home[0], home[1]), span = Math.ceil(km / 1.2) + 1;
+  const tileKm = 40075.017 * Math.cos(home[0] * Math.PI / 180) / NT;
+  const [cx, cy] = tileOf(home[0], home[1]), span = Math.ceil(km / tileKm) + 1;
   let tot = 0, got = 0;
   for (let x = cx - span; x <= cx + span; x++) for (let y = cy - span; y <= cy + span; y++) {
     const c = [(tileLat(y) + tileLat(y + 1)) / 2, (tileLng(x) + tileLng(x + 1)) / 2];
@@ -370,19 +385,20 @@ function byDate(a, b) { return (a.date + (a.start || '')).localeCompare(b.date +
 function compute(s) {
   const rides = s.rides.slice().sort(byDate);
   const explored = new Set(), per = {};
-  let km = 0, mins = 0, far = 0;
+  let km = 0, mins = 0, far = 0, timed = 0;
   const home = s.settings.home;
   for (const r of rides) {
     let nw = 0;
     for (const t of routeTiles(r.tr)) if (!explored.has(t)) { explored.add(t); nw++; }
     per[r.id] = { newSq: nw };
     km += r.km || 0;
-    const m = rideMinutes(r); if (m) mins += m;
+    const m = rideMinutes(r); if (m) { mins += m; timed++; }
     if (home) for (const p of decodePoly(r.tr)) far = Math.max(far, distM(home, p));
   }
   const year = todayStr().slice(0, 4);
   return {
-    rides, per, explored, km, mins, year,
+    rides, per, explored, km, mins, year, timed,
+    avgKm: rides.length ? km / rides.length : 0, avgMins: timed ? mins / timed : 0,
     yN: rides.filter(r => r.date.startsWith(year)).length,
     sq: explored.size, max: maxSquare(explored),
     farKm: home && rides.length ? far / 1000 : null,
@@ -422,7 +438,7 @@ function importGpxText(text, intoId) {
   }
   const date = g.first ? localDate(g.first) : todayStr();
   if (state.rides.some(r => r.date === date && r.tr === f.tr)) return null;
-  const r = { id: newId(), date, start: g.first ? localTime(g.first) : '', end: g.last ? localTime(g.last) : '',
+  const r = { id: newId(), color: pickColor(state.rides), date, start: g.first ? localTime(g.first) : '', end: g.last ? localTime(g.last) : '',
               title: g.name, note: '', thought: '', tags: [], ...f, src: 'gpx' };
   state.rides.push(r);
   if (!state.settings.home) state.settings.home = roundHome(g.pts[0]);
@@ -439,12 +455,16 @@ function cleanRide(r) {
   return { id: r.id, date: r.date, start: str(r.start, 5), end: str(r.end, 5), title: str(r.title, 80), note: str(r.note, 5000),
            thought: str(r.thought, 5000), tags: Array.isArray(r.tags) ? r.tags.filter(t => TAG[t]) : [],
            tr: r.tr, km: typeof r.km === 'number' && isFinite(r.km) ? r.km : Math.round(pathKm(decodePoly(r.tr)) * 10) / 10,
-           src: r.src === 'drawn' || r.src === 'plan' ? r.src : 'gpx' };   // older saves: plans and places (cps) are dropped
+           src: r.src === 'drawn' || r.src === 'plan' ? r.src : 'gpx',
+           ...(typeof r.color === 'string' && /^#[0-9a-f]{6}$/i.test(r.color) ? { color: r.color.toLowerCase() } : {}) };   // older saves: plans and places (cps) are dropped
 }
 function normalize(data) {
   if (!data || typeof data !== 'object' || !Array.isArray(data.rides)) return null;
   const h = data.settings && Array.isArray(data.settings.home) && data.settings.home.length === 2 && data.settings.home.every(isFinite) ? data.settings.home.map(Number) : null;
-  return { v: 1, settings: { home: h }, rides: data.rides.map(cleanRide).filter(Boolean) };
+  const rides = data.rides.map(cleanRide).filter(Boolean);
+  const done = [];                               // rides saved before colours existed get one, oldest first
+  for (const r of rides.slice().sort(byDate)) { if (!r.color) r.color = pickColor(done); done.push(r); }
+  return { v: 1, settings: { home: h }, rides };
 }
 function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (_) {} }
 function loadLocal() { try { const s = normalize(JSON.parse(localStorage.getItem(LS_KEY))); if (s) state = s; } catch (_) {} }
@@ -530,7 +550,7 @@ document.getElementById('driveloadbtn').addEventListener('click', gdriveLoad);
 //  MAP (Leaflet + OpenStreetMap) — the page works without it (offline, CDN down)
 // ════════════════════════════════════════════════════════════════════
 let map = null, fogLayer = null, routesLayer = null, homeMarker = null, squareRect = null, drawLine = null;
-let explored = new Set(), selId = null, fogOn = true;
+let explored = new Set(), exploredXY = [], selId = null, fogOn = true;
 let mode = null;                                // null | 'home' | 'draw'
 let drawPts = [], drawInto = null;
 
@@ -567,12 +587,11 @@ function drawFogTile(coords) {
     if (coords.x % k === 0) { g.moveTo(0.5, 0); g.lineTo(0.5, 256); }
     if (coords.y % k === 0) { g.moveTo(0, 0.5); g.lineTo(256, 0.5); }
     g.stroke();
-  } else {                                       // map tile holding k×k squares
-    const k = 1 << -d, cs = 256 / k;
-    g.fillStyle = fog;
-    for (let i = 0; i < k; i++) for (let j = 0; j < k; j++)
-      if (!explored.has((coords.x * k + i) + ',' + (coords.y * k + j))) g.fillRect(i * cs, j * cs, cs, cs);
-    if (cs >= 8) {
+  } else {                                       // map tile holding k×k squares: fog everywhere, then clear the explored ones
+    const k = 1 << -d, cs = 256 / k, bx = coords.x * k, by = coords.y * k;
+    g.fillStyle = fog; g.fillRect(0, 0, 256, 256);
+    for (const [x, y] of exploredXY) if (x >= bx && y >= by && x < bx + k && y < by + k) g.clearRect((x - bx) * cs, (y - by) * cs, cs, cs);
+    if (cs >= 24) {                              // grid lines only when squares are big enough to read
       g.strokeStyle = line; g.lineWidth = 1; g.beginPath();
       for (let i = 0; i < k; i++) { const p = Math.round(i * cs) + 0.5; g.moveTo(p, 0); g.lineTo(p, 256); g.moveTo(0, p); g.lineTo(256, p); }
       g.stroke();
@@ -584,12 +603,13 @@ function drawFogTile(coords) {
 function drawMap(c) {
   if (!map) return;
   explored = c.explored;
+  exploredXY = [...explored].map(k => k.split(',').map(Number));
   fogLayer.redraw();
   routesLayer.clearLayers();
   const col = cssVar('--route') || '#e8590c';
   for (const r of c.rides) {
     const sel = r.id === selId;
-    const line = L.polyline(decodePoly(r.tr), { color: col, weight: sel ? 6 : 3, opacity: selId && !sel ? 0.45 : 0.9 });
+    const line = L.polyline(decodePoly(r.tr), { color: r.color || col, weight: sel ? 6 : 4, opacity: selId && !sel ? 0.45 : 0.95 });
     line.on('click', e => { L.DomEvent.stopPropagation(e); if (!mode) openRide(r.id); });
     routesLayer.addLayer(line);
     if (sel) line.bringToFront();
@@ -654,7 +674,7 @@ function finishDraw() {
   let r;
   if (into && (r = state.rides.find(x => x.id === into))) Object.assign(r, f, { src: 'drawn' });
   else {
-    r = { id: newId(), date: todayStr(), start: '', end: '', title: '', note: '', thought: '', tags: [], ...f, src: 'drawn' };
+    r = { id: newId(), color: pickColor(state.rides), date: todayStr(), start: '', end: '', title: '', note: '', thought: '', tags: [], ...f, src: 'drawn' };
     state.rides.push(r);
     if (!state.settings.home) state.settings.home = roundHome(drawPts[0]);
   }
@@ -679,11 +699,13 @@ function renderStats(c) {
   const h = c.mins / 60;
   document.getElementById('stats').innerHTML =
     stat('Rides', c.rides.length, c.yN + ' in ' + c.year) +
-    stat('Squares', c.sq, c.last ? '+' + lastNew + ' last ride' : 'explored') +
-    stat('Max square', c.max.n ? c.max.n + '×' + c.max.n : '—', 'fully explored') +
+    stat('Distance', c.km ? (c.km >= 100 ? Math.round(c.km).toLocaleString('de-DE') : n1(c.km)) + ' km' : '—', 'all rides') +
+    stat('Average', c.rides.length ? n1(c.avgKm) + ' km' : '—', 'per ride') +
+    stat('Outside', c.mins ? (h >= 10 ? Math.round(h) : n1(h)) + ' h' : '—', c.avgMins ? 'avg ' + Math.floor(c.avgMins / 60) + 'h' + pad(Math.round(c.avgMins % 60)) : '') +
+    stat('Squares', c.sq, c.last ? '+' + lastNew + ' last' : 'explored') +
+    stat('Max square', c.max.n ? c.max.n + '×' + c.max.n : '—', 'complete') +
     stat('Farthest', c.farKm !== null ? n1(c.farKm) + ' km' : '—', 'from home') +
-    stat('Near home', c.cov10 !== null ? Math.round(c.cov10 * 100) + '%' : '—', 'of 10 km radius') +
-    stat('Outside', c.mins ? (h >= 10 ? Math.round(h) : n1(h)) + ' h' : '—', c.km ? Math.round(c.km).toLocaleString('de-DE') + ' km rolled' : '');
+    stat('Near home', c.cov10 !== null ? Math.round(c.cov10 * 100) + '%' : '—', 'within 10 km');
 }
 function renderHeat(c) {
   const count = {};
@@ -712,7 +734,7 @@ function renderList(c) {
     const nw = c.per[r.id].newSq;
     return `<button class="ride${r.id === selId ? ' sel' : ''}" data-id="${esc(r.id)}">` +
       `<div class="ride-date"><b>${d.getDate()}</b><span>${MONTHS[d.getMonth()]}</span></div>` +
-      `<div class="ride-main"><div class="ride-title">${esc(r.title || 'Ride')}</div><div class="ride-meta">${esc(meta)}</div></div>` +
+      `<div class="ride-main"><div class="ride-title"><span class="ride-dot" style="background:${esc(r.color || '#888')}"></span>${esc(r.title || 'Ride')}</div><div class="ride-meta">${esc(meta)}</div></div>` +
       (nw ? `<span class="badge">+${nw}</span>` : '') + '</button>';
   }).join('');
 }
@@ -740,6 +762,7 @@ function renderSheet() {
   F('f-info').textContent = [n1(r.km) + ' km', m ? Math.floor(m / 60) + 'h' + pad(m % 60) + ' outside' : '',
     '+' + c.per[r.id].newSq + ' new squares', r.src === 'drawn' ? 'route drawn by hand' : r.src === 'plan' ? 'route as planned' : 'route from GPX'].filter(Boolean).join(' · ');
   F('f-tags').innerHTML = TAGS.map(t => `<button class="chip${r.tags.includes(t[0]) ? ' on' : ''}" data-t="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
+  F('f-colors').innerHTML = COLORS.map(col => `<button class="sw${r.color === col ? ' on' : ''}" data-c="${col}" style="background:${col}" aria-label="Colour ${col}"></button>`).join('');
 }
 function closeSheet() { F('sheet').classList.remove('open'); selId = null; renderAll(); }
 function editRide(fn) {
@@ -756,6 +779,11 @@ F('f-thought').addEventListener('input', onField('thought', 5000));
 F('f-start').addEventListener('change', onField('start', 5));
 F('f-end').addEventListener('change', onField('end', 5));
 F('f-date').addEventListener('change', e => { if (/^\d{4}-\d\d-\d\d$/.test(e.target.value)) editRide(r => { r.date = e.target.value; }); renderAll(); renderSheet(); });
+F('f-colors').addEventListener('click', e => {
+  const b = e.target.closest('.sw'); if (!b) return;
+  editRide(r => { r.color = b.dataset.c; });
+  renderSheet(); renderAll();
+});
 F('f-tags').addEventListener('click', e => {
   const t = e.target.closest('.chip'); if (!t) return;
   editRide(r => { const k = t.dataset.t; r.tags = r.tags.includes(k) ? r.tags.filter(x => x !== k) : [...r.tags, k]; });

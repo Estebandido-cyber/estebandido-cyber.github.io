@@ -681,18 +681,19 @@ def fire_sim_rules(b):
 
 # ── Bici: GPX import, explored squares, summary ──
 import math, html
-def z14(lat, lng):
-    n = 1 << 14; r = math.radians(lat)
+BZ = 16                                                                 # Bici explorer square = zoom-16 map tile
+def zt(lat, lng):
+    n = 1 << BZ; r = math.radians(lat)
     return ((lng + 180) / 360 * n, (1 - math.log(math.tan(r) + 1 / math.cos(r)) / math.pi) / 2 * n)
-def z14_lng(x): return x / (1 << 14) * 360 - 180
-def z14_lat(y): return math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * y / (1 << 14)))))
+def zt_lng(x): return x / (1 << BZ) * 360 - 180
+def zt_lat(y): return math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * y / (1 << BZ)))))
 def squares_of(pts):
-    """Independent reference: walk each straight segment in 1 m steps, collect the z14 squares."""
+    """Independent reference: walk each straight segment in 1 m steps, collect the explorer squares."""
     out = set()
     for (a, b) in zip(pts, pts[1:]):
         steps = max(1, int(hav_km(a, b) * 1000))
         for k in range(steps + 1):
-            x, y = z14(a[0] + (b[0] - a[0]) * k / steps, a[1] + (b[1] - a[1]) * k / steps)
+            x, y = zt(a[0] + (b[0] - a[0]) * k / steps, a[1] + (b[1] - a[1]) * k / steps)
             out.add('%d,%d' % (math.floor(x), math.floor(y)))
     return out
 def hav_km(a, b):
@@ -714,8 +715,9 @@ def bici_rules(b):
     ev = pg.evaluate
     assert ev('!!map'), 'map did not start with Leaflet available'
     # Ride 1: a zig-zag through a 3×3 block of squares (centres of the squares), with times and a name
-    x0, y0 = 8432, 5875                                                # squares near Lyon
-    c = lambda x, y: (z14_lat(y + 0.5), z14_lng(x + 0.5))
+    x0, y0 = 33728, 23500                                              # squares near Lyon
+    assert ev("Z") == BZ
+    c = lambda x, y: (zt_lat(y + 0.5), zt_lng(x + 0.5))
     r1 = [c(x0, y0), c(x0 + 2, y0), c(x0 + 2, y0 + 1), c(x0, y0 + 1), c(x0, y0 + 2), c(x0 + 2, y0 + 2)]
     t0 = datetime.datetime(2026, 5, 3, 8, 30)
     id1 = ev("t => importGpxText(t).id", gpx(r1, 'Saône & <i>parks</i>', t0))
@@ -731,7 +733,7 @@ def bici_rules(b):
     # Duplicate import is ignored
     assert ev("t => importGpxText(t)", gpx(r1, 'again', t0)) is None, 'same route on the same day must not be imported twice'
     # Ride 2 (later): a diagonal that clips a square corner, partly over ride 1 → only its new squares count
-    r2 = [c(x0 + 2, y0 + 2), (z14_lat(y0 + 3.009), z14_lng(x0 + 4.98))]
+    r2 = [c(x0 + 2, y0 + 2), (zt_lat(y0 + 3.009), zt_lng(x0 + 4.98))]
     id2 = ev("t => importGpxText(t).id", gpx(r2, '', datetime.datetime(2026, 6, 1, 7, 0)))
     s2 = squares_of(r2)
     assert set(ev("id => [...routeTiles(state.rides.find(r => r.id === id).tr)]", id2)) == s2, 'corner-clipped square missed'
@@ -744,14 +746,25 @@ def bici_rules(b):
     assert C['sq'] == len(allsq), (C['sq'], len(allsq))
     assert C['per'][id1]['newSq'] == 9 and C['per'][id2]['newSq'] == len(s2 - squares_of(r1)) and C['per'][id3]['newSq'] == len(squares_of(r3) - squares_of(r1) - s2), C['per']
     assert C['max'] == 3, C['max']
+    # Each new ride gets the least used palette colour; distance total and average per ride
+    cols = ev("COLORS")
+    assert [ev("id => state.rides.find(r => r.id === id).color", i) for i in (id1, id2, id3)] == cols[:3]
+    K = ev("(() => { const c = compute(state); return [c.km, c.avgKm, state.rides.map(r => r.km)] })()")
+    assert abs(K[0] - sum(K[2])) < 1e-9 and abs(K[1] - sum(K[2]) / 3) < 1e-9, K
+    assert ev("pickColor([{ color: COLORS[0] }, { color: COLORS[1] }, { color: COLORS[0] }])") == cols[2]
+    assert ev("pickColor(COLORS.map(c => ({ color: c })).concat([{ color: COLORS[0] }]))") == cols[1]
     assert C['mins'] == 50 + 10, C['mins']
     home = ev("state.settings.home"); far = max(hav_km(home, p) for p in r1 + r2 + r3)
     assert abs(C['far'] - far) < 0.01, (C['far'], far)
     # Fog: explored square is clear, unexplored is fogged (zoom 14 and zoom 12)
     alpha = "([x, y, z]) => drawFogTile({ x, y, z }).getContext('2d').getImageData(128, 128, 1, 1).data[3]"
     pg.evaluate("renderAll()")
-    assert ev(alpha, [x0 + 1, y0 + 1, 14]) == 0 and ev(alpha, [x0 + 40, y0 + 40, 14]) > 0, 'fog at z14'
-    assert ev(alpha, [(x0 + 1) >> 2, (y0 + 1) >> 2, 12]) >= 0 and ev("([x,y]) => drawFogTile({x:x>>2,y:y>>2,z:12}).getContext('2d').getImageData(((x%4)*64)+32, ((y%4)*64)+32, 1, 1).data[3]", [x0 + 1, y0 + 1]) == 0, 'fog at z12'
+    assert ev(alpha, [x0 + 1, y0 + 1, BZ]) == 0 and ev(alpha, [x0 + 40, y0 + 40, BZ]) > 0, 'fog at the square zoom'
+    # zoomed out: one map tile holds k×k squares; the explored square's pixel is clear, a neighbour far off is fogged
+    px = "([x, y, d, ox]) => { const k = 1 << d, cs = 256 / k; return drawFogTile({ x: x >> d, y: y >> d, z: Z - d }).getContext('2d').getImageData(Math.floor(((x % k) + 0.5) * cs) + ox, Math.floor(((y % k) + 0.5) * cs), 1, 1).data[3] }"
+    for d in (2, 6):
+        assert ev(px, [x0 + 1, y0 + 1, d, 0]) == 0, ('explored square fogged when zoomed out', d)
+    assert ev(px, [x0 + 40, y0 + 40, 2, 0]) > 0
     # Hand-drawn ride through map taps
     ev("setMode('draw')")
     for la, lo in (c(x0 + 10, y0 + 10), c(x0 + 11, y0 + 10)):
@@ -760,6 +773,11 @@ def bici_rules(b):
     assert ev("state.rides.length") == 4 and ev("state.rides[3].src") == 'drawn' and ev("document.getElementById('sheet').classList.contains('open')")
     # Escaped in the list, synced to the cloud with a small summary
     assert not pg.query_selector('#rides i'), 'ride title must be escaped in the list'
+    # Colour picked in the ride sheet
+    ev("id => openRide(id)", id2)
+    pg.click('#f-colors .sw[data-c="%s"]' % cols[6])
+    assert ev("id => state.rides.find(r => r.id === id).color", id2) == cols[6] and pg.locator('#f-colors .sw.on').get_attribute('data-c') == cols[6]
+    pg.click('#sheet-done')
     ev("scheduleCloudsave()")
     assert wait_until(pg, lambda: len((worker.posted('bici') or {}).get('rides', [])) == 4, 6), 'rides not synced'
     h = worker.posted('bici')['hub']
@@ -787,8 +805,8 @@ def encode_poly(pts):
 @test
 def bici_import_rules(b):
     worker = FakeWorker(); ctx = new_context(b, worker)
-    x0, y0 = 8432, 5875
-    c = lambda x, y: (z14_lat(y + 0.5), z14_lng(x + 0.5))
+    x0, y0 = 33728, 23500
+    c = lambda x, y: (zt_lat(y + 0.5), zt_lng(x + 0.5))
     # An older save with plans and places loads: rides kept, plans and places dropped
     old = {'v': 1, 'settings': {'home': [45.75, 4.85]}, 'plans': [{'id': 'p1', 'date': '2026-11-07', 'title': 'Plan', 'tr': '', 'km': 0, 'cps': []}],
            'rides': [{'id': 'r1', 'date': '2026-11-09', 'start': '14:00', 'end': '16:10', 'title': 'Ride 1', 'note': '', 'thought': '', 'tags': ['river'],
@@ -802,6 +820,10 @@ def bici_import_rules(b):
     st = ev("state")
     assert 'plans' not in st and [r['id'] for r in st['rides']] == ['r1', 'r2'] and all('cps' not in r for r in st['rides']), st
     assert st['rides'][1]['src'] == 'plan' and st['rides'][0]['tags'] == ['river'] and pg.locator('#rides .ride').count() == 2
+    cols = ev("COLORS")
+    assert [r['color'] for r in st['rides']] == cols[:2], 'rides saved before colours get one, oldest first'
+    n = ev("d => normalize(d)", {**old, 'rides': [{**old['rides'][0], 'color': 'red'}, {**old['rides'][1], 'color': '#ABCDEF'}]})
+    assert n['rides'][1]['color'] == '#abcdef' and n['rides'][0]['color'] == cols[0], 'invalid colour replaced, valid kept'
     # Import from the UI: no question, the ride is added and opened, nothing asked to Wikipedia
     calls = []; ctx.route('https://fr.wikipedia.org/**', lambda r: (calls.append(r.request.url), r.abort()))
     route = [c(x0, y0), c(x0 + 2, y0), c(x0 + 2, y0 + 1)]
