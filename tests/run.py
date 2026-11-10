@@ -954,6 +954,23 @@ def bici_plan_rules(b):
     assert ev("id => state.rides.find(r => r.id === id).cps[0].name", Rp['id']) == 'Fontaine'
     pg.dialog_answer = 'accept'; pg.click('#f-paste-add'); pg.dialog_answer = 'dismiss'
     assert ev("id => state.rides.find(r => r.id === id).cps[0].name", Rp['id']) == 'Other' and not pg.is_visible('#f-paste')
+    # Ride again: same route back in "Rides to do", places unticked, never matched to the ride it came from, no duplicate
+    src = ev("state.rides.find(r => r.title === 'Ride 1')")
+    ev("id => openRide(id)", src['id']); pg.click('#f-again')
+    assert wait_until(pg, lambda: pg.is_visible('#psheet'), 3) and pg.is_visible('#pane-plans')
+    P = ev("state.plans[state.plans.length - 1]")
+    assert (P['tr'], P['title'], P['from'], P['date']) == (src['tr'], 'Ride 1', src['id'], ev('todayStr()')), P
+    assert [x['name'] for x in P['cps']] == [x['name'] for x in src['cps']] and not any(x['done'] for x in P['cps'])
+    assert ev("id => state.rides.find(r => r.id === id).cps.length", src['id']) == len(src['cps']), 'the ride keeps its places'
+    assert not pg.is_visible('#join-banner') and not pg.is_visible('#p-join'), 'a copied plan must not offer to join its own ride'
+    n_p = ev("state.plans.length"); pg.click('#psheet-done')
+    ev("id => openRide(id)", src['id']); pg.click('#f-again')
+    assert ev("state.plans.length") == n_p, 'ride again twice must not duplicate the plan'
+    pg.click('#psheet-done')
+    later = ev("t => importGpxText(t).date", gpx(route3, '', datetime.datetime(2027, 1, 5, 9, 0)))   # ridden again later → matches the copy
+    assert ev("id => !!matchRideFor(state.plans.find(p => p.from === id))", src['id']) and later == '2027-01-05'
+    assert ev("d => normalize(d).plans.find(p => p.from).from", ev("cloudPayload()")) == src['id']
+    ev("state.plans = state.plans.filter(p => !p.from); state.rides = state.rides.filter(r => r.date !== '2027-01-05'); renderAll()")
     # Synced and reloaded
     pid5 = ev("t => importPlanGpx(t).id", gpx([c(x0, y0 + 12), c(x0 + 1, y0 + 12)], 'Next'))
     ev("([id, t]) => setCheckpoints(id, t)", [pid5, json.dumps([{'name': 'Bridge', 'lat': 45.7, 'lng': 4.8}])])

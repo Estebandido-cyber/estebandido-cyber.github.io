@@ -87,7 +87,7 @@ button { cursor: pointer; }
 /* Side panel */
 .actions { display: flex; gap: 8px; margin-bottom: 10px; }
 .actions button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--border2); background: var(--card); font-size: 14px; font-weight: 500; padding: 0 8px; white-space: nowrap; }
-.actions button.narrow { flex: none; width: 48px; font-size: 17px; }
+.actions button.narrow { flex: none; width: auto; padding: 0 14px; }
 .cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-bottom: 10px; }
 .card { display: flex; flex-direction: column; gap: 2px; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 9px 11px; min-width: 0; }
 .card.plan { border: 1.5px dashed var(--plan); }
@@ -241,7 +241,7 @@ button { cursor: pointer; }
   <aside class="side">
     <div class="actions">
       <button id="btn-import">⬆ Import GPX from Komoot</button>
-      <button id="btn-draw" class="narrow" title="Draw a ride on the map">✎</button>
+      <button id="btn-draw" class="narrow" title="Draw a ride on the map">✎ Draw</button>
     </div>
     <input type="file" id="gpx-input" multiple hidden>
 
@@ -269,7 +269,7 @@ button { cursor: pointer; }
     </div>
 
     <div id="pane-plans" hidden>
-      <div class="sec-title">Planned routes</div>
+      <div class="sec-title">Rides to do</div>
       <div class="rides" id="plans"></div>
     </div>
   </aside>
@@ -285,6 +285,7 @@ button { cursor: pointer; }
       <div class="field"><label for="f-end">Back</label><input id="f-end" type="time"></div>
     </div>
     <div class="ride-info" id="f-info"></div>
+    <div class="sheet-actions"><button id="f-again">↻ Ride again — add to Rides to do</button></div>
     <div class="field"><label>Places on the route</label><div class="cps" id="f-cps" data-owner="ride"></div>
       <div class="sheet-actions" style="margin-top:8px">
         <button id="f-find">Find places</button>
@@ -603,7 +604,7 @@ function completePlan(planId, gpxText) {
 }
 // ── Plan ↔ ride: a ride "is" a plan when it is not older than the plan and crosses most of its squares ──
 function planOverlap(p, r) {
-  if (!p.tr || !r.tr || r.date < p.date) return 0;
+  if (!p.tr || !r.tr || r.date < p.date || p.from === r.id) return 0;     // a "ride again" plan never matches the ride it was copied from
   const a = routeTiles(p.tr), b = routeTiles(r.tr);
   let n = 0; for (const t of a) if (b.has(t)) n++;
   return a.size ? n / a.size : 0;
@@ -636,6 +637,16 @@ function joinPlan(planId, rideId) {
   if (cps.length) r.cps = cps.map(c => ({ ...c }));
   state.plans = state.plans.filter(x => x.id !== planId);
   return r;
+}
+// Copy a ride done into "Rides to do": same route, its places unticked. Returns [plan, isNew].
+function rideAgain(rideId) {
+  const r = state.rides.find(x => x.id === rideId); if (!r) return [null, false];
+  const old = state.plans.find(p => p.tr === r.tr);
+  if (old) return [old, false];
+  const p = { id: 'p' + newId().slice(1), date: todayStr(), title: r.title, tr: r.tr, km: r.km,
+              cps: (r.cps || []).map(c => ({ ...c, id: 'c' + newId().slice(1), done: false })), from: r.id };
+  state.plans.push(p);
+  return [p, true];
 }
 // Ride already in the list for this GPX text (same day, same route), or null
 function existingRideFor(text) {
@@ -744,7 +755,7 @@ function cleanPlan(p) {
   if (!p || typeof p.id !== 'string' || typeof (p.tr ?? '') !== 'string') return null;
   const tr = p.tr || '';
   return { id: p.id, date: /^\d{4}-\d\d-\d\d$/.test(p.date || '') ? p.date : todayStr(), title: str(p.title, 80), tr,
-           km: typeof p.km === 'number' && isFinite(p.km) ? p.km : (tr ? Math.round(pathKm(decodePoly(tr)) * 10) / 10 : 0), cps: cleanCps(p.cps) };
+           km: typeof p.km === 'number' && isFinite(p.km) ? p.km : (tr ? Math.round(pathKm(decodePoly(tr)) * 10) / 10 : 0), cps: cleanCps(p.cps), ...(typeof p.from === 'string' && p.from ? { from: p.from.slice(0, 40) } : {}) };
 }
 function normalize(data) {
   if (!data || typeof data !== 'object' || !Array.isArray(data.rides)) return null;
@@ -1040,10 +1051,10 @@ function renderHome(c) {
   };
   if (last) card(F('card-last'), '', 'Last ride', last.title || 'Ride', fmtDay(last.date) + ' · ' + n1(last.km) + ' km · +' + c.per[last.id].newSq + ' squares', last.id);
   else card(F('card-last'), '', 'Last ride', 'No ride yet', 'Import the GPX of a ride', '');
-  if (plan) card(F('card-next'), ' plan', 'Next plan', plan.title || 'Planned route', (plan.tr ? n1(plan.km) + ' km · ' : '') + '+' + c.planNew[plan.id] + ' if you ride it', plan.id);
-  else card(F('card-next'), ' plan', 'Next plan', 'No plan', 'Import a Komoot route', '');
-  F('tab-rides').textContent = 'Rides · ' + c.rides.length;
-  F('tab-plans').textContent = 'Plans · ' + state.plans.length;
+  if (plan) card(F('card-next'), ' plan', 'Next to do', plan.title || 'Planned route', (plan.tr ? n1(plan.km) + ' km · ' : '') + '+' + c.planNew[plan.id] + ' if you ride it', plan.id);
+  else card(F('card-next'), ' plan', 'Next to do', 'Nothing planned', 'Import a Komoot route', '');
+  F('tab-rides').textContent = 'Rides done · ' + c.rides.length;
+  F('tab-plans').textContent = 'Rides to do · ' + state.plans.length;
   const b = F('join-banner');
   const m = state.plans.map(p => [p, matchRideFor(p)]).find(x => x[1]);
   b.hidden = !m;
@@ -1077,14 +1088,15 @@ function renderList(c) {
 }
 function renderPlans(c) {
   if (!state.plans.length) {
-    F('plans').innerHTML = '<div class="empty">No plan. Plan a route in Komoot → ⋮ → <b>Download GPX file</b>, then <b>Import GPX</b> here and choose <b>Route to ride</b>. Places along it appear by themselves.</div>';
+    F('plans').innerHTML = '<div class="empty">Nothing to do yet. Plan a route in Komoot → ⋮ → <b>Download GPX file</b>, then <b>Import GPX</b> here and choose <b>Route to ride</b>. Places along it appear by themselves. ' +
+      'To repeat a ride you liked: open it and tap <b>↻ Ride again</b>.</div>';
     return;
   }
   F('plans').innerHTML = state.plans.slice().reverse().map(p => {
     const done = p.cps.filter(x => x.done).length, nw = c.planNew[p.id];
     const meta = [p.tr ? n1(p.km) + ' km' : 'no route', p.cps.length ? done + '/' + p.cps.length + ' places seen' : 'no places yet'].join(' · ');
     return `<button class="ride plan${p.id === selPlanId ? ' sel' : ''}" data-id="${esc(p.id)}">` +
-      `<div class="ride-date"><b>🗺</b><span>Plan</span></div>` +
+      `<div class="ride-date"><b>🗺</b><span>To do</span></div>` +
       `<div class="ride-main"><div class="ride-title">${esc(p.title || 'Planned route')}</div><div class="ride-meta">${esc(meta)}</div></div>` +
       (nw ? `<span class="badge amber" title="New squares if you ride it">+${nw}</span>` : '') + '</button>';
   }).join('');
@@ -1312,6 +1324,12 @@ F('ask').addEventListener('click', e => { if (e.target === e.currentTarget) answ
 let importInto = null;
 F('btn-import').addEventListener('click', () => { importInto = null; F('gpx-input').click(); });
 F('f-regpx').addEventListener('click', () => { importInto = selId; F('gpx-input').click(); });
+F('f-again').addEventListener('click', () => {
+  const [p, isNew] = rideAgain(selId); if (!p) return;
+  if (isNew) persist();
+  closeSheetSilently(); setTab('plans'); openPlan(p.id, true);
+  toast(isNew ? 'Added to Rides to do' : 'This route is already in Rides to do', 3000);
+});
 F('gpx-input').addEventListener('change', async e => {
   const files = [...e.target.files]; e.target.value = '';
   const into = importInto; importInto = null;
