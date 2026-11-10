@@ -28,6 +28,9 @@ After step 3, send phone/tablet/desktop screenshots for approval before continui
 9. Mini sparkline per tile (from summaries).
 10. Quick actions ("+ Expense", "+ Workout") opening widgets straight in add mode (small hook per widget).
 
+## Ideas parked (not agreed, not scheduled)
+- **Discovery widget** (split out of Bici on 2026-11-10): plan a route (Komoot GPX), preview the squares it would unlock, points to visit from French Wikipedia geosearch (thumbnail, extract, link) or pasted from Claude, checklist while riding. Built once in `bici.html` (commits cc577e3…7449e55) and removed because Bici is for free riding; reuse that code if this comes back.
+
 ## Devices to design and test for (exact browser viewports, measured by the owner)
 | Device | Viewport (CSS px) | Notes |
 |---|---|---|
