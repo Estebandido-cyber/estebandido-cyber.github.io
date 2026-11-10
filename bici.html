@@ -23,7 +23,7 @@
   --border: rgba(0,0,0,0.11); --border2: rgba(0,0,0,0.2);
   --teal: #0f8a7a; --teal-bg: #def5f0; --teal-tx: #0a5f54; --on-teal: #ffffff;
   --route: #e8590c; --heat0: #e6e5e0; --heat1: #8fd8cb; --heat2: #0f8a7a;
-  --danger: #c43c3c; --amber-bg: #fdf1e0; --amber-tx: #7a4300;
+  --danger: #c43c3c; --amber-bg: #fdf1e0; --amber-tx: #7a4300; --plan: #ca8a04; --route-tx: #b8420a;
   --font: 'DM Sans', system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
@@ -33,7 +33,7 @@
     --border: rgba(255,255,255,0.09); --border2: rgba(255,255,255,0.18);
     --teal: #3cc4b0; --teal-bg: #12302b; --teal-tx: #9be6da; --on-teal: #0b1f1c;
     --route: #ff8a3d; --heat0: #2e2e2b; --heat1: #1f6b5f; --heat2: #3cc4b0;
-    --danger: #e06666; --amber-bg: #2b1f0c; --amber-tx: #f5c27a;
+    --danger: #e06666; --amber-bg: #2b1f0c; --amber-tx: #f5c27a; --plan: #facc15; --route-tx: #ff9d5c;
   }
   .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
   .leaflet-container { background: #2a2a28; }
@@ -85,9 +85,23 @@ button { cursor: pointer; }
 .no-map { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--text2); font-size: 14px; }
 
 /* Side panel */
-.actions { display: flex; gap: 8px; margin-bottom: 12px; }
-.actions button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--border2); background: var(--card); font-size: 13px; font-weight: 500; padding: 0 6px; white-space: nowrap; }
-.actions button.primary { background: var(--teal); color: var(--on-teal); border-color: var(--teal); }
+.actions { display: flex; gap: 8px; margin-bottom: 10px; }
+.actions button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--border2); background: var(--card); font-size: 14px; font-weight: 500; padding: 0 8px; white-space: nowrap; }
+.actions button.narrow { flex: none; width: 48px; font-size: 17px; }
+.cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-bottom: 10px; }
+.card { display: flex; flex-direction: column; gap: 2px; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 9px 11px; min-width: 0; }
+.card.plan { border: 1.5px dashed var(--plan); }
+.card-l { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--route-tx); }
+.card.plan .card-l { color: var(--amber-tx); }
+.card-t { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-s { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card.empty-card .card-t { font-weight: 500; color: var(--text2); }
+.join-banner { display: flex; align-items: center; gap: 10px; background: var(--amber-bg); color: var(--amber-tx); border-radius: 12px; padding: 9px 11px; font-size: 13px; line-height: 1.35; margin-bottom: 10px; }
+.join-banner span { flex: 1; min-width: 0; }
+.join-banner button, .join-btn { flex: none; border: 1px solid var(--plan); background: var(--card); color: var(--amber-tx); border-radius: 10px; padding: 7px 12px; font-size: 13px; font-weight: 500; }
+.tabs { display: flex; background: var(--sub); border: 1px solid var(--border); border-radius: 12px; padding: 3px; margin: 4px 0 2px; }
+.tabs button { flex: 1; border: none; background: none; border-radius: 9px; padding: 8px; font-size: 14px; font-weight: 500; color: var(--text2); }
+.tabs button.on { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 .sec-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin: 14px 0 8px; }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .stat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; min-width: 0; }
@@ -110,17 +124,21 @@ button { cursor: pointer; }
 .ride-meta { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { flex: none; font-size: 11px; font-weight: 700; color: var(--teal-tx); background: var(--teal-bg); border-radius: 99px; padding: 3px 8px; }
 .badge.amber { color: var(--amber-tx); background: var(--amber-bg); }
-.ride.plan { border-style: dashed; border-color: var(--teal); }
-.ride.plan.sel { border-style: solid; }
+.ride.plan { border-style: dashed; border-color: var(--plan); }
+.ride.plan.sel { border-style: solid; box-shadow: 0 0 0 1px var(--plan) inset; }
 .cps { display: flex; flex-direction: column; gap: 6px; }
 .cp { display: flex; gap: 10px; align-items: flex-start; background: var(--sub); border-radius: 10px; padding: 8px 10px; }
-.cp-n { flex: none; width: 26px; height: 26px; border-radius: 50%; border: none; background: var(--teal); color: var(--on-teal); font-size: 12px; font-weight: 700; }
+.cp-n { flex: none; width: 26px; height: 26px; border-radius: 50%; border: none; background: var(--route); color: #fff; font-size: 12px; font-weight: 700; }
+.cps[data-owner="plan"] .cp-n { background: var(--plan); }
+.cp-img { flex: none; width: 52px; height: 52px; border-radius: 8px; object-fit: cover; background: var(--card); }
+.cp-links { display: flex; gap: 12px; margin-top: 4px; font-size: 12px; }
+.cp-links a, .cp-links button { color: var(--teal); text-decoration: none; border: none; background: none; padding: 0; font-size: 12px; font-weight: 500; }
 .cp.done .cp-n { background: var(--text3); }
 .cp-main { flex: 1; min-width: 0; }
 .cp-name { font-weight: 500; font-size: 14px; }
 .cp.done .cp-name { text-decoration: line-through; color: var(--text2); }
 .cp-what { font-size: 13px; color: var(--text2); margin-top: 2px; line-height: 1.35; }
-.cp-fact { font-size: 12px; color: var(--text3); font-style: italic; margin-top: 2px; line-height: 1.35; }
+.cp-fact { font-size: 12px; color: var(--text3); font-style: italic; margin-top: 2px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .cp-check { flex: none; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border2); background: var(--card); font-size: 16px; }
 .cp.done .cp-check { background: var(--teal-bg); border-color: var(--teal); color: var(--teal-tx); }
 .cp-empty { font-size: 13px; color: var(--text2); line-height: 1.45; }
@@ -129,8 +147,20 @@ button { cursor: pointer; }
 .paste-err { color: var(--danger); font-size: 13px; min-height: 0; }
 .paste button, .sheet-actions button.primary { background: var(--teal); color: var(--on-teal); border-color: var(--teal); }
 .paste button { border: 1px solid var(--teal); border-radius: 10px; padding: 8px 12px; font-size: 13px; align-self: flex-start; }
-.cp-pin { width: 26px; height: 26px; border-radius: 50%; background: #0f8a7a; color: #fff; border: 2px solid #fff; font: 700 12px/22px 'DM Sans', system-ui, sans-serif; text-align: center; box-shadow: 0 1px 5px rgba(0,0,0,0.45); }
+.cp-pin { width: 26px; height: 26px; border-radius: 50%; background: var(--route); color: #fff; border: 2px solid #fff; font: 700 12px/22px 'DM Sans', system-ui, sans-serif; text-align: center; box-shadow: 0 1px 5px rgba(0,0,0,0.45); }
+.cp-pin.plan { background: var(--plan); }
 .cp-pin.done { background: #8a8880; }
+.sheet.plan .sheet-head { background: var(--amber-bg); }
+.sheet.plan .sheet-head .t { color: var(--amber-tx); }
+.ask { position: fixed; inset: 0; z-index: 1250; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.ask-card { background: var(--card); border-radius: 16px; padding: 16px; width: 100%; max-width: 420px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+.ask-t { font-size: 17px; font-weight: 700; }
+.ask-s { font-size: 13px; color: var(--text2); margin: 2px 0 12px; overflow-wrap: anywhere; }
+.ask-opts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.ask-opt { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; border: 1.5px solid var(--border2); background: var(--sub); border-radius: 12px; padding: 12px 8px; }
+.ask-opt b { font-size: 15px; } .ask-opt span { font-size: 12px; color: var(--text2); } .ask-opt i { font-style: normal; font-size: 22px; }
+.ask-opt.plan { border-style: dashed; border-color: var(--plan); } .ask-opt.ride { border-color: var(--route); } .ask-opt.join { border-color: var(--teal); }
+.ask-cancel { margin-top: 12px; width: 100%; border: none; background: none; color: var(--text2); font-size: 14px; padding: 6px; }
 .empty { background: var(--card); border: 1px dashed var(--border2); border-radius: 12px; padding: 14px; font-size: 13px; color: var(--text2); line-height: 1.5; }
 
 /* Ride editor: drawer over the side panel (wide) or bottom sheet (narrow) */
@@ -210,27 +240,38 @@ button { cursor: pointer; }
 
   <aside class="side">
     <div class="actions">
-      <button class="primary" id="btn-import">⬆ Ride GPX</button>
-      <button id="btn-plan">🗺 Plan GPX</button>
-      <button id="btn-draw">✎ Draw</button>
+      <button id="btn-import">⬆ Import GPX from Komoot</button>
+      <button id="btn-draw" class="narrow" title="Draw a ride on the map">✎</button>
     </div>
     <input type="file" id="gpx-input" multiple hidden>
-    <input type="file" id="plan-input" multiple hidden>
 
-    <div id="plans-sec" hidden>
-      <div class="sec-title">Planned</div>
-      <div class="rides" id="plans"></div>
+    <div class="join-banner" id="join-banner" hidden></div>
+    <div class="cards">
+      <button class="card" id="card-last"></button>
+      <button class="card plan" id="card-next"></button>
     </div>
 
-    <div class="sec-title">Exploration</div>
-    <div class="stats" id="stats"></div>
+    <div class="tabs" role="tablist">
+      <button id="tab-rides" class="on" role="tab">Rides</button>
+      <button id="tab-plans" role="tab">Plans</button>
+    </div>
 
-    <div class="sec-title">Last 6 months</div>
-    <div class="heat" id="heat"></div>
-    <div class="heat-foot" id="heat-foot"></div>
+    <div id="pane-rides">
+      <div class="sec-title">Exploration</div>
+      <div class="stats" id="stats"></div>
 
-    <div class="sec-title">Rides</div>
-    <div class="rides" id="rides"></div>
+      <div class="sec-title">Last 6 months</div>
+      <div class="heat" id="heat"></div>
+      <div class="heat-foot" id="heat-foot"></div>
+
+      <div class="sec-title">Rides</div>
+      <div class="rides" id="rides"></div>
+    </div>
+
+    <div id="pane-plans" hidden>
+      <div class="sec-title">Planned routes</div>
+      <div class="rides" id="plans"></div>
+    </div>
   </aside>
 </main>
 
@@ -246,8 +287,8 @@ button { cursor: pointer; }
     <div class="ride-info" id="f-info"></div>
     <div class="field"><label>Places on the route</label><div class="cps" id="f-cps" data-owner="ride"></div>
       <div class="sheet-actions" style="margin-top:8px">
-        <button id="f-ask">📋 Copy request for Claude</button>
-        <button id="f-paste-open">Paste places</button>
+        <button id="f-find">Find places</button>
+        <button id="f-paste-open">Paste from Claude</button>
       </div>
       <div class="paste" id="f-paste" hidden style="margin-top:8px">
         <textarea id="f-paste-text" placeholder='Paste the JSON from Claude: {"title":…,"points":[…]}'></textarea>
@@ -265,30 +306,37 @@ button { cursor: pointer; }
     </div>
   </div>
 </section>
-<section class="sheet" id="psheet" aria-label="Planned route">
-  <div class="sheet-head"><span class="t">Planned route</span><button id="psheet-done">Done</button></div>
+<section class="sheet plan" id="psheet" aria-label="Planned route">
+  <div class="sheet-head"><span class="t">🗺 Planned route</span><button id="psheet-done">Done</button></div>
   <div class="sheet-body">
     <div class="field"><label for="p-title">Title</label><input id="p-title" maxlength="80" placeholder="Monts d'Or loop"></div>
     <div class="ride-info" id="p-info"></div>
-    <div class="field"><label>Checkpoints</label><div class="cps" id="p-cps" data-owner="plan"></div></div>
-    <div class="sheet-actions">
-      <button id="p-ask">📋 Copy request for Claude</button>
-      <button id="p-paste-open">Paste checkpoints</button>
-    </div>
-    <div class="paste" id="p-paste" hidden>
-      <textarea id="p-paste-text" placeholder='Paste the JSON from Claude: {"title":…,"points":[…]}'></textarea>
-      <div class="paste-err" id="p-paste-err"></div>
-      <button id="p-paste-add">Add checkpoints</button>
-    </div>
-    <div class="field"><label>After the ride</label>
-      <div class="sheet-actions">
-        <button class="primary" id="p-done-gpx">⬆ Import my ride GPX</button>
-        <button id="p-done-plan">Ridden as planned</button>
+    <button class="join-btn" id="p-join" hidden></button>
+    <div class="field"><label>Places along the route</label><div class="cps" id="p-cps" data-owner="plan"></div>
+      <div class="sheet-actions" style="margin-top:8px">
+        <button id="p-find">Find places</button>
+        <button id="p-paste-open">Paste from Claude</button>
+      </div>
+      <div class="paste" id="p-paste" hidden style="margin-top:8px">
+        <textarea id="p-paste-text" placeholder='Paste the JSON from Claude: {"title":…,"points":[…]}'></textarea>
+        <div class="paste-err" id="p-paste-err"></div>
+        <button id="p-paste-add">Add places</button>
       </div>
     </div>
-    <div class="sheet-actions"><button class="del" id="p-delete">Delete plan</button></div>
+    <div class="sheet-actions">
+      <button id="p-done-plan">Didn't record? Save as ridden</button>
+      <button class="del" id="p-delete">Delete plan</button>
+    </div>
   </div>
 </section>
+<div class="ask" id="ask" hidden>
+  <div class="ask-card" role="dialog" aria-modal="true" aria-labelledby="ask-t">
+    <div class="ask-t" id="ask-t"></div>
+    <div class="ask-s" id="ask-s"></div>
+    <div class="ask-opts" id="ask-opts"></div>
+    <button class="ask-cancel" id="ask-cancel">Cancel</button>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -298,7 +346,7 @@ button { cursor: pointer; }
 //  ride  = { id, date 'YYYY-MM-DD', start 'HH:MM'|'', end 'HH:MM'|'', title, note, thought,
 //            tags: [tag id], tr: encoded polyline (1e-5, simplified), km, src: 'gpx' | 'drawn' | 'plan', cps?: [cp] }
 //  plan  = { id, date, title, tr (planned route, '' = none), km, cps: [cp] }   — a route to ride, not counted yet
-//  cp    = { id, name, lat, lng, what, fact, done }                            — checkpoint, usually pasted from Claude
+//  cp    = { id, name, lat, lng, what, fact, done, img, url, src }             — place: from Wikipedia (src 'wiki') or pasted from Claude
 //  Explored squares = zoom-14 map tiles (~1,7 km wide at Lyon) crossed by any route.
 // ════════════════════════════════════════════════════════════════════
 const LS_KEY = 'bici_v1';
@@ -553,23 +601,120 @@ function completePlan(planId, gpxText) {
   state.plans = state.plans.filter(x => x.id !== planId);
   return r;
 }
-// Text to paste in the chat so Claude can suggest checkpoints for this route (plan) or name what was along it (ride done)
-function claudeRequest(p, ridden) {
-  const pts = p.tr ? decodePoly(p.tr) : [];
-  const step = Math.max(1, Math.floor(pts.length / 12));
-  const sample = pts.filter((_, i) => i % step === 0);
-  if (pts.length && sample[sample.length - 1] !== pts[pts.length - 1]) sample.push(pts[pts.length - 1]);
-  return [
-    ridden ? 'Bici: places request (ride done)' : 'Bici: checkpoints request',
-    'Route: ' + (p.title || 'untitled') + (p.km ? ' · ' + n1(p.km) + ' km' : '') + (ridden ? ' · ridden on ' + p.date : ''),
-    'Route points in order (lat,lng): ' + sample.map(q => q[0].toFixed(4) + ',' + q[1].toFixed(4)).join(' ; '),
-    (ridden
-      ? 'I already rode this route, without a plan. Tell me 4–6 notable places I passed on it or very close to it (architecture, history, viewpoints, parks, curiosities). ' +
-        'For each: name, lat, lng, what (what it is and what to look at next time, one sentence), fact (one short historical or curious fact).'
-      : 'Suggest 4–6 checkpoints along or close to this route that are worth seeing and photographing (architecture, history, viewpoints, parks, good stops). ' +
-        'For each: name, lat, lng, what (what to look at or photograph, one sentence), fact (one short historical or curious fact).'),
-    'Answer with this JSON only: {"title":"…","points":[{"name":"…","lat":45.0,"lng":4.0,"what":"…","fact":"…"}]}',
-  ].join('\n');
+// ── Plan ↔ ride: a ride "is" a plan when it is not older than the plan and crosses most of its squares ──
+function planOverlap(p, r) {
+  if (!p.tr || !r.tr || r.date < p.date) return 0;
+  const a = routeTiles(p.tr), b = routeTiles(r.tr);
+  let n = 0; for (const t of a) if (b.has(t)) n++;
+  return a.size ? n / a.size : 0;
+}
+const JOIN_MIN = 0.5;
+function matchPlanFor(r) {
+  let best = null, bo = 0;
+  for (const p of state.plans) { const o = planOverlap(p, r); if (o >= JOIN_MIN && o > bo) { best = p; bo = o; } }
+  return best;
+}
+function matchRideFor(p) {
+  let best = null, bo = 0;
+  for (const r of state.rides) { const o = planOverlap(p, r); if (o >= JOIN_MIN && (o > bo || (o === bo && best && r.date > best.date))) { best = r; bo = o; } }
+  return best;
+}
+// Places in a, then those of b not already there (same name or within 40 m)
+function mergePlaces(a, b) {
+  const out = (a || []).slice();
+  for (const c of b || []) {
+    if (!out.some(x => x.name.toLowerCase() === c.name.toLowerCase() || distM([x.lat, x.lng], [c.lat, c.lng]) < 40)) out.push(c);
+  }
+  return out.slice(0, 30);
+}
+// The plan was ridden as this ride: title and places (plan's first) go to the ride, the plan goes away
+function joinPlan(planId, rideId) {
+  const p = state.plans.find(x => x.id === planId), r = state.rides.find(x => x.id === rideId);
+  if (!p || !r) return null;
+  if (!r.title) r.title = p.title;
+  const cps = mergePlaces(p.cps, r.cps);
+  if (cps.length) r.cps = cps.map(c => ({ ...c }));
+  state.plans = state.plans.filter(x => x.id !== planId);
+  return r;
+}
+// Ride already in the list for this GPX text (same day, same route), or null
+function existingRideFor(text) {
+  const g = parseGpx(text), tr = routeFields(g.pts).tr, date = g.first ? localDate(g.first) : todayStr();
+  return state.rides.find(r => r.date === date && r.tr === tr) || null;
+}
+
+// ── Places along a route: French Wikipedia articles with coordinates (no key, CORS via origin=*) ──
+const WIKI_API = 'https://fr.wikipedia.org/w/api.php';
+const PLACE_MAX_M = 250, PLACE_MAX = 8;
+const NOISE_TYPES = new Set(['city', 'adm1st', 'adm2nd', 'adm3rd', 'country', 'railwaystation', 'airport']);
+const NOISE_TITLE = /^(rue|avenue|boulevard|impasse|chemin|allée|passage|route|station) |\((métro|tramway)|métro de lyon|arrondissement/i;
+// Points every stepM metres along the route (first and last included)
+function samplePoints(pts, stepM) {
+  const out = [pts[0]]; let need = stepM;                         // metres left until the next sample
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i], d = distM(a, b);
+    let pos = 0;
+    while (d - pos >= need) {                                       // long straight segments get samples inside them
+      pos += need; need = stepM;
+      out.push([a[0] + (b[0] - a[0]) * pos / d, a[1] + (b[1] - a[1]) * pos / d]);
+    }
+    need -= d - pos;
+  }
+  const last = pts[pts.length - 1], prev = out[out.length - 1];
+  if (distM(prev, last) > 1) out.push(last);
+  return out;
+}
+// Distance (m) from p to the route, and its position along it (segment index + fraction: riding order)
+function nearOnRoute(p, pts) {
+  const kx = R_EARTH * Math.PI / 180 * Math.cos(p[0] * Math.PI / 180), ky = R_EARTH * Math.PI / 180;
+  let best = Infinity, bi = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[Math.min(i + 1, pts.length - 1)];
+    const ax = (a[1] - p[1]) * kx, ay = (a[0] - p[0]) * ky, bx = (b[1] - p[1]) * kx, by = (b[0] - p[0]) * ky;
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+    const t = L2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L2)) : 0;
+    const d = Math.hypot(ax + t * dx, ay + t * dy);
+    if (d < best) { best = d; bi = i + t; }
+  }
+  return { d: best, i: bi };
+}
+async function wikiQuery(lat, lng, radius) {
+  const q = new URLSearchParams({
+    action: 'query', format: 'json', formatversion: '2', origin: '*',
+    generator: 'geosearch', ggscoord: lat.toFixed(5) + '|' + lng.toFixed(5), ggsradius: String(radius), ggslimit: '20',
+    prop: 'coordinates|description|extracts|pageimages|info', coprop: 'type', colimit: '20',
+    exintro: '1', explaintext: '1', exsentences: '2', exlimit: '20', piprop: 'thumbnail', pithumbsize: '240', pilimit: '20', inprop: 'url',
+  });
+  const res = await fetch(WIKI_API + '?' + q);
+  if (!res.ok) throw new Error('Wikipedia ' + res.status);
+  const d = await res.json();
+  return d && d.query && Array.isArray(d.query.pages) ? d.query.pages : [];
+}
+async function findPlaces(tr) {
+  const pts = decodePoly(tr);
+  if (pts.length < 2) return [];
+  const step = Math.max(400, pathKm(pts) * 1000 / 35);           // at most ~36 requests per route
+  const samples = samplePoints(pts, step), radius = Math.min(10000, Math.round(step / 2 + PLACE_MAX_M + 50));
+  const pages = new Map(); let fails = 0;
+  for (let i = 0; i < samples.length; i += 4) {                   // 4 requests at a time
+    const got = await Promise.all(samples.slice(i, i + 4).map(q => wikiQuery(q[0], q[1], radius).catch(() => { fails++; return []; })));
+    for (const arr of got) for (const pg of arr) if (pg && pg.pageid && !pages.has(pg.pageid)) pages.set(pg.pageid, pg);
+  }
+  if (fails === samples.length) throw new Error('Wikipedia is not reachable');
+  const out = [];
+  for (const pg of pages.values()) {
+    const co = Array.isArray(pg.coordinates) && pg.coordinates[0], title = String(pg.title || '');
+    if (!co || !title || NOISE_TYPES.has(co.type) || NOISE_TITLE.test(title)) continue;
+    const near = nearOnRoute([co.lat, co.lon], pts);
+    if (near.d > PLACE_MAX_M) continue;
+    const img = pg.thumbnail && typeof pg.thumbnail.source === 'string' ? pg.thumbnail.source : '';
+    const fact = String(pg.extract || '').replace(/\s+/g, ' ').trim();
+    out.push({ name: title, lat: co.lat, lng: co.lon, what: pg.description || '', fact: fact.length > 300 ? fact.slice(0, 297) + '…' : fact,
+               img, url: pg.fullurl || '', src: 'wiki',
+               _s: (/^https:\/\//.test(img) ? 2 : 0) + (fact.length > 80 ? 1 : 0) + (pg.description ? 0.5 : 0) - near.d / PLACE_MAX_M, _i: near.i, _d: near.d });
+  }
+  out.sort((a, b) => b._s - a._s);
+  return cleanCps(out.slice(0, PLACE_MAX).sort((a, b) => a._i - b._i || a._d - b._d));
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -580,8 +725,11 @@ function cleanCp(c) {
   if (!c || typeof c !== 'object' || typeof c.name !== 'string' || !c.name.trim()) return null;
   const lat = Number(c.lat), lng = Number(c.lng ?? c.lon);
   if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 85 || Math.abs(lng) > 180) return null;
+  const img = str(c.img, 500), url = str(c.url, 500);
   return { id: str(c.id, 40) || 'c' + newId().slice(1), name: c.name.trim().slice(0, 80), lat: Math.round(lat * 1e5) / 1e5, lng: Math.round(lng * 1e5) / 1e5,
-           what: str(c.what, 300), fact: str(c.fact, 300), done: c.done === true };
+           what: str(c.what, 300), fact: str(c.fact, 300), done: c.done === true,
+           img: /^https:\/\/[^\s"'<>]+$/.test(img) ? img : '', url: /^https:\/\/[a-z-]+\.(m\.)?wikipedia\.org\/[^\s"'<>]*$/.test(url) ? url : '',
+           src: c.src === 'wiki' ? 'wiki' : '' };
 }
 function cleanCps(a) { return Array.isArray(a) ? a.map(cleanCp).filter(Boolean).slice(0, 30) : []; }
 function cleanRide(r) {
@@ -717,7 +865,7 @@ function drawFogTile(coords) {
   const c = document.createElement('canvas'); c.width = c.height = 256;
   const g = c.getContext('2d'), dark = matchMedia('(prefers-color-scheme: dark)').matches;
   const fog = dark ? 'rgba(10,10,12,0.72)' : 'rgba(70,74,84,0.48)', line = dark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)';
-  const pre = dark ? 'rgba(240,166,64,0.45)' : 'rgba(245,158,11,0.42)';   // not explored yet, on a planned route
+  const pre = dark ? 'rgba(250,204,21,0.40)' : 'rgba(234,179,8,0.45)';    // not explored yet, on a planned route (plan gold)
   const fill = k => explored.has(k) ? null : preview.has(k) ? pre : fog;
   const d = coords.z - Z;
   if (d >= 0) {                                  // map tile inside one square
@@ -756,22 +904,21 @@ function drawMap(c) {
     routesLayer.addLayer(line);
     if (sel) line.bringToFront();
   }
-  const teal = cssVar('--teal') || '#0f8a7a';
   for (const p of state.plans) {
     if (!p.tr) continue;
     const sel = p.id === selPlanId;
-    const line = L.polyline(decodePoly(p.tr), { color: teal, weight: sel ? 6 : 4, dashArray: '10 8', opacity: 0.95 });
+    const line = L.polyline(decodePoly(p.tr), { color: cssVar('--plan') || '#ca8a04', weight: sel ? 6 : 4, dashArray: '10 8', opacity: 0.95 });
     line.on('click', e => { L.DomEvent.stopPropagation(e); if (!mode) openPlan(p.id); });
     routesLayer.addLayer(line);
   }
-  const pins = (cps, open) => cps.forEach((cp, i) => {
-    const m = L.marker([cp.lat, cp.lng], { icon: L.divIcon({ className: '', html: `<div class="cp-pin${cp.done ? ' done' : ''}">${i + 1}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) });
+  const pins = (cps, open, cls) => cps.forEach((cp, i) => {
+    const m = L.marker([cp.lat, cp.lng], { icon: L.divIcon({ className: '', html: `<div class="cp-pin${cls}${cp.done ? ' done' : ''}">${i + 1}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) });
     m.bindTooltip(esc(cp.name)); m.on('click', e => { L.DomEvent.stopPropagation(e); if (!mode) open(); });
     routesLayer.addLayer(m);
   });
-  for (const p of state.plans) pins(p.cps, () => openPlan(p.id));
+  for (const p of state.plans) pins(p.cps, () => openPlan(p.id), ' plan');
   const sr = selId && state.rides.find(r => r.id === selId);
-  if (sr && sr.cps) pins(sr.cps, () => {});
+  if (sr && sr.cps) pins(sr.cps, () => {}, '');
   if (homeMarker) { homeMarker.remove(); homeMarker = null; }
   const h = state.settings.home;
   if (h) homeMarker = L.circleMarker(h, { radius: 7, color: '#ffffff', weight: 2, fillColor: cssVar('--teal') || '#0f8a7a', fillOpacity: 1 }).bindTooltip('Home').addTo(map);
@@ -843,6 +990,7 @@ function finishDraw() {
     if (!state.settings.home) state.settings.home = roundHome(drawPts[0]);
   }
   setMode(null); persist(); renderAll(); openRide(r.id);
+  if (!into) fetchPlacesFor(r.id);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -851,7 +999,7 @@ function finishDraw() {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function renderAll(refit) {
   const c = compute(state);
-  renderStats(c); renderHeat(c); renderPlans(c); renderList(c); drawMap(c);
+  renderStats(c); renderHeat(c); renderHome(c); renderPlans(c); renderList(c); drawMap(c);
   if (refit) fitAll();
   return c;
 }
@@ -883,11 +1031,38 @@ function renderHeat(c) {
   document.getElementById('heat').innerHTML = html;
   document.getElementById('heat-foot').textContent = n + ' ride' + (n === 1 ? '' : 's') + ' since ' + start.getDate() + ' ' + MONTHS[start.getMonth()];
 }
+function fmtDay(date) { const d = new Date(date + 'T12:00:00'); return d.getDate() + ' ' + MONTHS[d.getMonth()]; }
+function renderHome(c) {
+  const last = c.last, plan = state.plans[state.plans.length - 1] || null;
+  const card = (el, cls, label, title, sub, id) => {
+    el.className = 'card' + cls + (id ? '' : ' empty-card'); el.dataset.id = id || '';
+    el.innerHTML = `<span class="card-l">${label}</span><span class="card-t">${esc(title)}</span><span class="card-s">${esc(sub)}</span>`;
+  };
+  if (last) card(F('card-last'), '', 'Last ride', last.title || 'Ride', fmtDay(last.date) + ' · ' + n1(last.km) + ' km · +' + c.per[last.id].newSq + ' squares', last.id);
+  else card(F('card-last'), '', 'Last ride', 'No ride yet', 'Import the GPX of a ride', '');
+  if (plan) card(F('card-next'), ' plan', 'Next plan', plan.title || 'Planned route', (plan.tr ? n1(plan.km) + ' km · ' : '') + '+' + c.planNew[plan.id] + ' if you ride it', plan.id);
+  else card(F('card-next'), ' plan', 'Next plan', 'No plan', 'Import a Komoot route', '');
+  F('tab-rides').textContent = 'Rides · ' + c.rides.length;
+  F('tab-plans').textContent = 'Plans · ' + state.plans.length;
+  const b = F('join-banner');
+  const m = state.plans.map(p => [p, matchRideFor(p)]).find(x => x[1]);
+  b.hidden = !m;
+  if (m) {
+    b.dataset.plan = m[0].id; b.dataset.ride = m[1].id;
+    b.innerHTML = `<span>Plan <b>${esc(m[0].title || 'Planned route')}</b> matches your ride of ${esc(fmtDay(m[1].date))}.</span><button>Join</button>`;
+  }
+}
+let tab = 'rides';
+function setTab(t) {
+  tab = t;
+  F('tab-rides').classList.toggle('on', t === 'rides'); F('tab-plans').classList.toggle('on', t === 'plans');
+  F('pane-rides').hidden = t !== 'rides'; F('pane-plans').hidden = t !== 'plans';
+}
 function renderList(c) {
   const el = document.getElementById('rides');
   if (!c.rides.length) {
-    el.innerHTML = '<div class="empty">No rides yet. Before a ride: plan it in Komoot → ⋮ → <b>Download GPX file</b> → <b>Plan GPX</b> here. ' +
-      'After the ride: same with the recorded tour → <b>Ride GPX</b> (or from the plan: <b>Import my ride GPX</b>). No GPX? <b>Draw</b> it on the map.</div>';
+    el.innerHTML = '<div class="empty">No rides yet. After a ride: Komoot → your recorded tour → ⋮ → <b>Download GPX file</b>, then <b>Import GPX</b> here and choose <b>Ride I did</b>. ' +
+      'No GPX? Draw it with ✎.</div>';
     return;
   }
   el.innerHTML = c.rides.slice().reverse().map(r => {
@@ -901,10 +1076,13 @@ function renderList(c) {
   }).join('');
 }
 function renderPlans(c) {
-  F('plans-sec').hidden = !state.plans.length;
-  F('plans').innerHTML = state.plans.map(p => {
+  if (!state.plans.length) {
+    F('plans').innerHTML = '<div class="empty">No plan. Plan a route in Komoot → ⋮ → <b>Download GPX file</b>, then <b>Import GPX</b> here and choose <b>Route to ride</b>. Places along it appear by themselves.</div>';
+    return;
+  }
+  F('plans').innerHTML = state.plans.slice().reverse().map(p => {
     const done = p.cps.filter(x => x.done).length, nw = c.planNew[p.id];
-    const meta = [p.tr ? n1(p.km) + ' km' : 'no route', p.cps.length ? done + '/' + p.cps.length + ' checkpoints' : 'no checkpoints yet'].join(' · ');
+    const meta = [p.tr ? n1(p.km) + ' km' : 'no route', p.cps.length ? done + '/' + p.cps.length + ' places seen' : 'no places yet'].join(' · ');
     return `<button class="ride plan${p.id === selPlanId ? ' sel' : ''}" data-id="${esc(p.id)}">` +
       `<div class="ride-date"><b>🗺</b><span>Plan</span></div>` +
       `<div class="ride-main"><div class="ride-title">${esc(p.title || 'Planned route')}</div><div class="ride-meta">${esc(meta)}</div></div>` +
@@ -917,16 +1095,36 @@ document.getElementById('plans').addEventListener('click', e => {
 function cpsHTML(cps) {
   return cps.map((c, i) => `<div class="cp${c.done ? ' done' : ''}" data-i="${i}">` +
     `<button class="cp-n" title="Show on the map">${i + 1}</button>` +
-    `<div class="cp-main"><div class="cp-name">${esc(c.name)}</div>${c.what ? `<div class="cp-what">${esc(c.what)}</div>` : ''}${c.fact ? `<div class="cp-fact">${esc(c.fact)}</div>` : ''}</div>` +
-    `<button class="cp-check" title="Done">${c.done ? '✓' : ''}</button></div>`).join('');
+    (c.img ? `<img class="cp-img" src="${esc(c.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '') +
+    `<div class="cp-main"><div class="cp-name">${esc(c.name)}</div>${c.what ? `<div class="cp-what">${esc(c.what)}</div>` : ''}${c.fact ? `<div class="cp-fact">${esc(c.fact)}</div>` : ''}` +
+    `<div class="cp-links">${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">Wikipedia ↗</a>` : ''}<button class="cp-ask">Ask Claude</button></div></div>` +
+    `<button class="cp-check" title="Seen">${c.done ? '✓' : ''}</button></div>`).join('');
 }
+function placesBlock(cps, id) {
+  const busy = placesBusy.has(id), list = cps && cps.length ? cpsHTML(cps) : '';
+  if (busy) return list + '<div class="cp-empty">Looking for places on Wikipedia…</div>';
+  return list || '<div class="cp-empty">No places yet. Tap <b>Find places</b> to look for them on Wikipedia.</div>';
+}
+document.getElementById('join-banner').addEventListener('click', e => {
+  if (!e.target.closest('button')) return;
+  const b = e.currentTarget, r = joinPlan(b.dataset.plan, b.dataset.ride);
+  if (!r) return;
+  persist(); openRide(r.id, true); toast('Joined · title and places of the plan kept', 4000);
+  fetchPlacesFor(r.id);
+});
+document.getElementById('tab-rides').addEventListener('click', () => setTab('rides'));
+document.getElementById('tab-plans').addEventListener('click', () => setTab('plans'));
+document.getElementById('card-last').addEventListener('click', e => { const id = e.currentTarget.dataset.id; if (id) openRide(id, true); else F('btn-import').click(); });
+document.getElementById('card-next').addEventListener('click', e => { const id = e.currentTarget.dataset.id; if (id) openPlan(id, true); else F('btn-import').click(); });
 // Checkpoint list clicks (plan or ride sheet): number → show on map, box → done / not done
 function onCpClick(e) {
   const row = e.target.closest('.cp'); if (!row) return;
   const owner = e.currentTarget.dataset.owner;
   const obj = owner === 'plan' ? state.plans.find(p => p.id === selPlanId) : state.rides.find(r => r.id === selId);
   const cp = obj && obj.cps && obj.cps[+row.dataset.i]; if (!cp) return;
-  if (e.target.closest('.cp-check')) {
+  if (e.target.closest('.cp-ask')) {
+    copyForClaude(`Tell me about "${cp.name}" (${cp.lat}, ${cp.lng}), near Lyon: its history, its architecture, and what to look at and photograph there.`);
+  } else if (e.target.closest('.cp-check')) {
     cp.done = !cp.done; persist();
     if (owner === 'plan') renderPlanSheet(); else renderSheet();
     renderAll();
@@ -960,8 +1158,9 @@ function renderSheet() {
   F('sheet-title').textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   F('f-info').textContent = [n1(r.km) + ' km', m ? Math.floor(m / 60) + 'h' + pad(m % 60) + ' outside' : '',
     '+' + c.per[r.id].newSq + ' new squares', r.src === 'drawn' ? 'route drawn by hand' : r.src === 'plan' ? 'route as planned' : 'route from GPX'].filter(Boolean).join(' · ');
-  F('f-cps').innerHTML = r.cps && r.cps.length ? cpsHTML(r.cps)
-    : '<div class="cp-empty">Want to know what you passed? Tap <b>Copy request for Claude</b>, paste it in the chat, then <b>Paste places</b> with the answer.</div>';
+  F('f-cps').innerHTML = placesBlock(r.cps, r.id);
+  F('f-find').textContent = r.cps && r.cps.length ? 'Refresh places' : 'Find places';
+  F('f-find').disabled = placesBusy.has(r.id);
   F('f-tags').innerHTML = TAGS.map(t => `<button class="chip${r.tags.includes(t[0]) ? ' on' : ''}" data-t="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
 }
 function closeSheet() { F('sheet').classList.remove('open'); selId = null; renderAll(); }
@@ -1004,9 +1203,13 @@ function renderPlanSheet() {
   const p = state.plans.find(x => x.id === selPlanId); if (!p) return;
   const c = compute(state), done = p.cps.filter(x => x.done).length;
   F('p-info').textContent = [p.tr ? n1(p.km) + ' km' : 'no route', p.tr ? '+' + c.planNew[p.id] + ' new squares if you ride it' : '',
-    p.cps.length ? done + '/' + p.cps.length + ' checkpoints done' : ''].filter(Boolean).join(' · ');
-  F('p-cps').innerHTML = p.cps.length ? cpsHTML(p.cps)
-    : '<div class="cp-empty">No checkpoints yet. Tap <b>Copy request for Claude</b>, paste it in the chat, then tap <b>Paste checkpoints</b> and paste the answer.</div>';
+    p.cps.length ? done + '/' + p.cps.length + ' places seen' : ''].filter(Boolean).join(' · ');
+  F('p-cps').innerHTML = placesBlock(p.cps, p.id);
+  F('p-find').textContent = p.cps.length ? 'Refresh places' : 'Find places';
+  F('p-find').disabled = placesBusy.has(p.id);
+  const mr = matchRideFor(p);
+  F('p-join').hidden = !mr;
+  if (mr) { F('p-join').dataset.ride = mr.id; F('p-join').textContent = '🔗 Already ridden: join with my ride of ' + fmtDay(mr.date); }
 }
 function closePlanSilently() { F('psheet').classList.remove('open'); selPlanId = null; }
 function closePlan() { closePlanSilently(); renderAll(); }
@@ -1021,17 +1224,39 @@ async function copyForClaude(text) {
   try { await navigator.clipboard.writeText(text); toast('Copied. Paste it in your chat with Claude', 4000); }
   catch (_) { window.prompt('Copy this text and paste it in your chat with Claude:', text); }
 }
-F('p-ask').addEventListener('click', () => {
-  const p = state.plans.find(x => x.id === selPlanId); if (p) copyForClaude(claudeRequest(p));
-});
-F('f-ask').addEventListener('click', () => {
-  const r = state.rides.find(x => x.id === selId); if (r) copyForClaude(claudeRequest(r, true));
+// ── Places: fetched in the background, saved on the plan or ride that still exists when they arrive ──
+const placesBusy = new Set();
+function refreshOpenSheet() { if (selId) renderSheet(); if (selPlanId) renderPlanSheet(); }
+async function fetchPlacesFor(id) {
+  const find = () => state.plans.find(p => p.id === id) || state.rides.find(r => r.id === id);
+  const o = find(); if (!o || !o.tr || placesBusy.has(id)) return;
+  placesBusy.add(id); refreshOpenSheet();
+  try {
+    const found = await findPlaces(o.tr);
+    const cur = find(); if (!cur) return;
+    const before = (cur.cps || []).length, cps = mergePlaces(cur.cps, found);
+    if (cps.length) cur.cps = cps;
+    if (cps.length !== before) persist();
+    toast(cps.length > before ? (cps.length - before) + ' place' + (cps.length - before > 1 ? 's' : '') + ' found on Wikipedia' : 'No new place found along this route', 3000);
+  } catch (err) {
+    toast('Places: ' + err.message + '. Try Find places later.', 5000);
+  } finally {
+    placesBusy.delete(id); renderAll(); refreshOpenSheet();
+  }
+}
+F('f-find').addEventListener('click', () => { if (selId) fetchPlacesFor(selId); });
+F('p-find').addEventListener('click', () => { if (selPlanId) fetchPlacesFor(selPlanId); });
+F('p-join').addEventListener('click', () => {
+  const p = state.plans.find(x => x.id === selPlanId); if (!p) return;
+  const r = joinPlan(p.id, F('p-join').dataset.ride); if (!r) return;
+  persist(); closePlanSilently(); openRide(r.id, true); toast('Joined · title and places of the plan kept', 4000);
+  fetchPlacesFor(r.id);
 });
 F('f-paste-open').addEventListener('click', () => { F('f-paste').hidden = !F('f-paste').hidden; if (!F('f-paste').hidden) F('f-paste-text').focus(); });
 F('f-paste-text').addEventListener('input', () => { F('f-paste-err').textContent = ''; });
 F('f-paste-add').addEventListener('click', () => {
   const r = state.rides.find(x => x.id === selId); if (!r) return;
-  if (r.cps && r.cps.length && !confirm('Replace the ' + r.cps.length + ' places of this ride?')) return;
+  if (r.cps && r.cps.length && !confirm('Replace the ' + r.cps.length + ' places of this ride with the pasted ones?')) return;
   try {
     const n = setRidePlaces(r.id, F('f-paste-text').value);
     persist(); F('f-paste-text').value = ''; F('f-paste').hidden = true;
@@ -1043,16 +1268,14 @@ F('p-paste-open').addEventListener('click', () => { F('p-paste').hidden = !F('p-
 F('p-paste-text').addEventListener('input', () => { F('p-paste-err').textContent = ''; });
 F('p-paste-add').addEventListener('click', () => {
   const p = state.plans.find(x => x.id === selPlanId); if (!p) return;
-  if (p.cps.length && !confirm('Replace the ' + p.cps.length + ' checkpoints of this plan?')) return;
+  if (p.cps.length && !confirm('Replace the ' + p.cps.length + ' places of this plan with the pasted ones?')) return;
   try {
     const n = setCheckpoints(p.id, F('p-paste-text').value);
     persist(); F('p-paste-text').value = ''; F('p-paste').hidden = true;
     F('p-title').value = p.title; renderPlanSheet(); renderAll(); fitPlan(p);
-    toast(n + ' checkpoint' + (n > 1 ? 's' : '') + ' added');
+    toast(n + ' place' + (n > 1 ? 's' : '') + ' added');
   } catch (err) { F('p-paste-err').textContent = 'Not added: ' + err.message + '.'; }
 });
-let completeFrom = null;
-F('p-done-gpx').addEventListener('click', () => { completeFrom = selPlanId; importInto = null; F('gpx-input').click(); });
 F('p-done-plan').addEventListener('click', () => {
   const p = state.plans.find(x => x.id === selPlanId); if (!p) return;
   if (!p.tr) { toast('This plan has no route: import your ride GPX instead'); return; }
@@ -1073,59 +1296,85 @@ F('f-delete').addEventListener('click', () => {
 });
 F('f-redraw').addEventListener('click', () => { const id = selId; F('sheet').classList.remove('open'); setMode('draw', id); toast('Tap the new route, then Save'); });
 
-// ── Import ──
+// ── Import: one button, then "route to ride" or "ride I did" ──
+let askResolve = null;
+function ask(title, sub, opts) {
+  F('ask-t').textContent = title; F('ask-s').textContent = sub;
+  F('ask-opts').innerHTML = opts.map(o => `<button class="ask-opt ${o[0]}" data-v="${o[0]}">${o[1] ? `<i>${o[1]}</i>` : ''}<b>${esc(o[2])}</b>${o[3] ? `<span>${esc(o[3])}</span>` : ''}</button>`).join('');
+  F('ask').hidden = false;
+  return new Promise(res => { askResolve = res; });
+}
+function answer(v) { F('ask').hidden = true; const r = askResolve; askResolve = null; if (r) r(v); }
+F('ask-opts').addEventListener('click', e => { const b = e.target.closest('.ask-opt'); if (b) answer(b.dataset.v); });
+F('ask-cancel').addEventListener('click', () => answer(null));
+F('ask').addEventListener('click', e => { if (e.target === e.currentTarget) answer(null); });
+
 let importInto = null;
-F('btn-import').addEventListener('click', () => { importInto = null; completeFrom = null; F('gpx-input').click(); });
-F('f-regpx').addEventListener('click', () => { importInto = selId; completeFrom = null; F('gpx-input').click(); });
+F('btn-import').addEventListener('click', () => { importInto = null; F('gpx-input').click(); });
+F('f-regpx').addEventListener('click', () => { importInto = selId; F('gpx-input').click(); });
 F('gpx-input').addEventListener('change', async e => {
   const files = [...e.target.files]; e.target.value = '';
-  if (completeFrom) {                                  // the real GPX of a planned route
-    const id = completeFrom; completeFrom = null;
-    if (!files[0]) return;
-    try {
-      const r = completePlan(id, await files[0].text());
-      if (!r) { toast('This ride is already imported'); return; }
-      persist(); closePlanSilently();
-      const c = openRide(r.id, true);
-      toast('Ride saved from your plan · +' + c.per[r.id].newSq + ' new squares', 5000);
-    } catch (err) { toast('Not imported — ' + err.message, 6000); }
-    return;
-  }
-  const hadHome = !!state.settings.home;
-  let added = [], dup = 0, bad = [];
+  const into = importInto; importInto = null;
+  const texts = [], bad = [];
   for (const f of files) {
-    try {
-      const r = importGpxText(await f.text(), importInto);
-      if (r) added.push(r); else dup++;
-    } catch (err) { bad.push(f.name + ': ' + err.message); }
-  }
-  if (added.length) persist();
-  const c = renderAll();
-  if (bad.length) toast('Not imported — ' + bad.join(' · '), 6000);
-  else if (added.length) {
-    const nw = added.reduce((s, r) => s + c.per[r.id].newSq, 0);
-    toast((importInto ? 'Route replaced' : added.length + ' ride' + (added.length > 1 ? 's' : '') + ' imported') + ' · +' + nw + ' new squares' +
-      (!hadHome && state.settings.home ? ' · home set at the start (change with ⌂)' : '') + (dup ? ' · ' + dup + ' already here' : ''), 5000);
-  } else if (dup) toast('Already imported');
-  if (added.length === 1) openRide(added[0].id, true); else if (added.length) fitAll();
-  importInto = null;
-});
-F('btn-plan').addEventListener('click', () => F('plan-input').click());
-F('plan-input').addEventListener('change', async e => {
-  const files = [...e.target.files]; e.target.value = '';
-  const added = [], bad = [];
-  for (const f of files) {
-    try { const p = importPlanGpx(await f.text()); if (p) added.push(p); }
+    try { const t = await f.text(); texts.push({ t, g: parseGpx(t), name: f.name }); }
     catch (err) { bad.push(f.name + ': ' + err.message); }
   }
-  if (added.length) persist();
-  const c = renderAll();
   if (bad.length) toast('Not imported — ' + bad.join(' · '), 6000);
-  else if (added.length === 1) toast('Plan added · +' + c.planNew[added[0].id] + ' new squares if you ride it', 5000);
-  else if (added.length) toast(added.length + ' plans added');
-  else if (files.length) toast('This plan is already here');
-  if (added.length === 1) openPlan(added[0].id, true); else if (added.length) fitAll();
+  if (!texts.length) return;
+  if (into) {                                            // replace the route of the open ride
+    const r = importGpxText(texts[0].t, into);
+    if (r) { persist(); const c = renderAll(); renderSheet(); fitRide(r); toast('Route replaced · +' + c.per[r.id].newSq + ' new squares'); }
+    return;
+  }
+  const one = texts[0].g;
+  const sub = texts.length > 1 ? texts.length + ' GPX files' : (one.name || texts[0].name) + ' · ' + n1(pathKm(one.pts)) + ' km' + (one.first ? ' · recorded ' + fmtDay(localDate(one.first)) : '');
+  const kind = await ask('What is this GPX?', sub, [
+    ['plan', '🗺', 'Route to ride', 'A plan for a next ride'],
+    ['ride', '🚲', 'Ride I did', 'Recorded during the ride'],
+  ]);
+  if (kind === 'plan') await importPlans(texts);
+  else if (kind === 'ride') await importRides(texts);
 });
+async function importPlans(texts) {
+  const added = [];
+  for (const x of texts) { const p = importPlanGpx(x.t); if (p) added.push(p); }
+  if (!added.length) { toast(texts.length > 1 ? 'These plans are already here' : 'This plan is already here'); return; }
+  persist(); const c = renderAll(); setTab('plans');
+  if (added.length === 1) { openPlan(added[0].id, true); toast('Plan added · +' + c.planNew[added[0].id] + ' new squares if you ride it', 4000); }
+  else { fitAll(); toast(added.length + ' plans added'); }
+  for (const p of added) await fetchPlacesFor(p.id);
+}
+async function importRides(texts) {
+  const hadHome = !!state.settings.home, got = [];
+  for (const x of texts) {
+    const r = importGpxText(x.t);
+    if (r) got.push({ r, isNew: true });
+    else { const old = existingRideFor(x.t); if (old) got.push({ r: old, isNew: false }); }
+  }
+  if (got.some(x => x.isNew)) persist();
+  let c = renderAll(); setTab('rides');
+  if (got.length === 1) {
+    const { r, isNew } = got[0], p = matchPlanFor(r);
+    if (p) {
+      const v = await ask('Is this the ride of your plan?', '“' + (p.title || 'Planned route') + '” · ' + Math.round(planOverlap(p, r) * 100) + '% of its squares',
+        [['join', '🔗', 'Yes, join them', 'Keeps the plan title and places'], ['keep', '', 'No, keep separate', '']]);
+      if (v === 'join') {
+        joinPlan(p.id, r.id); persist(); openRide(r.id, true);
+        toast('Joined with your plan · title and places kept', 4000);
+        await fetchPlacesFor(r.id);
+        return;
+      }
+    }
+    c = openRide(r.id, true);
+    toast(isNew ? 'Ride imported · +' + c.per[r.id].newSq + ' new squares' + (!hadHome && state.settings.home ? ' · home set at the start (change with ⌂)' : '') : 'This ride was already here', 5000);
+    if (isNew && !(r.cps && r.cps.length)) await fetchPlacesFor(r.id);
+    return;
+  }
+  const nNew = got.filter(x => x.isNew).length;
+  fitAll(); toast(nNew + ' ride' + (nNew === 1 ? '' : 's') + ' imported' + (got.length > nNew ? ' · ' + (got.length - nNew) + ' already here' : ''), 4000);
+  for (const x of got) if (x.isNew) await fetchPlacesFor(x.r.id);
+}
 F('btn-locate').addEventListener('click', () => {
   if (!map) return;
   if (!navigator.geolocation) { toast('Location is not available on this device'); return; }

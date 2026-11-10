@@ -773,103 +773,195 @@ def bici_rules(b):
     ctx.close()
 
 
+def wiki_mock(ctx, pages, log=None, fail=False):
+    """Fake fr.wikipedia geosearch: always answers with the same pages (formatversion 2); the widget filters by distance."""
+    def h(route):
+        if log is not None: log.append(route.request.url)
+        if fail: return route.abort('internetdisconnected')
+        route.fulfill(status=200, body=json.dumps({'batchcomplete': True, 'query': {'pages': pages}}),
+                      headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
+    ctx.route('https://fr.wikipedia.org/**', h)
+
+def wpage(pid, title, lat, lng, typ='landmark', img='https://upload.wikimedia.org/x/%d.jpg', desc='monument', extract='A notable place with a long enough history to be worth a short story here.'):
+    pg = {'pageid': pid, 'title': title, 'coordinates': [{'lat': lat, 'lon': lng, 'primary': True, 'type': typ}],
+          'description': desc, 'extract': extract, 'fullurl': 'https://fr.wikipedia.org/wiki/P%d' % pid}
+    if img: pg['thumbnail'] = {'source': img % pid if '%d' in img else img, 'width': 240, 'height': 160}
+    return pg
+
+@test
+def bici_places_rules(b):
+    worker = FakeWorker(); ctx = new_context(b, worker)
+    x0, y0 = 8432, 5875
+    c = lambda x, y: (z14_lat(y + 0.5), z14_lng(x + 0.5))
+    route = [c(x0, y0), c(x0 + 4, y0)]                                   # ~6 km straight line west → east
+    lat0, lng0 = route[0]; dlng = route[1][1] - lng0
+    off = lambda m: m / 111320                                           # metres north → degrees
+    on = lambda f, m=0: (lat0 + off(m), lng0 + dlng * f)
+    pages = [wpage(1, 'Hôtel-Dieu <b>de Lyon</b>', *on(0.8, 60)),
+             wpage(2, 'Église Saint-Bonaventure', *on(0.2, -120)),
+             wpage(3, 'Rue Mercière', *on(0.3)),                          # street: noise
+             wpage(4, 'Lyon', *on(0.5), typ='city'),                      # city: noise
+             wpage(5, 'Cordeliers (métro de Lyon)', *on(0.4)),            # metro: noise
+             wpage(6, 'Far chapel', *on(0.5, 800)),                       # 800 m off the route
+             wpage(7, 'Old bridge', *on(0.6, 30), img='http://insecure/x.jpg')]
+    pages += [wpage(100 + k, 'Place %d' % k, *on(0.05 + k * 0.08, 200), img='', extract='short') for k in range(10)]   # weak, near
+    log = []; wiki_mock(ctx, pages, log)
+    pg, errs = open_page(ctx, 'bici.html'); wait_until(pg, lambda: 'bici' in worker.keys('GET')); pg.wait_for_timeout(300)
+    ev = pg.evaluate
+    tr = ev("pts => routeFields(pts).tr", route)
+    got = ev("async tr => await findPlaces(tr)", tr)
+    names = [g['name'] for g in got]
+    assert len(got) == 8, names
+    assert {'Hôtel-Dieu <b>de Lyon</b>', 'Église Saint-Bonaventure', 'Old bridge'} <= set(names), names
+    assert not ({'Rue Mercière', 'Lyon', 'Cordeliers (métro de Lyon)', 'Far chapel'} & set(names)), names
+    xs = [g['lng'] for g in got]; assert xs == sorted(xs), 'places must follow the riding order'
+    ob = next(g for g in got if g['name'] == 'Old bridge'); assert ob['img'] == '', 'non-https thumbnails dropped'
+    hd = next(g for g in got if g['name'].startswith('Hôtel')); assert hd['img'].startswith('https://') and hd['url'].startswith('https://fr.wikipedia.org/') and hd['src'] == 'wiki'
+    n_req = len(log); assert 5 <= n_req <= 40, n_req
+    q = urllib.parse.parse_qs(urllib.parse.urlparse(log[0]).query)
+    assert q['origin'] == ['*'] and q['generator'] == ['geosearch'] and q['formatversion'] == ['2'], q
+    # Import a ride through the UI: one button, one question, places arrive by themselves (escaped)
+    with pg.expect_file_chooser() as fc: pg.click('#btn-import')
+    fc.value.set_files(files=[{'name': 'tour.gpx', 'mimeType': 'application/octet-stream', 'buffer': gpx(route, 'Morning', datetime.datetime(2026, 6, 1, 9, 0)).encode()}])
+    assert wait_until(pg, lambda: pg.is_visible('#ask'), 3), 'import question not shown'
+    pg.click('#ask .ask-opt[data-v="ride"]')
+    assert wait_until(pg, lambda: ev("(state.rides[0] && state.rides[0].cps || []).length") == 8, 5), 'places not added to the new ride'
+    assert pg.is_visible('#sheet') and pg.locator('#f-cps .cp').count() == 8 and not pg.query_selector('#f-cps .cp-name b')
+    assert pg.locator('#f-cps img.cp-img').count() == 2, 'one thumbnail per place with an https image'
+    # Refresh keeps what is there (ticks included) and adds nothing twice
+    pg.click('#f-cps .cp[data-i="0"] .cp-check'); pg.click('#f-find')
+    assert wait_until(pg, lambda: not ev("placesBusy.size"), 5)
+    assert ev("state.rides[0].cps.length") == 8 and ev("state.rides[0].cps[0].done") is True
+    # Wikipedia down: clear message, nothing lost
+    ctx.unroute('https://fr.wikipedia.org/**'); wiki_mock(ctx, pages, fail=True)
+    err = ev("async tr => { try { await findPlaces(tr); return 'ok' } catch (e) { return e.message } }", tr)
+    assert 'not reachable' in err, err
+    pg.click('#f-find'); assert wait_until(pg, lambda: not ev("placesBusy.size"), 5)
+    assert ev("state.rides[0].cps.length") == 8
+    # Saved shape: img/url sanitised on load
+    n = ev("normalize({ v: 1, rides: [{ ...state.rides[0], cps: [{ name: 'a', lat: 1, lng: 2, img: 'javascript:x', url: 'https://evil.com/x' }, { name: 'b', lat: 1, lng: 2, img: 'https://upload.wikimedia.org/a.jpg', url: 'https://fr.m.wikipedia.org/wiki/B', src: 'wiki' }] }] })")
+    a, b2 = n['rides'][0]['cps']
+    assert (a['img'], a['url'], a['src']) == ('', '', '') and b2['img'].startswith('https://') and b2['url'].startswith('https://fr.m.wikipedia.org') and b2['src'] == 'wiki', n
+    assert not errs, errs
+    ctx.close()
+
+
 @test
 def bici_plan_rules(b):
     worker = FakeWorker(); ctx = new_context(b, worker)
-    pg, errs = open_page(ctx, 'bici.html'); wait_until(pg, lambda: 'bici' in worker.keys('GET')); pg.wait_for_timeout(300)
-    ev = pg.evaluate
     x0, y0 = 8432, 5875
     c = lambda x, y: (z14_lat(y + 0.5), z14_lng(x + 0.5))
-    ride1 = [c(x0, y0), c(x0 + 3, y0)]                                    # 4 squares already explored
+    wiki_mock(ctx, [wpage(9, 'Fontaine', *c(x0 + 4, y0))])              # one place on the plan route
+    pg, errs = open_page(ctx, 'bici.html'); wait_until(pg, lambda: 'bici' in worker.keys('GET')); pg.wait_for_timeout(300)
+    ev = pg.evaluate
+    # Landing: nothing selected, rides tab first, cards invite to import
+    assert not pg.is_visible('#sheet') and not pg.is_visible('#psheet') and not pg.query_selector('.ride.sel')
+    assert pg.is_visible('#pane-rides') and not pg.is_visible('#pane-plans') and not pg.is_visible('#join-banner')
+    ride1 = [c(x0, y0), c(x0 + 3, y0)]
     ev("t => importGpxText(t)", gpx(ride1, 'first', datetime.datetime(2026, 5, 3, 8, 0)))
-    plan = [c(x0 + 2, y0), c(x0 + 6, y0), c(x0 + 6, y0 + 2)]               # overlaps 2 explored squares
+    plan = [c(x0 + 2, y0), c(x0 + 6, y0), c(x0 + 6, y0 + 2)]
     pid = ev("t => importPlanGpx(t).id", gpx(plan, 'Monts d\'Or'))
+    old = "([id, d]) => { state.plans.find(p => p.id === id).date = d }"       # plans made before the rides of this test
+    ev(old, [pid, '2026-01-01'])
     want_new = squares_of(plan) - squares_of(ride1)
     C = ev("(() => { const c = compute(state); return { planNew: c.planNew, preview: [...c.preview], sq: c.sq } })()")
     assert C['planNew'][pid] == len(want_new) and set(C['preview']) == want_new, C
     assert C['sq'] == len(squares_of(ride1)), 'a plan must not count as explored'
     assert ev("t => importPlanGpx(t)", gpx(plan, 'again')) is None, 'same plan imported twice'
-    # Fog: a square on the plan is amber (preview), an unrelated one is grey fog, an explored one is clear
     px = "([x, y]) => [...drawFogTile({ x, y, z: 14 }).getContext('2d').getImageData(128, 128, 1, 1).data]"
     ev("renderAll()")
     xp, yp = [int(v) for v in sorted(want_new)[0].split(',')]
     amber, grey, clear = ev(px, [xp, yp]), ev(px, [x0 + 30, y0 + 30]), ev(px, [x0, y0])
     assert amber[3] > 0 and amber[0] > amber[2] + 60 and abs(grey[0] - grey[2]) < 40 and clear[3] == 0, (amber, grey, clear)
-    # Checkpoints pasted from the chat: code fences, extra text, bad points dropped, lon alias, title kept only if empty
+    # Cards and tabs
+    assert "Monts d'Or" in pg.inner_text('#card-next') and 'first' in pg.inner_text('#card-last')
+    pg.click('#tab-plans'); assert pg.is_visible('#pane-plans') and pg.locator('#plans .ride.plan').count() == 1
+    pg.click('#tab-rides')
+    # Checkpoints pasted from the chat (still supported): fences, extra text, bad points dropped
     paste = 'Here you go:\n```json\n' + json.dumps({'title': 'From Claude', 'points': [
         {'name': 'Old <b>church</b>', 'lat': 45.8, 'lng': 4.85, 'what': 'Romanesque portal', 'fact': '12th century'},
-        {'name': 'Viewpoint', 'lat': '45.81', 'lon': 4.86},
-        {'name': '', 'lat': 45, 'lng': 4}, {'name': 'No coords'}]}) + '\n```'
+        {'name': 'Viewpoint', 'lat': '45.81', 'lon': 4.86}, {'name': '', 'lat': 45, 'lng': 4}, {'name': 'No coords'}]}) + '\n```'
     assert ev("([id, t]) => setCheckpoints(id, t)", [pid, paste]) == 2
-    P = ev("id => state.plans.find(p => p.id === id)", pid)
-    assert P['title'] == "Monts d'Or" and [x['name'] for x in P['cps']] == ['Old <b>church</b>', 'Viewpoint'] and P['cps'][1]['lat'] == 45.81 and P['cps'][1]['lng'] == 4.86, P
     for bad in ('no json here', '{"points": [{"name": "x"}]}', '{oops'):
         assert 'Error' in ev("t => { try { parseCheckpoints(t); return 'ok' } catch (e) { return 'Error: ' + e.message } }", bad), bad
-    # UI: plan sheet, checkpoint ticked from the list, escaped, copy request contains the route
     ev("id => openPlan(id)", pid)
-    assert ev("document.getElementById('psheet').classList.contains('open')") and not pg.query_selector('#p-cps b'), 'plan sheet / escaping'
+    assert pg.is_visible('#psheet') and not pg.query_selector('#p-cps .cp-name b') and not pg.is_visible('#p-join')
     pg.click('#p-cps .cp[data-i="0"] .cp-check')
     assert ev("id => state.plans.find(p => p.id === id).cps[0].done", pid) is True
-    req = ev("id => claudeRequest(state.plans.find(p => p.id === id))", pid)
-    assert "Monts d'Or" in req and '"points"' in req and ('%.4f' % plan[-1][0]) in req, req
-    # Plan → ride with the recorded GPX: title and checkpoints carried, plan removed, squares counted
+    pg.click('#psheet-done')
+    # Ride imported from the UI that matches the plan → asked to join → title + Claude checkpoints kept (first), plan gone
     real = [c(x0 + 2, y0), c(x0 + 6, y0), c(x0 + 6, y0 + 3)]
-    rid = ev("([id, t]) => completePlan(id, t).id", [pid, gpx(real, '', datetime.datetime(2026, 6, 7, 9, 0))])
-    R = ev("id => state.rides.find(r => r.id === id)", rid)
-    assert R['title'] == "Monts d'Or" and len(R['cps']) == 2 and R['cps'][0]['done'] is True and R['src'] == 'gpx', R
-    assert ev("state.plans.length") == 0 and ev("compute(state).sq") == len(squares_of(ride1) | squares_of(real))
-    # Same flow through the UI: paste box, then "Import my ride GPX" from the plan sheet
-    pidu = ev("t => importPlanGpx(t).id", gpx([c(x0, y0 + 20), c(x0 + 2, y0 + 20)], 'UI plan'))
-    ev("id => openPlan(id)", pidu)
-    pg.click('#p-paste-open'); pg.fill('#p-paste-text', 'nothing useful'); pg.click('#p-paste-add')
-    assert 'Not added' in ev("document.getElementById('p-paste-err').textContent")
-    pg.fill('#p-paste-text', json.dumps({'points': [{'name': 'Fountain', 'lat': 45.75, 'lng': 4.83, 'what': 'Look up'}]})); pg.click('#p-paste-add')
-    assert ev("id => state.plans.find(p => p.id === id).cps.length", pidu) == 1 and not pg.is_visible('#p-paste'), 'paste box must close'
-    with pg.expect_file_chooser() as fc: pg.click('#p-done-gpx')
-    fc.value.set_files(files=[{'name': 'tour.gpx', 'mimeType': 'application/octet-stream',
-                               'buffer': gpx([c(x0, y0 + 20), c(x0 + 3, y0 + 20)], '', datetime.datetime(2026, 6, 9, 9, 0)).encode()}])
-    assert wait_until(pg, lambda: ev("state.rides.some(r => r.title === 'UI plan' && r.cps && r.cps[0].name === 'Fountain')"), 3), 'plan not completed from the UI'
-    assert ev("id => !state.plans.some(p => p.id === id)", pidu) and ev("document.getElementById('sheet').classList.contains('open')")
+    with pg.expect_file_chooser() as fc: pg.click('#btn-import')
+    fc.value.set_files(files=[{'name': 'tour.gpx', 'mimeType': 'application/octet-stream', 'buffer': gpx(real, '', datetime.datetime(2026, 6, 7, 9, 0)).encode()}])
+    assert wait_until(pg, lambda: pg.is_visible('#ask'), 3); pg.click('#ask .ask-opt[data-v="ride"]')
+    assert wait_until(pg, lambda: pg.is_visible('#ask .ask-opt[data-v="join"]'), 3), 'join question not shown'
+    pg.click('#ask .ask-opt[data-v="join"]')
+    assert wait_until(pg, lambda: ev("state.plans.length") == 0, 3)
+    R = ev("state.rides.find(r => r.date === '2026-06-07')")
+    assert R['title'] == "Monts d'Or" and [x['name'] for x in R['cps']][:2] == ['Old <b>church</b>', 'Viewpoint'] and R['cps'][0]['done'] is True, R
+    assert pg.is_visible('#sheet') and ev("compute(state).sq") == len(squares_of(ride1) | squares_of(real))
     pg.click('#sheet-done')
-    with pg.expect_file_chooser() as fc: pg.click('#btn-import')                 # a normal import afterwards is a normal ride
-    fc.value.set_files(files=[{'name': 'b.gpx', 'mimeType': 'application/octet-stream', 'buffer': gpx([c(x0, y0 + 30), c(x0 + 1, y0 + 30)], 'Plain').encode()}])
-    assert wait_until(pg, lambda: ev("state.rides.some(r => r.title === 'Plain' && !r.cps)"), 3)
-    # Places on a ride done without a plan: request worded for a ride, paste through the UI, ticked, replace asks first
+    # Owner's case: ride imported first and kept separate, plan left behind → banner joins them
+    route3 = [c(x0, y0 + 10), c(x0 + 3, y0 + 10)]
+    pid3 = ev("t => importPlanGpx(t).id", gpx(route3, 'Ride 1')); ev(old, [pid3, '2026-11-07'])
+    ev("([id, t]) => setCheckpoints(id, t)", [pid3, json.dumps([{'name': 'Hôtel-Dieu', 'lat': 45.7593, 'lng': 4.8402}])])
+    with pg.expect_file_chooser() as fc: pg.click('#btn-import')
+    fc.value.set_files(files=[{'name': 'r.gpx', 'mimeType': 'application/octet-stream', 'buffer': gpx(route3, '', datetime.datetime(2026, 11, 9, 9, 0)).encode()}])
+    assert wait_until(pg, lambda: pg.is_visible('#ask'), 3); pg.click('#ask .ask-opt[data-v="ride"]')
+    assert wait_until(pg, lambda: pg.is_visible('#ask .ask-opt[data-v="keep"]'), 3); pg.click('#ask .ask-opt[data-v="keep"]')
+    assert wait_until(pg, lambda: pg.is_visible('#sheet'), 3) and ev("state.plans.length") == 1
     pg.click('#sheet-done')
-    rp = ev("state.rides.find(r => r.title === 'Plain')")
-    req = ev("id => claudeRequest(state.rides.find(r => r.id === id), true)", rp['id'])
-    assert 'ride done' in req and 'already rode' in req and rp['date'] in req and '"points"' in req, req
-    ev("id => openRide(id)", rp['id'])
-    assert not pg.is_visible('#f-paste') and pg.is_visible('#f-cps .cp-empty')
-    pg.click('#f-paste-open'); pg.fill('#f-paste-text', '[]'); pg.click('#f-paste-add')
-    assert 'Not added' in ev("document.getElementById('f-paste-err').textContent")
-    pg.fill('#f-paste-text', 'Sure!\n```json\n' + json.dumps({'title': 'ignored', 'points': [
-        {'name': 'Hôtel-Dieu <i>façade</i>', 'lat': 45.7593, 'lng': 4.8402, 'what': 'Dome', 'fact': '1741'},
-        {'name': 'Halles', 'lat': 45.763, 'lng': 4.8505}]}) + '\n```')
-    pg.click('#f-paste-add')
-    R = ev("id => state.rides.find(r => r.id === id)", rp['id'])
-    assert [x['name'] for x in R['cps']] == ['Hôtel-Dieu <i>façade</i>', 'Halles'] and R['title'] == 'Plain' and not pg.is_visible('#f-paste'), R
-    assert not pg.query_selector('#f-cps i'), 'place names must be escaped'
-    pg.click('#f-cps .cp[data-i="1"] .cp-check')
-    assert ev("id => state.rides.find(r => r.id === id).cps[1].done", rp['id']) is True
-    pg.dialog_answer = 'dismiss'                                              # replace → confirm → cancel keeps them
+    assert pg.is_visible('#join-banner') and 'Ride 1' in pg.inner_text('#join-banner')
+    pg.click('#join-banner button')
+    assert wait_until(pg, lambda: ev("state.plans.length") == 0, 3)
+    R3 = ev("state.rides.find(r => r.date === '2026-11-09')")
+    assert R3['title'] == 'Ride 1' and R3['cps'][0]['name'] == 'Hôtel-Dieu', R3
+    assert wait_until(pg, lambda: not pg.is_visible('#join-banner'), 2)
+    pg.click('#sheet-done')
+    # Same GPX imported again while a matching plan exists → the existing ride is found and joined (no duplicate)
+    pid4 = ev("t => importPlanGpx(t).id", gpx(route3, 'Again')); ev(old, [pid4, '2026-11-08'])
+    assert ev("([p, d]) => { const r = state.rides.find(x => x.date === '2026-11-09'); return planOverlap({ ...state.plans.find(x => x.id === p), date: d }, r) }", [pid4, '2026-11-10']) == 0, 'a ride older than the plan never matches'
+    n_r = ev("state.rides.length")
+    with pg.expect_file_chooser() as fc: pg.click('#btn-import')
+    fc.value.set_files(files=[{'name': 'r.gpx', 'mimeType': 'application/octet-stream', 'buffer': gpx(route3, '', datetime.datetime(2026, 11, 9, 9, 0)).encode()}])
+    assert wait_until(pg, lambda: pg.is_visible('#ask'), 3); pg.click('#ask .ask-opt[data-v="ride"]')
+    assert wait_until(pg, lambda: pg.is_visible('#ask .ask-opt[data-v="join"]'), 3); pg.click('#ask .ask-opt[data-v="join"]')
+    assert wait_until(pg, lambda: ev("state.plans.length") == 0, 3) and ev("state.rides.length") == n_r
+    pg.click('#sheet-done')
+    # Plan imported from the UI → "Route to ride" → plans tab, Wikipedia place added by itself
+    with pg.expect_file_chooser() as fc: pg.click('#btn-import')
+    fc.value.set_files(files=[{'name': 'p.gpx', 'mimeType': 'application/octet-stream', 'buffer': gpx([c(x0 + 2, y0 + 20), c(x0 + 5, y0 + 20), c(x0 + 4, y0)], 'Next one').encode()}])
+    assert wait_until(pg, lambda: pg.is_visible('#ask'), 3); pg.click('#ask .ask-opt[data-v="plan"]')
+    assert wait_until(pg, lambda: ev("state.plans.length === 1 && state.plans[0].cps.length === 1"), 5), ev("state.plans")
+    assert pg.is_visible('#psheet') and pg.is_visible('#pane-plans') and ev("state.plans[0].cps[0].name") == 'Fontaine'
+    # Cancel leaves everything as it was
+    n_all = ev("state.rides.length + state.plans.length")
+    pg.click('#psheet-done')
+    with pg.expect_file_chooser() as fc: pg.click('#btn-import')
+    fc.value.set_files(files=[{'name': 'z.gpx', 'mimeType': 'application/octet-stream', 'buffer': gpx([c(x0, y0 + 40), c(x0 + 1, y0 + 40)], 'z').encode()}])
+    assert wait_until(pg, lambda: pg.is_visible('#ask'), 3); pg.click('#ask-cancel')
+    assert not pg.is_visible('#ask') and ev("state.rides.length + state.plans.length") == n_all
+    # "Didn't record? Save as ridden" → ride with the planned route, dated today
+    ev("state.plans[0].id")
+    ev("id => openPlan(id)", ev("state.plans[0].id"))
+    pg.dialog_answer = 'accept'; pg.click('#p-done-plan'); pg.dialog_answer = 'dismiss'
+    assert wait_until(pg, lambda: ev("state.plans.length") == 0, 3)
+    Rp = ev("state.rides.find(r => r.title === 'Next one')")
+    assert (Rp['src'], Rp['date']) == ('plan', ev('todayStr()')) and Rp['cps'][0]['name'] == 'Fontaine', Rp
+    # Paste from Claude on a ride replaces after confirm; cancel keeps
+    ev("id => openRide(id)", Rp['id'])
     pg.click('#f-paste-open'); pg.fill('#f-paste-text', json.dumps([{'name': 'Other', 'lat': 45, 'lng': 4}])); pg.click('#f-paste-add')
-    assert len(ev("id => state.rides.find(r => r.id === id).cps", rp['id'])) == 2
-    pg.click('#sheet-done')
-    # Plan → ride "as planned" (no GPX)
-    pid2 = ev("t => importPlanGpx(t).id", gpx([c(x0, y0 + 8), c(x0 + 2, y0 + 8)], 'Short one'))
-    rid2 = ev("id => completePlan(id, null).id", pid2)
-    R2 = ev("id => state.rides.find(r => r.id === id)", rid2)
-    assert (R2['src'], R2['title'], R2['date']) == ('plan', 'Short one', ev('todayStr()')) and 'cps' not in R2, R2
-    # Saved and reloaded: plans and checkpoints survive normalize, broken ones dropped, old saves without plans load
-    pid3 = ev("t => importPlanGpx(t).id", gpx([c(x0, y0 + 12), c(x0 + 1, y0 + 12)], 'Next'))
-    ev("([id, t]) => setCheckpoints(id, t)", [pid3, json.dumps([{'name': 'Bridge', 'lat': 45.7, 'lng': 4.8}])])
+    assert ev("id => state.rides.find(r => r.id === id).cps[0].name", Rp['id']) == 'Fontaine'
+    pg.dialog_answer = 'accept'; pg.click('#f-paste-add'); pg.dialog_answer = 'dismiss'
+    assert ev("id => state.rides.find(r => r.id === id).cps[0].name", Rp['id']) == 'Other' and not pg.is_visible('#f-paste')
+    # Synced and reloaded
+    pid5 = ev("t => importPlanGpx(t).id", gpx([c(x0, y0 + 12), c(x0 + 1, y0 + 12)], 'Next'))
+    ev("([id, t]) => setCheckpoints(id, t)", [pid5, json.dumps([{'name': 'Bridge', 'lat': 45.7, 'lng': 4.8}])])
     ev("scheduleCloudsave()")
     assert wait_until(pg, lambda: len((worker.posted('bici') or {}).get('plans', [])) == 1, 6), 'plans not synced'
     saved = worker.posted('bici')
     n = ev("d => normalize(d)", {**saved, 'plans': saved['plans'] + [{'id': 5}, None, {'id': 'pX', 'tr': '', 'cps': [{'name': 'Only point', 'lat': 1, 'lng': 2}]}]})
-    assert [p['id'] for p in n['plans']] == [pid3, 'pX'] and n['plans'][0]['cps'][0]['name'] == 'Bridge' and n['plans'][1]['km'] == 0, n['plans']
-    assert any(r.get('cps') for r in n['rides'])
+    assert [p['id'] for p in n['plans']] == [pid5, 'pX'] and n['plans'][0]['cps'][0]['name'] == 'Bridge' and n['plans'][1]['km'] == 0, n['plans']
     assert ev("normalize({ v: 1, settings: {}, rides: [] }).plans") == []
     assert not errs, errs
     ctx.close()
