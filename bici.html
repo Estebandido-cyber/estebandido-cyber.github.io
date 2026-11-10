@@ -244,7 +244,17 @@ button { cursor: pointer; }
       <div class="field"><label for="f-end">Back</label><input id="f-end" type="time"></div>
     </div>
     <div class="ride-info" id="f-info"></div>
-    <div class="field" id="f-cps-wrap" hidden><label>Checkpoints</label><div class="cps" id="f-cps" data-owner="ride"></div></div>
+    <div class="field"><label>Places on the route</label><div class="cps" id="f-cps" data-owner="ride"></div>
+      <div class="sheet-actions" style="margin-top:8px">
+        <button id="f-ask">📋 Copy request for Claude</button>
+        <button id="f-paste-open">Paste places</button>
+      </div>
+      <div class="paste" id="f-paste" hidden style="margin-top:8px">
+        <textarea id="f-paste-text" placeholder='Paste the JSON from Claude: {"title":…,"points":[…]}'></textarea>
+        <div class="paste-err" id="f-paste-err"></div>
+        <button id="f-paste-add">Add places</button>
+      </div>
+    </div>
     <div class="field"><label>Tags</label><div class="chips" id="f-tags"></div></div>
     <div class="field"><label for="f-note">What I saw</label><textarea id="f-note" placeholder="Places, details, the sandwich stop…"></textarea></div>
     <div class="field"><label for="f-thought">What I thought about</label><textarea id="f-thought" placeholder="Ideas and reflections from the ride"></textarea></div>
@@ -512,6 +522,14 @@ function parseCheckpoints(text) {
   cps.forEach(c => { c.id = 'c' + newId().slice(1); c.done = false; });
   return { title: d && typeof d.title === 'string' ? d.title.slice(0, 80) : '', cps };
 }
+// Same JSON pasted on a ride already done: places seen along the route (replaces its checkpoints)
+function setRidePlaces(rideId, text) {
+  const r = state.rides.find(x => x.id === rideId); if (!r) return 0;
+  const res = parseCheckpoints(text);
+  r.cps = res.cps;
+  if (!r.title && res.title) r.title = res.title;
+  return res.cps.length;
+}
 function setCheckpoints(planId, text) {
   const p = state.plans.find(x => x.id === planId); if (!p) return 0;
   const r = parseCheckpoints(text);
@@ -535,18 +553,21 @@ function completePlan(planId, gpxText) {
   state.plans = state.plans.filter(x => x.id !== planId);
   return r;
 }
-// Text to paste in the chat so Claude can suggest checkpoints for this route
-function claudeRequest(p) {
+// Text to paste in the chat so Claude can suggest checkpoints for this route (plan) or name what was along it (ride done)
+function claudeRequest(p, ridden) {
   const pts = p.tr ? decodePoly(p.tr) : [];
   const step = Math.max(1, Math.floor(pts.length / 12));
   const sample = pts.filter((_, i) => i % step === 0);
   if (pts.length && sample[sample.length - 1] !== pts[pts.length - 1]) sample.push(pts[pts.length - 1]);
   return [
-    'Bici: checkpoints request',
-    'Route: ' + (p.title || 'untitled') + (p.km ? ' · ' + n1(p.km) + ' km' : ''),
+    ridden ? 'Bici: places request (ride done)' : 'Bici: checkpoints request',
+    'Route: ' + (p.title || 'untitled') + (p.km ? ' · ' + n1(p.km) + ' km' : '') + (ridden ? ' · ridden on ' + p.date : ''),
     'Route points in order (lat,lng): ' + sample.map(q => q[0].toFixed(4) + ',' + q[1].toFixed(4)).join(' ; '),
-    'Suggest 4–6 checkpoints along or close to this route that are worth seeing and photographing (architecture, history, viewpoints, parks, good stops). ' +
-    'For each: name, lat, lng, what (what to look at or photograph, one sentence), fact (one short historical or curious fact).',
+    (ridden
+      ? 'I already rode this route, without a plan. Tell me 4–6 notable places I passed on it or very close to it (architecture, history, viewpoints, parks, curiosities). ' +
+        'For each: name, lat, lng, what (what it is and what to look at next time, one sentence), fact (one short historical or curious fact).'
+      : 'Suggest 4–6 checkpoints along or close to this route that are worth seeing and photographing (architecture, history, viewpoints, parks, good stops). ' +
+        'For each: name, lat, lng, what (what to look at or photograph, one sentence), fact (one short historical or curious fact).'),
     'Answer with this JSON only: {"title":"…","points":[{"name":"…","lat":45.0,"lng":4.0,"what":"…","fact":"…"}]}',
   ].join('\n');
 }
@@ -926,6 +947,7 @@ function openRide(id, fit) {
   selId = id;
   F('f-title').value = r.title; F('f-date').value = r.date; F('f-start').value = r.start; F('f-end').value = r.end;
   F('f-note').value = r.note; F('f-thought').value = r.thought;
+  F('f-paste').hidden = true; F('f-paste-err').textContent = '';
   renderSheet();
   F('sheet').classList.add('open');
   const c = renderAll();
@@ -938,8 +960,8 @@ function renderSheet() {
   F('sheet-title').textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   F('f-info').textContent = [n1(r.km) + ' km', m ? Math.floor(m / 60) + 'h' + pad(m % 60) + ' outside' : '',
     '+' + c.per[r.id].newSq + ' new squares', r.src === 'drawn' ? 'route drawn by hand' : r.src === 'plan' ? 'route as planned' : 'route from GPX'].filter(Boolean).join(' · ');
-  F('f-cps-wrap').hidden = !(r.cps && r.cps.length);
-  F('f-cps').innerHTML = r.cps ? cpsHTML(r.cps) : '';
+  F('f-cps').innerHTML = r.cps && r.cps.length ? cpsHTML(r.cps)
+    : '<div class="cp-empty">Want to know what you passed? Tap <b>Copy request for Claude</b>, paste it in the chat, then <b>Paste places</b> with the answer.</div>';
   F('f-tags').innerHTML = TAGS.map(t => `<button class="chip${r.tags.includes(t[0]) ? ' on' : ''}" data-t="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
 }
 function closeSheet() { F('sheet').classList.remove('open'); selId = null; renderAll(); }
@@ -995,11 +1017,27 @@ F('p-title').addEventListener('input', e => {
   p.title = e.target.value.slice(0, 80); persist();
   clearTimeout(planTimer); planTimer = setTimeout(renderAll, 400);
 });
-F('p-ask').addEventListener('click', async () => {
-  const p = state.plans.find(x => x.id === selPlanId); if (!p) return;
-  const text = claudeRequest(p);
+async function copyForClaude(text) {
   try { await navigator.clipboard.writeText(text); toast('Copied. Paste it in your chat with Claude', 4000); }
   catch (_) { window.prompt('Copy this text and paste it in your chat with Claude:', text); }
+}
+F('p-ask').addEventListener('click', () => {
+  const p = state.plans.find(x => x.id === selPlanId); if (p) copyForClaude(claudeRequest(p));
+});
+F('f-ask').addEventListener('click', () => {
+  const r = state.rides.find(x => x.id === selId); if (r) copyForClaude(claudeRequest(r, true));
+});
+F('f-paste-open').addEventListener('click', () => { F('f-paste').hidden = !F('f-paste').hidden; if (!F('f-paste').hidden) F('f-paste-text').focus(); });
+F('f-paste-text').addEventListener('input', () => { F('f-paste-err').textContent = ''; });
+F('f-paste-add').addEventListener('click', () => {
+  const r = state.rides.find(x => x.id === selId); if (!r) return;
+  if (r.cps && r.cps.length && !confirm('Replace the ' + r.cps.length + ' places of this ride?')) return;
+  try {
+    const n = setRidePlaces(r.id, F('f-paste-text').value);
+    persist(); F('f-paste-text').value = ''; F('f-paste').hidden = true;
+    F('f-title').value = r.title; renderSheet(); renderAll();
+    toast(n + ' place' + (n > 1 ? 's' : '') + ' added');
+  } catch (err) { F('f-paste-err').textContent = 'Not added: ' + err.message + '.'; }
 });
 F('p-paste-open').addEventListener('click', () => { F('p-paste').hidden = !F('p-paste').hidden; if (!F('p-paste').hidden) F('p-paste-text').focus(); });
 F('p-paste-text').addEventListener('input', () => { F('p-paste-err').textContent = ''; });

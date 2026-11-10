@@ -834,6 +834,28 @@ def bici_plan_rules(b):
     with pg.expect_file_chooser() as fc: pg.click('#btn-import')                 # a normal import afterwards is a normal ride
     fc.value.set_files(files=[{'name': 'b.gpx', 'mimeType': 'application/octet-stream', 'buffer': gpx([c(x0, y0 + 30), c(x0 + 1, y0 + 30)], 'Plain').encode()}])
     assert wait_until(pg, lambda: ev("state.rides.some(r => r.title === 'Plain' && !r.cps)"), 3)
+    # Places on a ride done without a plan: request worded for a ride, paste through the UI, ticked, replace asks first
+    pg.click('#sheet-done')
+    rp = ev("state.rides.find(r => r.title === 'Plain')")
+    req = ev("id => claudeRequest(state.rides.find(r => r.id === id), true)", rp['id'])
+    assert 'ride done' in req and 'already rode' in req and rp['date'] in req and '"points"' in req, req
+    ev("id => openRide(id)", rp['id'])
+    assert not pg.is_visible('#f-paste') and pg.is_visible('#f-cps .cp-empty')
+    pg.click('#f-paste-open'); pg.fill('#f-paste-text', '[]'); pg.click('#f-paste-add')
+    assert 'Not added' in ev("document.getElementById('f-paste-err').textContent")
+    pg.fill('#f-paste-text', 'Sure!\n```json\n' + json.dumps({'title': 'ignored', 'points': [
+        {'name': 'Hôtel-Dieu <i>façade</i>', 'lat': 45.7593, 'lng': 4.8402, 'what': 'Dome', 'fact': '1741'},
+        {'name': 'Halles', 'lat': 45.763, 'lng': 4.8505}]}) + '\n```')
+    pg.click('#f-paste-add')
+    R = ev("id => state.rides.find(r => r.id === id)", rp['id'])
+    assert [x['name'] for x in R['cps']] == ['Hôtel-Dieu <i>façade</i>', 'Halles'] and R['title'] == 'Plain' and not pg.is_visible('#f-paste'), R
+    assert not pg.query_selector('#f-cps i'), 'place names must be escaped'
+    pg.click('#f-cps .cp[data-i="1"] .cp-check')
+    assert ev("id => state.rides.find(r => r.id === id).cps[1].done", rp['id']) is True
+    pg.dialog_answer = 'dismiss'                                              # replace → confirm → cancel keeps them
+    pg.click('#f-paste-open'); pg.fill('#f-paste-text', json.dumps([{'name': 'Other', 'lat': 45, 'lng': 4}])); pg.click('#f-paste-add')
+    assert len(ev("id => state.rides.find(r => r.id === id).cps", rp['id'])) == 2
+    pg.click('#sheet-done')
     # Plan → ride "as planned" (no GPX)
     pid2 = ev("t => importPlanGpx(t).id", gpx([c(x0, y0 + 8), c(x0 + 2, y0 + 8)], 'Short one'))
     rid2 = ev("id => completePlan(id, null).id", pid2)
