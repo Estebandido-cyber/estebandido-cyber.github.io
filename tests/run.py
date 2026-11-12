@@ -861,6 +861,61 @@ def bici_import_rules(b):
 
 
 @test
+def bici_ui_rules(b):
+    worker = FakeWorker(); ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'bici.html'); wait_until(pg, lambda: 'bici' in worker.keys('GET')); pg.wait_for_timeout(200)
+    ev = pg.evaluate
+    # Calendar grid: from the Monday of the first ride's week to the end of the month (≥ 8 weeks, ending on a Sunday);
+    # rolling 26 weeks once the first ride is older than that
+    rng = "([dates, today]) => { const r = heatRange(dates.map(d => ({ date: d })), new Date(today + 'T12:00:00')); return [localDate(r.start), localDate(r.last), r.rolling] }"
+    assert ev(rng, [['2026-11-03', '2026-11-09'], '2026-11-12']) == ['2026-11-02', '2026-12-27', False]
+    assert ev(rng, [['2026-11-03'], '2027-01-20']) == ['2026-11-02', '2027-01-31', False]       # end of month beyond 8 weeks
+    assert ev(rng, [[], '2026-11-12']) == ['2026-11-09', '2027-01-03', False]
+    assert ev(rng, [['2025-01-10'], '2026-11-12']) == ['2026-05-18', '2026-12-06', True]          # 26 weeks back; 30 Nov (Mon) → Sun 6 Dec
+    today = datetime.date.today()
+    d1, d2 = today - datetime.timedelta(days=9), today - datetime.timedelta(days=2)
+    for d in (d1, d2):
+        ev("t => importGpxText(t)", gpx([(45.75, 4.85), (45.76, 4.86)], 'r', datetime.datetime(d.year, d.month, d.day, 10, 0)))
+    ev("renderAll()")
+    cells = pg.locator('#heat i')
+    first_mon = d1 - datetime.timedelta(days=d1.weekday())
+    assert cells.count() % 7 == 0 and cells.count() >= 56 and cells.first.get_attribute('title').startswith(first_mon.isoformat())
+    assert pg.locator('#heat i.l1').count() == 2 and pg.locator('#heat i.fut').count() > 0
+    assert pg.text_content('#heat-title').startswith('Since') and '2 rides' in pg.inner_text('#heat-foot')
+    # New tags are toggled like the others and kept on load
+    rid = ev("state.rides[0].id"); ev("id => openRide(id)", rid)
+    for t in ('lunch', 'tunnel', 'short', 'long'):
+        pg.click('#f-tags .chip[data-t="%s"]' % t)
+    assert ev("id => state.rides.find(r => r.id === id).tags", rid) == ['lunch', 'tunnel', 'short', 'long']
+    assert ev("r => normalize({ v: 1, rides: [r] }).rides[0].tags", ev("id => state.rides.find(r => r.id === id)", rid)) == ['lunch', 'tunnel', 'short', 'long']
+    pg.click('#sheet-done')
+    # Bottom sheet on the phone: drag the grip down → small (map visible), tap → full, drag up from small → middle
+    pg.set_viewport_size({'width': 411, 'height': 784}); pg.wait_for_timeout(200)
+    ev("id => openRide(id)", rid); pg.wait_for_timeout(300)
+    H = lambda: pg.evaluate("document.getElementById('sheet').getBoundingClientRect().height")
+    full = H(); assert abs(full - 784 * 0.78) < 3, full
+    grip = lambda: (lambda g: (g['x'] + g['width'] / 2, g['y'] + g['height'] / 2))(pg.locator('#sheet-grip').bounding_box())
+    gx, gy = grip()
+    pg.mouse.move(gx, gy); pg.mouse.down(); pg.mouse.move(gx, gy + 250, steps=5); pg.mouse.move(gx, gy + 600, steps=5); pg.mouse.up()
+    assert wait_until(pg, lambda: H() < 90, 2), H()
+    assert pg.is_visible('#sheet-done') and wait_until(pg, lambda: ev("window.scrollY") <= 1, 2)
+    gx, gy = grip(); pg.mouse.click(gx, gy)
+    assert wait_until(pg, lambda: abs(H() - full) < 3, 2), H()
+    gx, gy = grip(); pg.mouse.move(gx, gy); pg.mouse.down(); pg.mouse.move(gx, gy + 600, steps=5); pg.mouse.up()
+    assert wait_until(pg, lambda: H() < 90, 2), H()
+    pg.wait_for_timeout(300)
+    gx, gy = grip(); pg.mouse.move(gx, gy); pg.mouse.down(); pg.mouse.move(gx, gy - 290, steps=8); pg.mouse.up()
+    assert wait_until(pg, lambda: abs(H() - round(784 * 0.45)) < 3, 2), H()
+    pg.click('#sheet-done'); ev("id => openRide(id)", rid); pg.wait_for_timeout(300)
+    assert abs(H() - full) < 3, 'a ride always opens at full height'
+    # Wide screen: side drawer, no grip
+    pg.set_viewport_size({'width': 1070, 'height': 596}); pg.wait_for_timeout(200)
+    assert not pg.is_visible('#sheet-grip')
+    assert not errs, errs
+    ctx.close()
+
+
+@test
 def bici_photo_rules(b):
     worker = FakeWorker(); ctx = new_context(b, worker)
     pg, errs = open_page(ctx, 'bici.html'); wait_until(pg, lambda: 'bici' in worker.keys('GET')); pg.wait_for_timeout(200)

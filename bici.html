@@ -98,6 +98,7 @@ button { cursor: pointer; }
 .heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 11px); gap: 2px; justify-content: start; }
 .heat i { width: 11px; height: 11px; border-radius: 2px; background: var(--heat0); display: block; }
 .heat i.l1 { background: var(--heat1); } .heat i.l2 { background: var(--heat2); } .heat i.out { visibility: hidden; }
+.heat i.fut { background: transparent; box-shadow: inset 0 0 0 1px var(--heat0); }
 .heat-foot { font-size: 11px; color: var(--text3); margin-top: 4px; }
 .rides { display: flex; flex-direction: column; gap: 6px; }
 .ride { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 9px 11px; }
@@ -124,7 +125,14 @@ button { cursor: pointer; }
 .sheet { position: fixed; z-index: 1200; background: var(--card); border: 1px solid var(--border2); box-shadow: 0 8px 30px rgba(0,0,0,0.2); display: none; flex-direction: column; }
 .sheet.open { display: flex; }
 @media (min-width: 900px) { .sheet { top: 73px; right: 0; bottom: 0; width: 380px; border-radius: 0; border-top: none; border-right: none; border-bottom: none; } }
-@media (max-width: 899px) { .sheet { left: 0; right: 0; bottom: 0; max-height: 78vh; max-height: 78dvh; border-radius: 16px 16px 0 0; } }
+@media (max-width: 899px) { .sheet { left: 0; right: 0; bottom: 0; height: 78vh; height: 78dvh; border-radius: 16px 16px 0 0; transition: height 0.2s ease; } }
+.sheet.dragging { transition: none; }
+.sheet-grip { display: none; }
+@media (max-width: 899px) {
+  .sheet-grip { display: flex; justify-content: center; padding: 8px 0 2px; cursor: grab; touch-action: none; }
+  .sheet-grip span { width: 42px; height: 5px; border-radius: 3px; background: var(--border2); }
+  .sheet-head { touch-action: none; }
+}
 .sheet-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
 .sheet-head .t { flex: 1; font-weight: 700; font-size: 15px; }
 .sheet-head button { border: none; background: var(--teal); color: var(--on-teal); border-radius: 10px; padding: 8px 14px; font-weight: 500; }
@@ -204,7 +212,7 @@ button { cursor: pointer; }
     <div class="sec-title">Exploration</div>
     <div class="stats" id="stats"></div>
 
-    <div class="sec-title">Last 6 months</div>
+    <div class="sec-title" id="heat-title">Last 6 months</div>
     <div class="heat" id="heat"></div>
     <div class="heat-foot" id="heat-foot"></div>
 
@@ -214,6 +222,7 @@ button { cursor: pointer; }
 </main>
 
 <section class="sheet" id="sheet" aria-label="Ride">
+  <div class="sheet-grip" id="sheet-grip" title="Drag to see more of the map"><span></span></div>
   <div class="sheet-head"><span class="t" id="sheet-title">Ride</span><button id="sheet-done">Done</button></div>
   <div class="sheet-body">
     <div class="field"><label for="f-title">Title</label><input id="f-title" maxlength="80" placeholder="Along the Saône to the island"></div>
@@ -263,7 +272,8 @@ const DEFAULT_VIEW = [[45.764, 4.836], 12];    // first open, before any ride or
 const TAGS = [
   ['park', '🌳', 'Park'], ['river', '🌊', 'River'], ['arch', '🏛', 'Architecture'], ['picnic', '🧺', 'Picnic'],
   ['village', '🏘', 'Village'], ['view', '⛰', 'Viewpoint'], ['cafe', '☕', 'Café'], ['photos', '📷', 'Photos'],
-  ['sunset', '🌅', 'Sunset'], ['forest', '🌲', 'Forest'],
+  ['sunset', '🌅', 'Sunset'], ['forest', '🌲', 'Forest'], ['lunch', '🥪', 'Lunch'], ['tunnel', '🚇', 'Tunnel'],
+  ['short', '🔸', 'Short'], ['long', '🛣', 'Long'],
 ];
 const TAG = Object.fromEntries(TAGS.map(t => [t[0], t]));
 const COLORS = ['#e8590c', '#1c7ed6', '#d6336c', '#0ca678', '#7048e8', '#f59f00', '#c92a2a', '#0b7285', '#5c940d', '#862e9c'];
@@ -765,19 +775,36 @@ function renderStats(c) {
     stat('Farthest', c.farKm !== null ? n1(c.farKm) + ' km' : '—', 'from home') +
     stat('Near home', c.cov10 !== null ? Math.round(c.cov10 * 100) + '%' : '—', 'within 10 km');
 }
+// Calendar grid: starts on the week of the first ride (at most 26 weeks back), runs to the end of the
+// current month (at least 8 weeks); days still to come are drawn as empty outlines
+const HEAT_WEEKS = 26, HEAT_MIN_WEEKS = 8;
+function monday(d) { const m = new Date(d); m.setHours(12, 0, 0, 0); m.setDate(m.getDate() - (m.getDay() + 6) % 7); return m; }
+function heatRange(rides, today) {
+  const t = new Date(today); t.setHours(12, 0, 0, 0);
+  const limit = monday(t); limit.setDate(limit.getDate() - (HEAT_WEEKS - 1) * 7);
+  const first = rides.length ? new Date(rides[0].date + 'T12:00:00') : t;
+  const start = monday(first < limit ? limit : first);
+  const end = new Date(t.getFullYear(), t.getMonth() + 1, 0, 12);                 // last day of this month
+  const minEnd = new Date(start); minEnd.setDate(minEnd.getDate() + HEAT_MIN_WEEKS * 7 - 1);
+  const last = end > minEnd ? end : minEnd;
+  last.setDate(last.getDate() + (7 - last.getDay()) % 7);                          // finish the week on Sunday
+  return { start, last, rolling: first < limit };
+}
 function renderHeat(c) {
   const count = {};
   for (const r of c.rides) count[r.date] = (count[r.date] || 0) + 1;
   const today = new Date(); today.setHours(12, 0, 0, 0);
-  const start = new Date(today); start.setDate(start.getDate() - 25 * 7 - ((today.getDay() + 6) % 7));   // Monday, 26 weeks ago
+  const { start, last, rolling } = heatRange(c.rides, today);
   let html = '', n = 0;
-  for (const d = new Date(start); d <= today || d.getDay() !== 1; d.setDate(d.getDate() + 1)) {
-    const k = localDate(d), v = count[k] || 0, out = d > today;
-    if (v && !out) n += v;
-    html += `<i class="${out ? 'out' : v > 1 ? 'l2' : v ? 'l1' : ''}" title="${k}${v ? ' · ' + v + ' ride' + (v > 1 ? 's' : '') : ''}"></i>`;
+  for (const d = new Date(start); d <= last; d.setDate(d.getDate() + 1)) {
+    const k = localDate(d), v = count[k] || 0, fut = d > today;
+    if (v && !fut) n += v;
+    html += `<i class="${fut ? 'fut' : v > 1 ? 'l2' : v ? 'l1' : ''}" title="${k}${v ? ' · ' + v + ' ride' + (v > 1 ? 's' : '') : ''}"></i>`;
   }
+  const since = start.getDate() + ' ' + MONTHS[start.getMonth()];
+  document.getElementById('heat-title').textContent = rolling || !c.rides.length ? 'Last 6 months' : 'Since ' + since;
   document.getElementById('heat').innerHTML = html;
-  document.getElementById('heat-foot').textContent = n + ' ride' + (n === 1 ? '' : 's') + ' since ' + start.getDate() + ' ' + MONTHS[start.getMonth()];
+  document.getElementById('heat-foot').textContent = n + ' ride' + (n === 1 ? '' : 's') + ' since ' + since;
 }
 function renderList(c) {
   const el = document.getElementById('rides');
@@ -808,6 +835,7 @@ function openRide(id, fit) {
   selId = id;
   F('f-title').value = r.title; F('f-date').value = r.date; F('f-start').value = r.start; F('f-end').value = r.end;
   F('f-note').value = r.note; F('f-thought').value = r.thought;
+  setSheetHeight(null);                              // every ride opens at full height
   showPhoto(r);
   renderSheet();
   F('sheet').classList.add('open');
@@ -824,6 +852,42 @@ function renderSheet() {
   F('f-tags').innerHTML = TAGS.map(t => `<button class="chip${r.tags.includes(t[0]) ? ' on' : ''}" data-t="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
   F('f-colors').innerHTML = COLORS.map(col => `<button class="sw${r.color === col ? ' on' : ''}" data-c="${col}" style="background:${col}" aria-label="Colour ${col}"></button>`).join('');
 }
+// ── Bottom sheet (narrow screens): drag the grip or the header between 3 heights; a tap toggles small ↔ full ──
+const sheetNarrow = () => matchMedia('(max-width: 899px)').matches;
+function sheetStops() {
+  const vh = window.innerHeight, head = F('sheet-grip').offsetHeight + document.querySelector('#sheet .sheet-head').offsetHeight;
+  return [head, Math.round(vh * 0.45), Math.round(vh * 0.78)];
+}
+function setSheetHeight(h) {
+  F('sheet').style.height = h === null ? '' : h + 'px';
+  if (h !== null && h < sheetStops()[2] - 1) window.scrollTo({ top: 0, behavior: 'smooth' });   // bring the map into view
+}
+(function () {
+  const sheet = F('sheet');
+  let startY = 0, startH = 0, moved = false, dragging = false;
+  function down(e) {
+    if (!sheetNarrow() || e.target.closest('button')) return;
+    dragging = true; moved = false; startY = e.clientY; startH = sheet.getBoundingClientRect().height;
+    sheet.classList.add('dragging'); e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function move(e) {
+    if (!dragging) return;
+    const dy = e.clientY - startY; if (Math.abs(dy) > 5) moved = true;
+    const [lo, , hi] = sheetStops();
+    sheet.style.height = Math.max(lo, Math.min(hi, startH - dy)) + 'px';
+  }
+  function up() {
+    if (!dragging) return;
+    dragging = false; sheet.classList.remove('dragging');
+    const stops = sheetStops(), h = sheet.getBoundingClientRect().height;
+    if (!moved) { setSheetHeight(h > stops[0] + 2 ? stops[0] : stops[2]); return; }
+    setSheetHeight(stops.reduce((a, b) => Math.abs(b - h) < Math.abs(a - h) ? b : a));
+  }
+  for (const el of [F('sheet-grip'), sheet.querySelector('.sheet-head')]) {
+    el.addEventListener('pointerdown', down); el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  }
+})();
 function closeSheet() { F('sheet').classList.remove('open'); selId = null; renderAll(); }
 function editRide(fn) {
   const r = state.rides.find(x => x.id === selId); if (!r) return;
