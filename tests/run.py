@@ -885,7 +885,8 @@ def bici_time_rules(b):
     ev("renderAll()")
     assert '0h50' in pg.inner_text('#rides .ride') and '0h59' not in pg.inner_text('#rides .ride')
     ev("id => openRide(id)", rid)
-    info = pg.inner_text('#f-info'); assert '0h50 riding' in info and '0h59 outside' in info, info
+    kp = pg.evaluate("[...document.querySelectorAll('#f-info .kpi')].map(k => [k.querySelector('span').textContent, k.querySelector('b').textContent])")
+    assert ['Riding', '0h50'] in kp and ['Outside', '0h59'] in kp and kp[0][0] == 'Distance', kp
     pg.click('#sheet-done')
     # No times in the file (planned route, hand-drawn…): no riding time; Left/Back typed by hand are used instead
     rid2 = ev("t => importGpxText(t).id", gpx([(45.70, 4.80), (45.71, 4.81)], 'no times'))

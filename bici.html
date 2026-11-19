@@ -145,7 +145,15 @@ button { cursor: pointer; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 1px solid var(--border2); background: var(--sub); border-radius: 99px; padding: 6px 10px; font-size: 13px; }
 .chip.on { background: var(--teal-bg); border-color: var(--teal); color: var(--teal-tx); font-weight: 500; }
-.ride-info { font-size: 13px; color: var(--text2); background: var(--sub); border-radius: 10px; padding: 8px 10px; }
+.ride-info { display: flex; flex-direction: column; gap: 6px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 6px; }
+.kpi { --c: var(--teal); background: color-mix(in srgb, var(--c) 13%, var(--card)); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
+       border-radius: 12px; padding: 8px 6px 7px; text-align: center; min-width: 0; }
+.kpi b { display: block; font-size: 20px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.kpi b small { font-size: 12px; font-weight: 500; margin-left: 2px; }
+.kpi span { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2); margin-top: 3px; }
+.kpi.new b { color: var(--teal-tx); }
+.ride-src { font-size: 11px; color: var(--text3); text-align: right; }
 .sheet-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .sheet-actions button { border: 1px solid var(--border2); background: var(--sub); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
 .sheet-actions button.del { color: var(--danger); margin-left: auto; }
@@ -874,8 +882,13 @@ function renderSheet() {
   const r = state.rides.find(x => x.id === selId); if (!r) return;
   const c = compute(state), m = rideMinutes(r), mv = typeof r.move === 'number' ? r.move : null, d = new Date(r.date + 'T12:00:00');
   F('sheet-title').textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  F('f-info').textContent = [n1(r.km) + ' km', mv !== null ? hm(mv) + ' riding' : '', m ? hm(m) + ' outside' : '',
-    '+' + c.per[r.id].newSq + ' new squares', r.src === 'drawn' ? 'route drawn by hand' : r.src === 'plan' ? 'route as planned' : 'route from GPX'].filter(Boolean).join(' · ');
+  const kpi = (v, unit, label, cls) => `<div class="kpi${cls ? ' ' + cls : ''}" style="--c:${esc(r.color || '#0f8a7a')}"><b>${esc(v)}${unit ? `<small>${unit}</small>` : ''}</b><span>${label}</span></div>`;
+  F('f-info').innerHTML = '<div class="kpis">' +
+    kpi(n1(r.km), 'km', 'Distance') +
+    (mv !== null ? kpi(hm(mv), '', 'Riding') : '') +
+    (m ? kpi(hm(m), '', 'Outside') : '') +
+    kpi('+' + c.per[r.id].newSq, '', 'New squares', 'new') + '</div>' +
+    `<div class="ride-src">${r.src === 'drawn' ? 'Route drawn by hand' : r.src === 'plan' ? 'Route as planned' : 'Route from GPX'}</div>`;
   F('f-tags').innerHTML = TAGS.map(t => `<button class="chip${r.tags.includes(t[0]) ? ' on' : ''}" data-t="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
   F('f-colors').innerHTML = COLORS.map(col => `<button class="sw${r.color === col ? ' on' : ''}" data-c="${col}" style="background:${col}" aria-label="Colour ${col}"></button>`).join('');
 }
