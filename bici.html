@@ -417,6 +417,9 @@ function coverage(explored, home, km) {
   }
   return tot ? got / tot : null;
 }
+// Riding time: in motion from the GPX when known, otherwise the time between Left and Back
+function rideMoving(r) { return typeof r.move === 'number' ? r.move : rideMinutes(r); }
+function hm(m) { return Math.floor(m / 60) + 'h' + pad(Math.round(m % 60)); }
 function rideMinutes(r) {
   if (!/^\d\d:\d\d$/.test(r.start || '') || !/^\d\d:\d\d$/.test(r.end || '')) return null;
   const m = (+r.end.slice(0, 2) * 60 + +r.end.slice(3)) - (+r.start.slice(0, 2) * 60 + +r.start.slice(3));
@@ -428,7 +431,7 @@ function byDate(a, b) { return (a.date + (a.start || '')).localeCompare(b.date +
 function compute(s) {
   const rides = s.rides.slice().sort(byDate);
   const explored = new Set(), per = {};
-  let km = 0, mins = 0, far = 0, timed = 0;
+  let km = 0, mins = 0, far = 0, timed = 0, moving = 0, movingN = 0;
   const home = s.settings.home;
   for (const r of rides) {
     let nw = 0;
@@ -436,12 +439,14 @@ function compute(s) {
     per[r.id] = { newSq: nw };
     km += r.km || 0;
     const m = rideMinutes(r); if (m) { mins += m; timed++; }
+    const mv = rideMoving(r); if (mv) { moving += mv; movingN++; }
     if (home) for (const p of decodePoly(r.tr)) far = Math.max(far, distM(home, p));
   }
   const year = todayStr().slice(0, 4);
   return {
     rides, per, explored, km, mins, year, timed,
     avgKm: rides.length ? km / rides.length : 0, avgMins: timed ? mins / timed : 0,
+    moving, avgMoving: movingN ? moving / movingN : 0,
     yN: rides.filter(r => r.date.startsWith(year)).length,
     sq: explored.size, max: maxSquare(explored),
     farKm: home && rides.length ? far / 1000 : null,
@@ -456,33 +461,54 @@ function parseGpx(text) {
   if (doc.getElementsByTagName('parsererror').length) throw new Error('not a valid GPX file');
   let nodes = [...doc.getElementsByTagName('trkpt')];
   if (!nodes.length) nodes = [...doc.getElementsByTagName('rtept')];
-  const pts = [], times = [];
+  const pts = [], times = [], timed = [];
   for (const n of nodes) {
     const lat = parseFloat(n.getAttribute('lat')), lng = parseFloat(n.getAttribute('lon'));
     if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 85 || Math.abs(lng) > 180) continue;
     pts.push([lat, lng]);
     const t = n.getElementsByTagName('time')[0];
-    if (t) { const d = new Date(t.textContent.trim()); if (!isNaN(d)) times.push(d); }
+    if (t) { const d = new Date(t.textContent.trim()); if (!isNaN(d)) { times.push(d); timed.push([lat, lng, d.getTime()]); } }
   }
   if (pts.length < 2) throw new Error('no route points in this file');
   const nameEl = doc.querySelector('trk > name') || doc.querySelector('rte > name') || doc.querySelector('metadata > name');
-  return { pts, name: nameEl ? nameEl.textContent.trim().slice(0, 80) : '', first: times[0] || null, last: times[times.length - 1] || null };
+  return { pts, name: nameEl ? nameEl.textContent.trim().slice(0, 80) : '', first: times[0] || null, last: times[times.length - 1] || null,
+           move: movingMinutes(timed) };
+}
+// Time in motion, like Komoot's: the time between two points counts only when the bike moved at ≥ MOVE_KMH between them
+// (red lights, stops and breaks are left out). null when the file has no times.
+const MOVE_KMH = 3;
+function movingMinutes(timed) {
+  if (timed.length < 2) return null;
+  let sec = 0;
+  for (let i = 1; i < timed.length; i++) {
+    const dt = (timed[i][2] - timed[i - 1][2]) / 1000;
+    if (dt > 0 && distM(timed[i - 1], timed[i]) / dt * 3.6 >= MOVE_KMH) sec += dt;
+  }
+  return Math.round(sec / 60);
 }
 function routeFields(pts) {
   return { tr: encodePoly(simplify(pts, 6)), km: Math.round(pathKm(pts) * 10) / 10 };
 }
 // New ride from GPX text (or replaces the route of an existing ride). Returns the ride, or null if it is a duplicate.
+let dupUpdated = 0;                                  // duplicates whose riding time was filled in (for the import message)
 function importGpxText(text, intoId) {
   const g = parseGpx(text), f = routeFields(g.pts);
   if (intoId) {
     const r = state.rides.find(x => x.id === intoId);
-    if (r) { Object.assign(r, f, { src: 'gpx' }); if (g.first && !r.start) r.start = localTime(g.first); if (g.last && !r.end) r.end = localTime(g.last); }
+    if (r) {
+      Object.assign(r, f, { src: 'gpx' }); if (g.first && !r.start) r.start = localTime(g.first); if (g.last && !r.end) r.end = localTime(g.last);
+      if (g.move !== null) r.move = g.move; else delete r.move;
+    }
     return r || null;
   }
   const date = g.first ? localDate(g.first) : todayStr();
-  if (state.rides.some(r => r.date === date && r.tr === f.tr)) return null;
+  const dup = state.rides.find(r => r.date === date && r.tr === f.tr);
+  if (dup) {                                         // same ride again: only fills in the riding time if it was missing
+    if (typeof dup.move !== 'number' && g.move !== null) { dup.move = g.move; dupUpdated++; }
+    return null;
+  }
   const r = { id: newId(), color: pickColor(state.rides), date, start: g.first ? localTime(g.first) : '', end: g.last ? localTime(g.last) : '',
-              title: g.name, note: '', thought: '', tags: [], ...f, src: 'gpx' };
+              title: g.name, note: '', thought: '', tags: [], ...f, src: 'gpx', ...(g.move !== null ? { move: g.move } : {}) };
   state.rides.push(r);
   if (!state.settings.home) state.settings.home = roundHome(g.pts[0]);
   return r;
@@ -501,6 +527,7 @@ function cleanRide(r) {
            src: r.src === 'drawn' || r.src === 'plan' ? r.src : 'gpx',
            ...(typeof r.color === 'string' && /^#[0-9a-f]{6}$/i.test(r.color) ? { color: r.color.toLowerCase() } : {}),
            ...(r.photo === true ? { photo: true } : {}),
+           ...(Number.isInteger(r.move) && r.move >= 0 && r.move <= 1440 ? { move: r.move } : {}),
            ...(typeof r.thumb === 'string' && r.thumb.length <= 30000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(r.thumb) ? { thumb: r.thumb } : {}) };   // older saves: plans and places (cps) are dropped
 }
 function normalize(data) {
@@ -764,12 +791,12 @@ function stat(label, value, sub) {
 }
 function renderStats(c) {
   const lastNew = c.last ? c.per[c.last.id].newSq : 0;
-  const h = c.mins / 60;
+  const hr = c.moving / 60;
   document.getElementById('stats').innerHTML =
     stat('Rides', c.rides.length, c.yN + ' in ' + c.year) +
     stat('Distance', c.km ? (c.km >= 100 ? Math.round(c.km).toLocaleString('de-DE') : n1(c.km)) + ' km' : '—', 'all rides') +
     stat('Average', c.rides.length ? n1(c.avgKm) + ' km' : '—', 'per ride') +
-    stat('Outside', c.mins ? (h >= 10 ? Math.round(h) : n1(h)) + ' h' : '—', c.avgMins ? 'avg ' + Math.floor(c.avgMins / 60) + 'h' + pad(Math.round(c.avgMins % 60)) : '') +
+    stat('Riding', c.moving ? (hr >= 10 ? Math.round(hr) : n1(hr)) + ' h' : '—', c.avgMoving ? 'avg ' + hm(c.avgMoving) : 'in motion') +
     stat('Squares', c.sq, c.last ? '+' + lastNew + ' last' : 'explored') +
     stat('Max square', c.max.n ? c.max.n + '×' + c.max.n : '—', 'complete') +
     stat('Farthest', c.farKm !== null ? n1(c.farKm) + ' km' : '—', 'from home') +
@@ -814,8 +841,8 @@ function renderList(c) {
     return;
   }
   el.innerHTML = c.rides.slice().reverse().map(r => {
-    const d = new Date(r.date + 'T12:00:00'), m = rideMinutes(r);
-    const meta = [r.tags.map(t => TAG[t][1]).join(''), n1(r.km) + ' km', m ? Math.floor(m / 60) + 'h' + pad(m % 60) : ''].filter(Boolean).join(' · ');
+    const d = new Date(r.date + 'T12:00:00'), m = rideMoving(r);
+    const meta = [r.tags.map(t => TAG[t][1]).join(''), n1(r.km) + ' km', m ? hm(m) : ''].filter(Boolean).join(' · ');
     const nw = c.per[r.id].newSq;
     return `<button class="ride${r.id === selId ? ' sel' : ''}" data-id="${esc(r.id)}">` +
       `<div class="ride-date"><b>${d.getDate()}</b><span>${MONTHS[d.getMonth()]}</span></div>` +
@@ -845,9 +872,9 @@ function openRide(id, fit) {
 }
 function renderSheet() {
   const r = state.rides.find(x => x.id === selId); if (!r) return;
-  const c = compute(state), m = rideMinutes(r), d = new Date(r.date + 'T12:00:00');
+  const c = compute(state), m = rideMinutes(r), mv = typeof r.move === 'number' ? r.move : null, d = new Date(r.date + 'T12:00:00');
   F('sheet-title').textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  F('f-info').textContent = [n1(r.km) + ' km', m ? Math.floor(m / 60) + 'h' + pad(m % 60) + ' outside' : '',
+  F('f-info').textContent = [n1(r.km) + ' km', mv !== null ? hm(mv) + ' riding' : '', m ? hm(m) + ' outside' : '',
     '+' + c.per[r.id].newSq + ' new squares', r.src === 'drawn' ? 'route drawn by hand' : r.src === 'plan' ? 'route as planned' : 'route from GPX'].filter(Boolean).join(' · ');
   F('f-tags').innerHTML = TAGS.map(t => `<button class="chip${r.tags.includes(t[0]) ? ' on' : ''}" data-t="${t[0]}">${t[1]} ${t[2]}</button>`).join('');
   F('f-colors').innerHTML = COLORS.map(col => `<button class="sw${r.color === col ? ' on' : ''}" data-c="${col}" style="background:${col}" aria-label="Colour ${col}"></button>`).join('');
@@ -1001,20 +1028,22 @@ F('gpx-input').addEventListener('change', async e => {
   const files = [...e.target.files]; e.target.value = '';
   const hadHome = !!state.settings.home;
   let added = [], dup = 0, bad = [];
+  dupUpdated = 0;
   for (const f of files) {
     try {
       const r = importGpxText(await f.text(), importInto);
       if (r) added.push(r); else dup++;
     } catch (err) { bad.push(f.name + ': ' + err.message); }
   }
-  if (added.length) persist();
+  if (added.length || dupUpdated) persist();
   const c = renderAll();
   if (bad.length) toast('Not imported — ' + bad.join(' · '), 6000);
   else if (added.length) {
     const nw = added.reduce((s, r) => s + c.per[r.id].newSq, 0);
     toast((importInto ? 'Route replaced' : added.length + ' ride' + (added.length > 1 ? 's' : '') + ' imported') + ' · +' + nw + ' new squares' +
       (!hadHome && state.settings.home ? ' · home set at the start (change with ⌂)' : '') + (dup ? ' · ' + dup + ' already here' : ''), 5000);
-  } else if (dup) toast('Already imported');
+  } else if (dupUpdated) toast('Already imported · riding time added to ' + dupUpdated + ' ride' + (dupUpdated > 1 ? 's' : ''), 4000);
+  else if (dup) toast('Already imported');
   if (added.length === 1) openRide(added[0].id, true); else if (added.length) fitAll();
   importInto = null;
 });

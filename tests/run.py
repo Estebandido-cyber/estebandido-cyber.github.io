@@ -860,6 +860,56 @@ def bici_import_rules(b):
     ctx.close()
 
 
+def gpx_timed(rows, name=''):
+    """rows = [(lat, lng, datetime)]"""
+    pts = ''.join('<trkpt lat="%.6f" lon="%.6f"><time>%s</time></trkpt>' % (la, lo, t.strftime('%Y-%m-%dT%H:%M:%S.000Z')) for la, lo, t in rows)
+    return ('<?xml version="1.0"?><gpx version="1.1" creator="https://www.komoot.de" xmlns="http://www.topografix.com/GPX/1/1">'
+            '<trk><name>%s</name><trkseg>%s</trkseg></trk></gpx>' % (html.escape(name), pts))
+
+@test
+def bici_time_rules(b):
+    worker = FakeWorker(); ctx = new_context(b, worker)
+    pg, errs = open_page(ctx, 'bici.html'); wait_until(pg, lambda: 'bici' in worker.keys('GET')); pg.wait_for_timeout(200)
+    ev = pg.evaluate
+    # 30 min riding at 15 km/h east, a 9 min stop (GPS jitter of a few metres), 20 min more: elapsed 59 min, in motion 50 min
+    lat, lng, t = 45.75, 4.85, datetime.datetime(2026, 11, 19, 13, 0)
+    step_lng = (15000 / 60) / (111320 * math.cos(math.radians(lat)))      # metres per minute → degrees of longitude
+    rows = [(lat, lng, t)]
+    for i in range(1, 31): rows.append((lat, lng + step_lng * i, t + datetime.timedelta(minutes=i)))
+    x = lng + step_lng * 30
+    for j in range(1, 10): rows.append((lat + (2 if j % 2 else -2) / 111320, x, t + datetime.timedelta(minutes=30 + j)))
+    for i in range(1, 21): rows.append((lat, x + step_lng * i, t + datetime.timedelta(minutes=39 + i)))
+    rid = ev("t => importGpxText(t).id", gpx_timed(rows, 'Stops'))
+    R = ev("id => state.rides.find(r => r.id === id)", rid)
+    assert R['move'] == 50 and ev("id => rideMinutes(state.rides.find(r => r.id === id))", rid) == 59, R
+    ev("renderAll()")
+    assert '0h50' in pg.inner_text('#rides .ride') and '0h59' not in pg.inner_text('#rides .ride')
+    ev("id => openRide(id)", rid)
+    info = pg.inner_text('#f-info'); assert '0h50 riding' in info and '0h59 outside' in info, info
+    pg.click('#sheet-done')
+    # No times in the file (planned route, hand-drawn…): no riding time; Left/Back typed by hand are used instead
+    rid2 = ev("t => importGpxText(t).id", gpx([(45.70, 4.80), (45.71, 4.81)], 'no times'))
+    assert 'move' not in ev("id => state.rides.find(r => r.id === id)", rid2)
+    ev("id => { const r = state.rides.find(x => x.id === id); r.start = '10:00'; r.end = '11:30'; }", rid2)
+    assert ev("id => rideMoving(state.rides.find(r => r.id === id))", rid2) == 90
+    C = ev("(() => { const c = compute(state); return [c.moving, c.avgMoving] })()")
+    assert C == [140, 70], C
+    # A ride saved before riding time existed gets it by importing the same GPX again (no duplicate)
+    ev("id => { delete state.rides.find(r => r.id === id).move }", rid)
+    n = ev("state.rides.length")
+    with pg.expect_file_chooser() as fc: pg.click('#btn-import')
+    fc.value.set_files(files=[{'name': 's.gpx', 'mimeType': 'application/octet-stream', 'buffer': gpx_timed(rows, 'Stops').encode()}])
+    assert wait_until(pg, lambda: ev("id => state.rides.find(r => r.id === id).move", rid) == 50, 3)
+    assert ev("state.rides.length") == n and 'riding time added' in pg.inner_text('#toast')
+    # Replacing the route takes the new file's riding time; loading validates it
+    ev("([id, t]) => importGpxText(t, id)", [rid, gpx_timed(rows[:31], 'first half')])
+    assert ev("id => state.rides.find(r => r.id === id).move", rid) == 30
+    bad = ev("r => normalize({ v: 1, rides: [{ ...r, move: -5 }, { ...r, id: 'x2', move: 12.5 }, { ...r, id: 'x3', move: 75 }] }).rides.map(r => r.move ?? null)", R)
+    assert bad == [None, None, 75], bad
+    assert not errs, errs
+    ctx.close()
+
+
 @test
 def bici_ui_rules(b):
     worker = FakeWorker(); ctx = new_context(b, worker)
