@@ -457,8 +457,8 @@
 <script>
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const STATIC_POSITIONS = [
-  { ticker:'WPEA.PA',          name:'Amundi PEA Monde',           account:'PEA',  type:'ETF',   shares:16507,   avgPrice:6.56 },
-  { ticker:'DCAM.PA',          name:'Amundi CAC 40 ETF',          account:'PEA',  type:'ETF',   shares:774,     avgPrice:4887.13/774 },   // broker totals 19 Nov 2026: 171 @ 6,40 + 158 @ 6,31 + 236 @ 6,34 + 209 @ 6,20 (+ fees) = €4.887,13, avg €6,31
+  { ticker:'WPEA.PA',          name:'iShares MSCI World Swap PEA', account:'PEA',  type:'ETF',   shares:16507,   avgPrice:6.56 },
+  { ticker:'DCAM.PA',          name:'Amundi PEA Monde MSCI World', account:'PEA',  type:'ETF',   shares:774,     avgPrice:4887.13/774 },   // broker totals 19 Nov 2026: 171 @ 6,40 + 158 @ 6,31 + 236 @ 6,34 + 209 @ 6,20 (+ fees) = €4.887,13, avg €6,31
   { ticker:'VUSA.AS',          name:'Vanguard S&P 500 UCITS',     account:'CTO',  type:'ETF',   shares:106,     avgPrice:71.57 },
   { ticker:'AAPL',             name:'Apple Inc.',                  account:'CTO',  type:'Stock', shares:38,      avgPrice:131.20 },
   { ticker:'SAP.DE',           name:'SAP SE',                     account:'PEE',  type:'Stock', shares:85.611,  avgPrice:144.11 },
@@ -476,38 +476,41 @@ const LIVRETS = [
   { name:'Livret LDDS', account:'Livret', value: parseFloat(localStorage.getItem('liv_value_LDDS')||'12133'), rate: parseFloat(localStorage.getItem('liv_rate_LDDS')||'1.7') },
 ];
 
-// French tax rules per account
+// French tax rules per account (2026: prélèvements sociaux 18.6% on capital income, AV stays at 17.2%)
 const TAX_RULES = {
-  PEA:    { label:'PS 17.2% (>5y)',       rate: (_)   => 0.172,                base:'gains' },
-  CTO:    { label:'PFU 30%',              rate: (_)   => 0.30,                 base:'gains' },
-  PEE:    { label:'PS 17.2% (>5y lock)',  rate: (_)   => 0.172,                base:'gains' },
-  PERE:   { label:'IR + PS at withdrawal',rate: (ir)  => (ir/100) + 0.172,     base:'gains' },
-  PERO:   { label:'IR + PS at withdrawal',rate: (ir)  => (ir/100) + 0.172,     base:'gains' },
+  PEA:    { label:'PS 18.6% (>5y)',       rate: (_)   => 0.186,                base:'gains' },
+  CTO:    { label:'PFU 31.4%',            rate: (_)   => 0.314,                base:'gains' },
+  PEE:    { label:'PS 18.6% (>5y lock)',  rate: (_)   => 0.186,                base:'gains' },
+  PERE:   { label:'IR + PS at withdrawal',rate: (ir)  => (ir/100) + 0.186,     base:'gains' },
+  PERO:   { label:'IR + PS at withdrawal',rate: (ir)  => (ir/100) + 0.186,     base:'gains' },
   AV:     { label:'7.5% IR + PS (>8y)',   rate: (_)   => 0.075 + 0.172,        base:'gains' },
   Livret: { label:'Exonéré',              rate: (_)   => 0,                     base:'none'  },
   Cash:   { label:'N/A',                  rate: (_)   => 0,                     base:'none'  },
 };
 
 // Approximate geographic breakdown per ticker (% of that position's value)
+// MSCI World = developed markets only (no emerging); weights from the MSCI factsheet of 30 Oct 2026
+const MSCI_WORLD_GEO     = { 'North America':76, 'Europe':16, 'Asia-Pacific':8 };
+const MSCI_WORLD_SECTORS = { 'Technology':30, 'Financials':16, 'Consumer':14, 'Industrials':11, 'Healthcare':10, 'Other':19 };
 const GEO_WEIGHTS = {
-  'WPEA.PA':           { 'North America':65, 'Europe':20, 'Asia-Pacific':10, 'Emerging':5 },
-  'DCAM.PA':           { 'Europe':100 },
+  'WPEA.PA':           MSCI_WORLD_GEO,
+  'DCAM.PA':           MSCI_WORLD_GEO,
   'VUSA.AS':           { 'North America':100 },
   'AAPL':              { 'North America':100 },
   'SAP.DE':            { 'Europe':100 },
   '0P0000VQ4Q.F':      { 'North America':60, 'Europe':20, 'Asia-Pacific':15, 'Emerging':5 },
-  '0P00000WLG.F':      { 'North America':63, 'Europe':18, 'Asia-Pacific':13, 'Emerging':6 },
-  '0P00011HBM.F_PERO': { 'North America':63, 'Europe':18, 'Asia-Pacific':13, 'Emerging':6 },
+  '0P00000WLG.F':      MSCI_WORLD_GEO,   // Vanguard Global Stock Index tracks the MSCI World
+  '0P00011HBM.F_PERO': MSCI_WORLD_GEO,
 };
 const SECTOR_WEIGHTS = {
-  'WPEA.PA':           { 'Technology':25, 'Financials':15, 'Healthcare':12, 'Consumer':12, 'Industrials':10, 'Other':26 },
-  'DCAM.PA':           { 'Financials':16, 'Consumer':15, 'Industrials':14, 'Healthcare':12, 'Technology':11, 'Other':32 },
+  'WPEA.PA':           MSCI_WORLD_SECTORS,
+  'DCAM.PA':           MSCI_WORLD_SECTORS,
   'VUSA.AS':           { 'Technology':32, 'Financials':13, 'Healthcare':11, 'Consumer':10, 'Industrials':8,  'Other':26 },
   'AAPL':              { 'Technology':100 },
   'SAP.DE':            { 'Technology':100 },
   '0P0000VQ4Q.F':      { 'Technology':24, 'Financials':14, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':29 },
-  '0P00000WLG.F':      { 'Technology':24, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':28 },
-  '0P00011HBM.F_PERO': { 'Technology':24, 'Financials':15, 'Healthcare':12, 'Consumer':11, 'Industrials':10, 'Other':28 },
+  '0P00000WLG.F':      MSCI_WORLD_SECTORS,
+  '0P00011HBM.F_PERO': MSCI_WORLD_SECTORS,
 };
 
 const MSCI_WORLD_ANNUAL = 0.12; // ~12%/y benchmark (5y avg)
